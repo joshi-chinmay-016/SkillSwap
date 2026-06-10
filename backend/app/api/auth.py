@@ -8,11 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.schemas.auth import (
     RegisterRequest,
-    RegisterResponse
+    RegisterResponse,
+    LoginRequest,
+    TokenResponse
 )
 
 from app.services.auth_service import (
-    register_user
+    register_user,
+    login_user
 )
 
 from app.core.database import get_db
@@ -51,3 +54,40 @@ def register(
             status_code=400,
             detail=str(e)
         )
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse
+)
+def login(
+    request: LoginRequest,
+    db: Session = Depends(get_db)
+):
+
+    try:
+
+        token = login_user(
+            db,
+            request.email,
+            request.password
+        )
+
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer"
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=401,
+            detail=str(e)
+        )
+
+
+@router.get("/me")
+def get_me():
+    return {
+        "message": "Protected endpoint coming tomorrow"
+    }
