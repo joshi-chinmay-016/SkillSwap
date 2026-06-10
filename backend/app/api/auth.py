@@ -3,6 +3,9 @@ from fastapi import (
     Depends,
     HTTPException
 )
+from app.dependencies.current_user import (
+    get_current_user
+)
 
 from sqlalchemy.orm import Session
 
@@ -87,7 +90,14 @@ def login(
 
 
 @router.get("/me")
-def get_me():
+def get_me(
+    current_user = Depends(
+        get_current_user
+    )
+):
+
     return {
-        "message": "Protected endpoint coming tomorrow"
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email
     }
