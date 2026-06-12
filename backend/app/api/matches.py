@@ -17,6 +17,10 @@ from app.services.match_service import (
     get_my_matches
 )
 
+from app.schemas.match import (
+    MatchResponse
+)
+
 router = APIRouter(
     prefix="/matches",
     tags=["Matches"]
@@ -47,7 +51,12 @@ def learners(
     )
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=list[
+        MatchResponse
+    ]
+)
 def my_matches(
     current_user=Depends(
         get_current_user
