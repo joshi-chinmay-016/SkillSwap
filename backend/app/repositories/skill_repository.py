@@ -53,3 +53,15 @@ def get_user_skills(
         )
         .all()
     )
+
+def get_skill_by_id(
+    db,
+    skill_id: int
+):
+    return (
+        db.query(Skill)
+        .filter(
+            Skill.id == skill_id
+        )
+        .first()
+    )
