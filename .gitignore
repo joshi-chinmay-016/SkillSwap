@@ -22,6 +22,9 @@ dist/
 *.egg-info/
 pip-wheel-metadata/
 .pytest_cache/
+backend/.env
+backend/.env*
+
 
 # Node
 node_modules/

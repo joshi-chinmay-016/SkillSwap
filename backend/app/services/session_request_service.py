@@ -11,6 +11,10 @@ from app.repositories.session_request_repository import (
     get_request_by_id
 )
 
+from app.services.notification_service import (
+    create_user_notification
+)
+
 
 def send_request(
     db: Session,
@@ -26,10 +30,18 @@ def send_request(
         status="pending"
     )
 
-    return create_request(
+    request = create_request(
         db,
         request
     )
+
+    create_user_notification(
+        db,
+        receiver_id,
+        f"You received a skill request from User {sender_id}"
+    )
+
+    return request
 
 
 def sent_requests(
@@ -70,6 +82,12 @@ def accept_request(
 
     db.refresh(request)
 
+    create_user_notification(
+        db,
+        request.sender_id,
+        "Your request has been accepted"
+    )
+
     return request
 
 
@@ -88,5 +106,11 @@ def reject_request(
     db.commit()
 
     db.refresh(request)
+
+    create_user_notification(
+        db,
+        request.sender_id,
+        "Your request has been rejected"
+    )
 
     return request
