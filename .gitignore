@@ -23,8 +23,9 @@ dist/
 pip-wheel-metadata/
 .pytest_cache/
 backend/.env
-.env
-.env.*
+backend/.env*
+
+
 # Node
 node_modules/
 npm-debug.log*
