@@ -37,6 +37,10 @@ from app.api.feedback import (
     router as feedback_router
 )
 
+from app.api.leaderboard import (
+    router as leaderboard_router
+)
+
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(skills_router)
@@ -46,6 +50,7 @@ app.include_router(request_router)
 app.include_router(notifications_router)
 app.include_router(session_router)
 app.include_router(feedback_router)
+app.include_router(leaderboard_router)
 
 @app.get("/")
 def root():
