@@ -48,6 +48,10 @@ from app.api.badges import (
 from app.api.dashboard import (
     router as dashboard_router
 )
+from app.api.recommendations import (
+    router as recommendation_router
+)
+
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -61,6 +65,7 @@ app.include_router(feedback_router)
 app.include_router(leaderboard_router)
 app.include_router(badge_router)
 app.include_router(dashboard_router)
+app.include_router(recommendation_router)
 
 @app.get("/")
 def root():
