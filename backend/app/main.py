@@ -41,6 +41,14 @@ from app.api.leaderboard import (
     router as leaderboard_router
 )
 
+from app.api.badges import (
+    router as badge_router
+)
+
+from app.api.dashboard import (
+    router as dashboard_router
+)
+
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(skills_router)
@@ -51,6 +59,8 @@ app.include_router(notifications_router)
 app.include_router(session_router)
 app.include_router(feedback_router)
 app.include_router(leaderboard_router)
+app.include_router(badge_router)
+app.include_router(dashboard_router)
 
 @app.get("/")
 def root():
