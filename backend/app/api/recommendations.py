@@ -11,6 +11,10 @@ from app.dependencies.current_user import (
     get_current_user
 )
 
+from app.schemas.recommendation import (
+    RecommendationResponse
+)
+
 from app.services.recommendation_service import (
     get_recommendations
 )
@@ -21,7 +25,12 @@ router = APIRouter(
 )
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=list[
+        RecommendationResponse
+    ]
+)
 def my_recommendations(
     current_user=Depends(
         get_current_user
