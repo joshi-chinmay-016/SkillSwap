@@ -51,7 +51,12 @@ from app.api.dashboard import (
 from app.api.recommendations import (
     router as recommendation_router
 )
-
+from app.api.analytics import (
+    router as analytics_router
+)
+from app.api.mentors import (
+    router as mentor_router
+)
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -66,6 +71,8 @@ app.include_router(leaderboard_router)
 app.include_router(badge_router)
 app.include_router(dashboard_router)
 app.include_router(recommendation_router)
+app.include_router(analytics_router)
+app.include_router(mentor_router)
 
 @app.get("/")
 def root():

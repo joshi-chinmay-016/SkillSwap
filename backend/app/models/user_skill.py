@@ -26,3 +26,6 @@ class UserSkill(Base):
         "User",
         back_populates="user_skills"
     )
+    skill = relationship(
+    "Skill"
+    )
