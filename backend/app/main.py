@@ -57,6 +57,9 @@ from app.api.analytics import (
 from app.api.mentors import (
     router as mentor_router
 )
+from app.api.availability import (
+    router as availability_router
+)
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -73,6 +76,7 @@ app.include_router(dashboard_router)
 app.include_router(recommendation_router)
 app.include_router(analytics_router)
 app.include_router(mentor_router)
+app.include_router(availability_router)
 
 @app.get("/")
 def root():

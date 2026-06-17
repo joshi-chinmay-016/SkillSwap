@@ -7,3 +7,4 @@ from app.models.notification import Notification
 from app.models.session import Session
 from app.models.feedback import Feedback
 from app.models.badge import Badge
+from app.models.mentor_availability import MentorAvailability
