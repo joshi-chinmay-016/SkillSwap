@@ -14,7 +14,9 @@ from app.repositories.recommendation_repository import (
 def discover_mentors(
     db: Session,
     skill: str = None,
-    min_rating: float = None
+    min_rating: float = None,
+    page: int = 1,
+    size: int = 10
 ):
 
     if skill:
@@ -49,7 +51,7 @@ def discover_mentors(
             rating or 0
         )
 
-        sessions = (
+        completed_sessions = (
             get_completed_sessions(
                 db,
                 mentor.id
@@ -57,7 +59,7 @@ def discover_mentors(
         )
 
         if (
-            min_rating
+            min_rating is not None
             and
             rating < min_rating
         ):
@@ -71,14 +73,24 @@ def discover_mentors(
                     rating,
                     2
                 ),
-                "completed_sessions": sessions
+                "completed_sessions": completed_sessions
             }
         )
 
     results.sort(
-        key=lambda x:
-        x["average_rating"],
+        key=lambda x: (
+            x["average_rating"],
+            x["completed_sessions"]
+        ),
         reverse=True
     )
 
-    return results
+    start = (
+        page - 1
+    ) * size
+
+    end = start + size
+
+    return results[
+        start:end
+    ]
