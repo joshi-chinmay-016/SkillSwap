@@ -9,6 +9,15 @@ from app.repositories.session_repository import (
     get_sessions_by_user,
     get_session_by_id
 )
+from fastapi import HTTPException
+
+from app.repositories.availability_repository import (
+    get_availability_for_day
+)
+
+from app.repositories.session_repository import (
+    get_mentor_session_at_time
+)
 
 
 def schedule_session(
@@ -19,6 +28,61 @@ def schedule_session(
     scheduled_at,
     meeting_link
 ):
+
+    day_of_week = (
+        scheduled_at.strftime(
+            "%A"
+        )
+    )
+
+    availability = (
+        get_availability_for_day(
+            db,
+            mentor_id,
+            day_of_week
+        )
+    )
+
+    if not availability:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Mentor unavailable on this day"
+        )
+
+    session_time = (
+        scheduled_at.time()
+    )
+
+    if (
+        session_time
+        <
+        availability.start_time
+        or
+        session_time
+        >
+        availability.end_time
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail="Outside mentor availability"
+        )
+
+    existing_session = (
+        get_mentor_session_at_time(
+            db,
+            mentor_id,
+            scheduled_at
+        )
+    )
+
+    if existing_session:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Time slot already booked"
+        )
 
     session = SessionModel(
         requester_id=requester_id,
