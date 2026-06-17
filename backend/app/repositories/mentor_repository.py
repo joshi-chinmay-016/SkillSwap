@@ -7,21 +7,19 @@ from app.models.user_skill import UserSkill
 def get_teaching_users(
     db: Session
 ):
-
     return (
-        db.query(
-            User
-        )
+        db.query(User)
         .join(
             UserSkill,
             User.id == UserSkill.user_id
-        )
+    )
         .filter(
             UserSkill.type == "teach"
         )
-        .distinct()
-        .all()
-    )
+    .distinct()
+    .limit(100)
+    .all()
+)
 
 
 def get_teaching_users_by_skill(
@@ -49,5 +47,6 @@ def get_teaching_users_by_skill(
             )
         )
         .distinct()
+        .limit(100)
         .all()
     )

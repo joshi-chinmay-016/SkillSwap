@@ -1,4 +1,5 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import (ForeignKey,String,Index)
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -29,3 +30,19 @@ class UserSkill(Base):
     skill = relationship(
     "Skill"
     )
+
+    
+    __table_args__ = (
+    Index(
+        "idx_user_skill_user_id",
+        "user_id"
+    ),
+    Index(
+        "idx_user_skill_skill_id",
+        "skill_id"
+    ),
+    Index(
+        "idx_user_skill_type",
+        "type"
+    ),
+)

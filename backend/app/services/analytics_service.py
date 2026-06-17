@@ -92,4 +92,4 @@ def trending_skills(
         reverse=True
     )
 
-    return result
+    return result[:10]

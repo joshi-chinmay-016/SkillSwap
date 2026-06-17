@@ -28,6 +28,12 @@ def get_mentors(
     min_rating: float = Query(
         default=None
     ),
+    page: int = Query(
+        default=1
+    ),
+    size: int = Query(
+        default=10
+    ),
     db: Session = Depends(
         get_db
     )
@@ -36,5 +42,7 @@ def get_mentors(
     return discover_mentors(
         db,
         skill,
-        min_rating
+        min_rating,
+        page,
+        size
     )
