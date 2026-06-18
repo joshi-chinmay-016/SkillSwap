@@ -24,6 +24,11 @@ from app.services.session_request_service import (
     reject_request
 )
 
+from app.core.websocket_manager import (
+    manager
+)
+
+
 router = APIRouter(
     prefix="/requests",
     tags=["Session Requests"]
@@ -92,27 +97,41 @@ def get_received(
     "/{request_id}/accept",
     response_model=SessionRequestResponse
 )
-def accept(
+async def accept(
     request_id: int,
     db: Session = Depends(get_db)
 ):
 
-    return accept_request(
+    request = accept_request(
         db,
         request_id
     )
+
+    await manager.send_notification(
+        request.sender_id,
+        "Your request has been accepted"
+    )
+
+    return request
 
 
 @router.patch(
     "/{request_id}/reject",
     response_model=SessionRequestResponse
 )
-def reject(
+async def reject(
     request_id: int,
     db: Session = Depends(get_db)
 ):
 
-    return reject_request(
+    request = reject_request(
         db,
         request_id
     )
+
+    await manager.send_notification(
+        request.sender_id,
+        "Your request has been rejected"
+    )
+
+    return request

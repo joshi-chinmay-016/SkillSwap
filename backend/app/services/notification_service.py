@@ -54,7 +54,9 @@ def mark_notification_read(
 
     db.commit()
 
-    db.refresh(notification)
+    db.refresh(
+        notification
+    )
 
     return notification
 
