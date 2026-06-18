@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.session import Session as SessionModel
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import or_
 
 def create_session(
     db: Session,
@@ -67,4 +68,61 @@ def get_mentor_session_at_time(
             "scheduled"
         )
         .first()
+    )
+
+def get_sessions_by_status(
+    db: Session,
+    user_id: int,
+    status: str
+):
+
+    return (
+        db.query(SessionModel)
+        .filter(
+            or_(
+                SessionModel.requester_id == user_id,
+                SessionModel.mentor_id == user_id
+            ),
+            SessionModel.status == status
+        )
+        .all()
+    )
+
+
+def count_sessions_by_status(
+    db: Session,
+    user_id: int,
+    status: str
+):
+
+    return (
+        db.query(SessionModel)
+        .filter(
+            or_(
+                SessionModel.requester_id == user_id,
+                SessionModel.mentor_id == user_id
+            ),
+            SessionModel.status == status
+        )
+        .count()
+    )
+
+def get_upcoming_sessions_for_reminders(
+    db: Session
+):
+
+    now = datetime.utcnow()
+
+    next_24_hours = (
+        now + timedelta(hours=24)
+    )
+
+    return (
+        db.query(SessionModel)
+        .filter(
+            SessionModel.status == "scheduled",
+            SessionModel.scheduled_at >= now,
+            SessionModel.scheduled_at <= next_24_hours
+        )
+        .all()
     )

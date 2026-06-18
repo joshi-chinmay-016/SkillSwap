@@ -20,8 +20,13 @@ from app.services.session_service import (
     schedule_session,
     my_sessions,
     complete_session,
-    cancel_session
+    cancel_session,
+    upcoming_sessions,
+    completed_sessions_list,
+    cancelled_sessions_list,
+    session_dashboard
 )
+
 
 router = APIRouter(
     prefix="/sessions",
@@ -98,3 +103,61 @@ def cancel(
         db,
         session_id
     )
+
+@router.get(
+    "/upcoming",
+    response_model=list[SessionResponse]
+)
+def get_upcoming_sessions(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    return upcoming_sessions(
+        db,
+        current_user.id
+    )
+
+
+@router.get(
+    "/completed",
+    response_model=list[SessionResponse]
+)
+def get_completed_sessions(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    return completed_sessions_list(
+        db,
+        current_user.id
+    )
+
+
+@router.get(
+    "/cancelled",
+    response_model=list[SessionResponse]
+)
+def get_cancelled_sessions(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    return cancelled_sessions_list(
+        db,
+        current_user.id
+    )
+
+

@@ -19,6 +19,10 @@ from app.repositories.session_repository import (
     get_mentor_session_at_time
 )
 
+from app.repositories.session_repository import (
+    get_sessions_by_status,
+    count_sessions_by_status
+)
 
 def schedule_session(
     db: Session,
@@ -146,3 +150,67 @@ def cancel_session(
     db.refresh(session)
 
     return session
+
+def upcoming_sessions(
+    db: Session,
+    user_id: int
+):
+
+    return get_sessions_by_status(
+        db,
+        user_id,
+        "scheduled"
+    )
+
+
+def completed_sessions_list(
+    db: Session,
+    user_id: int
+):
+
+    return get_sessions_by_status(
+        db,
+        user_id,
+        "completed"
+    )
+
+
+def cancelled_sessions_list(
+    db: Session,
+    user_id: int
+):
+
+    return get_sessions_by_status(
+        db,
+        user_id,
+        "cancelled"
+    )
+
+
+def session_dashboard(
+    db: Session,
+    user_id: int
+):
+
+    return {
+        "upcoming_sessions":
+        count_sessions_by_status(
+            db,
+            user_id,
+            "scheduled"
+        ),
+
+        "completed_sessions":
+        count_sessions_by_status(
+            db,
+            user_id,
+            "completed"
+        ),
+
+        "cancelled_sessions":
+        count_sessions_by_status(
+            db,
+            user_id,
+            "cancelled"
+        )
+    }
