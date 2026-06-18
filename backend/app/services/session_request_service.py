@@ -23,6 +23,7 @@ def send_request(
     skill_id: int
 ):
 
+    
     request = SessionRequest(
         sender_id=sender_id,
         receiver_id=receiver_id,

@@ -21,10 +21,6 @@ from app.api.session_requests import (
     router as request_router
 )
 
-from app.api.session_requests import (
-    router as request_router
-)
-
 from app.api.notifications import (
     router as notifications_router
 )
@@ -61,11 +57,15 @@ from app.api.availability import (
     router as availability_router
 )
 
+from app.api.reminders import (
+    router as reminder_router
+)
+
+
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(skills_router)
 app.include_router(matches_router)
-app.include_router(request_router)
 app.include_router(request_router)
 app.include_router(notifications_router)
 app.include_router(session_router)
@@ -77,6 +77,7 @@ app.include_router(recommendation_router)
 app.include_router(analytics_router)
 app.include_router(mentor_router)
 app.include_router(availability_router)
+app.include_router(reminder_router)
 
 @app.get("/")
 def root():
