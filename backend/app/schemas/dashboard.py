@@ -22,3 +22,9 @@ class DashboardResponse(BaseModel):
     skills_teaching: int
 
     skills_learning: int
+
+    five_star_reviews: int
+
+    four_star_reviews: int
+
+    three_star_reviews: int

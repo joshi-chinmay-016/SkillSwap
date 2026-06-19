@@ -19,9 +19,14 @@ from app.schemas.feedback import (
 from app.services.feedback_service import (
     submit_feedback,
     user_feedback,
-    my_rating
+    my_rating,
+    feedback_stats,
+    review_summary
 )
 
+from app.schemas.feedback_stats import (
+    FeedbackStatsResponse
+)
 router = APIRouter(
     prefix="/feedback",
     tags=["Feedback"]
@@ -83,3 +88,30 @@ def get_my_rating(
             current_user.id
         )
     }
+
+@router.get(
+    "/stats/{user_id}",
+    response_model=FeedbackStatsResponse
+)
+def get_feedback_stats(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return feedback_stats(
+        db,
+        user_id
+    )
+
+@router.get(
+    "/review-summary/{user_id}"
+)
+def get_review_summary(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return review_summary(
+        db,
+        user_id
+    )

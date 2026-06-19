@@ -6,7 +6,7 @@ from app.models.feedback import Feedback
 from app.models.badge import Badge
 from app.models.session_request import SessionRequest
 from app.models.user_skill import UserSkill
-
+from app.repositories.feedback_repository import get_rating_count
 def get_dashboard_stats(
     db: Session,
     user_id: int
@@ -100,7 +100,24 @@ def get_dashboard_stats(
         )
         .count()
     )
-    print("GET DASHBOARD STATS CALLED")
+    five_star_reviews = get_rating_count(
+    db,
+    user_id,
+    5
+)
+
+    four_star_reviews = get_rating_count(
+    db,
+    user_id,
+    4
+)
+
+    three_star_reviews = get_rating_count(
+    db,
+    user_id,
+    3
+)
+    
     return {
         "completed_sessions": completed_sessions,
         "scheduled_sessions": scheduled_sessions,
@@ -118,5 +135,10 @@ def get_dashboard_stats(
         "requests_received": requests_received,
 
         "skills_teaching": skills_teaching,
-        "skills_learning": skills_learning
+        "skills_learning": skills_learning,
+        "five_star_reviews": five_star_reviews,
+
+        "four_star_reviews": four_star_reviews,
+
+        "three_star_reviews": three_star_reviews
     }

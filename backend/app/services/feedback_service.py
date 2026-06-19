@@ -7,9 +7,11 @@ from app.models.feedback import (
 from app.repositories.feedback_repository import (
     create_feedback,
     get_feedback_by_user,
-    get_average_rating
+    get_average_rating,
+    get_feedback_count,
+    get_rating_count,
+    get_latest_reviews
 )
-
 
 def submit_feedback(
     db: Session,
@@ -56,3 +58,81 @@ def my_rating(
     )
 
     return round(avg, 2) if avg else 0
+
+def feedback_stats(
+    db: Session,
+    user_id: int
+):
+
+    avg = get_average_rating(
+        db,
+        user_id
+    )
+
+    return {
+        "average_rating":
+        round(avg, 2)
+        if avg else 0,
+
+        "total_reviews":
+        get_feedback_count(
+            db,
+            user_id
+        ),
+
+        "five_star_reviews":
+        get_rating_count(
+            db,
+            user_id,
+            5
+        ),
+
+        "four_star_reviews":
+        get_rating_count(
+            db,
+            user_id,
+            4
+        ),
+
+        "three_star_reviews":
+        get_rating_count(
+            db,
+            user_id,
+            3
+        ),
+
+        "two_star_reviews":
+        get_rating_count(
+            db,
+            user_id,
+            2
+        ),
+
+        "one_star_reviews":
+        get_rating_count(
+            db,
+            user_id,
+            1
+        )
+    }
+
+
+def review_summary(
+    db: Session,
+    user_id: int
+):
+
+    reviews = get_latest_reviews(
+        db,
+        user_id
+    )
+
+    return {
+        "latest_reviews": [
+            {
+                "rating": review.rating,
+                "comment": review.comment
+            }
+            for review in reviews
+        ]
+    }
