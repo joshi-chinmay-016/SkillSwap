@@ -14,6 +14,17 @@ from app.services.analytics_service import (
     top_learn_skills,
     trending_skills
 )
+from app.dependencies.current_user import (
+    get_current_user
+)
+
+from app.schemas.mentor_analytics import (
+    MentorPerformanceResponse
+)
+
+from app.services.analytics_service import (
+    mentor_performance
+)
 
 router = APIRouter(
     prefix="/analytics",
@@ -60,4 +71,22 @@ def get_trending(
 
     return trending_skills(
         db
+    )
+
+@router.get(
+    "/mentor-performance",
+    response_model=MentorPerformanceResponse
+)
+def get_mentor_performance(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    return mentor_performance(
+        db,
+        current_user.id
     )
