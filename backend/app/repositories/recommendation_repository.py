@@ -5,6 +5,7 @@ from app.models.feedback import Feedback
 from app.models.session import Session as SessionModel
 from app.models.user_skill import UserSkill
 from app.models.user import User
+from app.models.mentor_availability import MentorAvailability
 
 def get_mentors_for_skill(
     db: Session,
@@ -81,4 +82,22 @@ def get_feedback_count(
             Feedback.reviewee_id == user_id
         )
         .count()
+    )
+
+def has_availability(
+    db: Session,
+    mentor_id: int
+):
+
+    return (
+        db.query(
+            MentorAvailability
+        )
+        .filter(
+            MentorAvailability.mentor_id
+            ==
+            mentor_id
+        )
+        .first()
+        is not None
     )

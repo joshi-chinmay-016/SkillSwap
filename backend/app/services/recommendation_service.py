@@ -13,7 +13,12 @@ from app.repositories.recommendation_repository import (
     get_average_rating,
     get_completed_sessions,
     get_feedback_count,
-    get_user_name
+    get_user_name,
+    has_availability
+)
+
+from app.repositories.analytics_repository import (
+    get_mentor_metrics
 )
 
 
@@ -32,12 +37,9 @@ def get_recommendations(
 
     if cached_data:
 
-
         return json.loads(
             cached_data
         )
-
-  
 
     learn_skills = (
         db.query(UserSkill)
@@ -69,6 +71,11 @@ def get_recommendations(
             if mentor_id in added_mentors:
                 continue
 
+            mentor_name = get_user_name(
+                db,
+                mentor_id
+            )
+
             rating = get_average_rating(
                 db,
                 mentor_id
@@ -78,51 +85,116 @@ def get_recommendations(
                 rating or 0
             )
 
-            completed_sessions = get_completed_sessions(
+            completed_sessions = (
+                get_completed_sessions(
+                    db,
+                    mentor_id
+                )
+            )
+
+            feedback_count = (
+                get_feedback_count(
+                    db,
+                    mentor_id
+                )
+            )
+
+            metrics = get_mentor_metrics(
                 db,
                 mentor_id
             )
 
-            feedback_count = get_feedback_count(
-                db,
-                mentor_id
+            average_rating = float(
+                metrics["average_rating"] or 0
             )
 
-            mentor_name = get_user_name(
-                db,
-                mentor_id
+            total_sessions = (
+                metrics["completed_sessions"]
+                +
+                metrics["cancelled_sessions"]
+            )
+
+            completion_rate = (
+                metrics["completed_sessions"]
+                /
+                total_sessions
+                *
+                100
+                if total_sessions > 0
+                else 0
+            )
+
+            response_rate = (
+                metrics["accepted_requests"]
+                /
+                metrics["received_requests"]
+                *
+                100
+                if metrics["received_requests"] > 0
+                else 0
+            )
+
+            mentor_score = (
+                (average_rating * 20 * 0.40)
+                +
+                (completion_rate * 0.30)
+                +
+                (response_rate * 0.20)
+                +
+                (
+                    metrics["badges_count"]
+                    * 2
+                    * 0.10
+                )
+            )
+
+            availability = (
+                has_availability(
+                    db,
+                    mentor_id
+                )
+            )
+
+            availability_bonus = (
+                20
+                if availability
+                else 0
             )
 
             score = (
-                50
+                mentor_score
                 +
-                (rating / 5) * 25
-                +
-                min(
-                    completed_sessions,
-                    20
-                ) * 0.75
-                +
-                min(
-                    feedback_count,
-                    20
-                ) * 0.5
+                availability_bonus
             )
 
             recommendations.append(
                 {
                     "mentor_id": mentor_id,
+
                     "mentor_name": mentor_name,
+
                     "compatibility_score": round(
                         score,
                         2
                     ),
-                    "average_rating": round(
-                        rating,
+
+                    "mentor_score": round(
+                        mentor_score,
                         2
                     ),
-                    "completed_sessions": completed_sessions,
-                    "feedback_count": feedback_count
+
+                    "availability": availability,
+
+                    "average_rating": round(
+                        average_rating,
+                        2
+                    ),
+
+                    "completed_sessions":
+                    completed_sessions,
+
+                    "feedback_count":
+                    feedback_count
                 }
             )
 
