@@ -14,3 +14,7 @@ class RecommendationResponse(BaseModel):
     completed_sessions: int
 
     feedback_count: int
+
+    mentor_score: float
+
+    availability: bool
