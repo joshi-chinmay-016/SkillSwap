@@ -23,13 +23,18 @@ def send_session_reminders(
 
     for session in sessions:
 
+        formatted_time = (
+            session.scheduled_at.strftime(
+                "%d %b %Y, %I:%M %p"
+            )
+        )
+
         create_user_notification(
             db,
             session.requester_id,
             (
-                f"Reminder: You have a session "
-                f"scheduled at "
-                f"{session.scheduled_at}"
+                f"Reminder: Your session starts on "
+                f"{formatted_time}"
             )
         )
 
@@ -37,9 +42,8 @@ def send_session_reminders(
             db,
             session.mentor_id,
             (
-                f"Reminder: You have a session "
-                f"scheduled at "
-                f"{session.scheduled_at}"
+                f"Reminder: Your mentoring session starts on "
+                f"{formatted_time}"
             )
         )
 
