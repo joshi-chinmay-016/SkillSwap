@@ -15,6 +15,9 @@ from app.services.notification_service import (
     create_user_notification
 )
 
+from app.services.reward_service import (
+    reward_badge_earned
+)
 
 def award_badges(
     db: Session,
@@ -102,6 +105,11 @@ def award_badges(
                 description="Completed first mentoring session"
             )
         )
+        reward_badge_earned(
+        db,
+        user_id,
+        "First Session"
+        )
 
         create_user_notification(
             db,
@@ -123,6 +131,11 @@ def award_badges(
                 name="Active Mentor",
                 description="Completed 5 mentoring sessions"
             )
+        )
+        reward_badge_earned(
+        db,
+        user_id,
+        "First Session"
         )
 
         create_user_notification(
@@ -148,6 +161,11 @@ def award_badges(
                 description="Maintained rating above 4.5"
             )
         )
+        reward_badge_earned(
+        db,
+        user_id,
+        "First Session"
+        )
 
         create_user_notification(
             db,
@@ -171,7 +189,12 @@ def award_badges(
                 description="Accepted over 80% of incoming requests"
             )
         )
-
+        reward_badge_earned(
+        db,
+        user_id,
+        "First Session"
+        )
+        
         create_user_notification(
             db,
             user_id,

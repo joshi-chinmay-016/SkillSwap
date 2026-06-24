@@ -12,6 +12,9 @@ from app.repositories.feedback_repository import (
     get_rating_count,
     get_latest_reviews
 )
+from app.services.reward_service import (
+    reward_feedback_received
+)
 
 def submit_feedback(
     db: Session,
@@ -30,10 +33,18 @@ def submit_feedback(
         comment=comment
     )
 
-    return create_feedback(
+    saved_feedback = create_feedback(
         db,
         feedback
     )
+
+    reward_feedback_received(
+        db,
+        reviewee_id
+    )
+
+    return saved_feedback
+   
 
 
 def user_feedback(
