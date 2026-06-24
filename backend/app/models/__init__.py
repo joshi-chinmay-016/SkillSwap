@@ -8,3 +8,5 @@ from app.models.session import Session
 from app.models.feedback import Feedback
 from app.models.badge import Badge
 from app.models.mentor_availability import MentorAvailability
+from app.models.wallet import Wallet
+from app.models.wallet_transaction import WalletTransaction
