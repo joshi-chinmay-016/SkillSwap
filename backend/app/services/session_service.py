@@ -23,6 +23,9 @@ from app.repositories.session_repository import (
     get_sessions_by_status,
     count_sessions_by_status
 )
+from app.services.reward_service import (
+    reward_session_completion
+)
 
 def schedule_session(
     db: Session,
@@ -125,6 +128,11 @@ def complete_session(
     )
 
     session.status = "completed"
+    
+    reward_session_completion(
+    db,
+    session.mentor_id
+ )
 
     db.commit()
 
