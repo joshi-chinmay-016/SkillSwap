@@ -66,7 +66,8 @@ from app.api.websocket import (
 from app.api.wallet import (
     router as wallet_router
 )
-
+""" from here market model"""
+import app.market.models
 
 app.include_router(auth_router)
 app.include_router(profiles_router)

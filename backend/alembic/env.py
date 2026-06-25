@@ -10,6 +10,8 @@ from app.models.profile import Profile
 from app.models.skill import Skill
 from app.models.user_skill import UserSkill
 
+import app.market.models
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
