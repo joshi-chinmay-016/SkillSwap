@@ -66,7 +66,9 @@ from app.api.websocket import (
 from app.api.wallet import (
     router as wallet_router
 )
-
+from app.ai.api import (
+    router as ai_router
+)
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -86,6 +88,7 @@ app.include_router(availability_router)
 app.include_router(reminder_router)
 app.include_router(websocket_router)
 app.include_router(wallet_router)
+app.include_router(ai_router)
 
 @app.get("/")
 def root():
