@@ -1,5 +1,7 @@
-from .ai import router
+from .ai import router as ai_router
+from .roadmap import router as roadmap_router
 
 __all__ = [
-    "router"
+    "ai_router",
+    "roadmap_router",
 ]
