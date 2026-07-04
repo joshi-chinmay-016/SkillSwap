@@ -14,6 +14,9 @@ from app.ai.prompts.roadmap_prompt import (
 from app.ai.prompts.system_prompts import (
     ROADMAP_SYSTEM_PROMPT
 )
+from app.ai.utils.json_parser import (
+    parse_json_response
+)
 
 
 class RoadmapService:
@@ -42,8 +45,8 @@ class RoadmapService:
 
         )
 
-        roadmap = json.loads(
-            response
+        roadmap = parse_json_response(
+        response
         )
 
         return RoadmapResponse(
