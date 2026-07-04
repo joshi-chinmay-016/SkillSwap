@@ -14,6 +14,11 @@ from .skill_gap import (
     SkillGapResponse
 )
 
+from .session_summary import (
+    SessionSummaryRequest,
+    SessionSummaryResponse
+)
+
 __all__ = [
     "ChatRequest",
     "ChatResponse",
@@ -21,5 +26,7 @@ __all__ = [
     "RoadmapResponse",
     "RoadmapWeek",
     "SkillGapRequest",
-    "SkillGapResponse"
+    "SkillGapResponse",
+    "SessionSummaryRequest",
+    "SessionSummaryResponse"
 ]
