@@ -71,6 +71,11 @@ from app.ai.api import (
     roadmap_router,
 )
 
+from app.ai.api import (
+    ai_router,
+    roadmap_router,
+    skill_gap_router
+)
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -92,6 +97,7 @@ app.include_router(websocket_router)
 app.include_router(wallet_router)
 app.include_router(ai_router)
 app.include_router(roadmap_router)
+app.include_router(skill_gap_router)
 @app.get("/")
 def root():
     return {
