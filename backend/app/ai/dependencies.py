@@ -10,23 +10,30 @@ from app.ai.services.skill_gap_service import (
     SkillGapService
 )
 
+from app.ai.services.session_summary_service import (
+    SessionSummaryService
+)
+
 _llm_service = LLMService()
 
 _roadmap_service = RoadmapService()
 
 _skill_gap_service = SkillGapService()
 
+_session_summary_service = SessionSummaryService()
+
 
 def get_llm_service():
-
     return _llm_service
 
 
 def get_roadmap_service():
-
     return _roadmap_service
 
 
 def get_skill_gap_service():
-
     return _skill_gap_service
+
+
+def get_session_summary_service():
+    return _session_summary_service
