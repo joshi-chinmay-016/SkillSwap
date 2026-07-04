@@ -5,6 +5,8 @@ backend/venv/*
 backend/venv
 backend/app/__pycache__
 
+frontend/node_modules
+frontend/node_modules/*
 
 # Python
 __pycache__/
@@ -21,6 +23,9 @@ dist/
 *.egg-info/
 pip-wheel-metadata/
 .pytest_cache/
+backend/.env
+backend/.env*
+
 
 # Node
 node_modules/
@@ -51,4 +56,3 @@ logs/
 
 # Docker
 docker-compose.override.yml
-
