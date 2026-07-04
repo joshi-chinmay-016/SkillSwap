@@ -4,6 +4,7 @@ venv/*
 backend/venv/*
 backend/venv
 backend/app/__pycache__
+
 frontend/node_modules
 frontend/node_modules/*
 
@@ -55,12 +56,3 @@ logs/
 
 # Docker
 docker-compose.override.yml
-
-
-.venv/*
-venv/*
-backend/venv/*
-backend/venv
-backend/app/__pycache__
-frontend/node_modules
-frontend/node_modules/*
