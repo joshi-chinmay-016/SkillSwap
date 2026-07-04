@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 })
+<<<<<<< HEAD
+=======
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
@@ -12,3 +14,4 @@ export default defineConfig({
     tailwindcss(),
   ],
 })
+>>>>>>> c0a62e10798d3f2c1f4550075c204ff2d1f913b2
