@@ -14,9 +14,14 @@ from .session_summary_service import (
     SessionSummaryService
 )
 
+from .mentor_recommendation_service import (
+    MentorRecommendationService
+)
+
 __all__ = [
     "LLMService",
     "RoadmapService",
     "SkillGapService",
-    "SessionSummaryService"
+    "SessionSummaryService",
+    "MentorRecommendationService"
 ]

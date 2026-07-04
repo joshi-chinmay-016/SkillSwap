@@ -14,11 +14,16 @@ from .session_summary_prompt import (
     build_session_summary_prompt
 )
 
+from .mentor_recommendation_prompt import (
+    build_mentor_recommendation_prompt
+)
+
 from .system_prompts import (
     GENERAL_CHAT_SYSTEM_PROMPT,
     ROADMAP_SYSTEM_PROMPT,
     SKILL_GAP_SYSTEM_PROMPT,
-    SUMMARY_SYSTEM_PROMPT
+    SUMMARY_SYSTEM_PROMPT,
+    MENTOR_RECOMMENDATION_SYSTEM_PROMPT
 )
 
 __all__ = [
@@ -26,8 +31,10 @@ __all__ = [
     "build_roadmap_prompt",
     "build_skill_gap_prompt",
     "build_session_summary_prompt",
+    "build_mentor_recommendation_prompt",
     "GENERAL_CHAT_SYSTEM_PROMPT",
     "ROADMAP_SYSTEM_PROMPT",
     "SKILL_GAP_SYSTEM_PROMPT",
-    "SUMMARY_SYSTEM_PROMPT"
+    "SUMMARY_SYSTEM_PROMPT",
+    "MENTOR_RECOMMENDATION_SYSTEM_PROMPT"
 ]
