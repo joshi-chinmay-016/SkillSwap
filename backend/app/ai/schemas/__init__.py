@@ -9,10 +9,17 @@ from .roadmap import (
     RoadmapWeek
 )
 
+from .skill_gap import (
+    SkillGapRequest,
+    SkillGapResponse
+)
+
 __all__ = [
     "ChatRequest",
     "ChatResponse",
     "RoadmapRequest",
     "RoadmapResponse",
-    "RoadmapWeek"
+    "RoadmapWeek",
+    "SkillGapRequest",
+    "SkillGapResponse"
 ]
