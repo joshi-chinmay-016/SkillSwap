@@ -81,7 +81,8 @@ from app.ai.api import (
     ai_router,
     roadmap_router,
     skill_gap_router,
-    session_summary_router
+    session_summary_router,
+    mentor_recommendation_router
 )
 
 app.include_router(auth_router)
@@ -106,6 +107,7 @@ app.include_router(ai_router)
 app.include_router(roadmap_router)
 app.include_router(skill_gap_router)
 app.include_router(session_summary_router)
+app.include_router(mentor_recommendation_router)
 
 @app.get("/")
 def root():

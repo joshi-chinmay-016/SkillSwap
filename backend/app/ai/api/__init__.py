@@ -14,9 +14,14 @@ from .session_summary import (
     router as session_summary_router
 )
 
+from .mentor_recommendation import (
+    router as mentor_recommendation_router
+)
+
 __all__ = [
     "ai_router",
     "roadmap_router",
     "skill_gap_router",
-    "session_summary_router"
+    "session_summary_router",
+    "mentor_recommendation_router"
 ]
