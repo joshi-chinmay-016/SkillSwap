@@ -76,6 +76,20 @@ def get_my_skills(
     )
 
 
+@router.get(
+    "/user/{user_id}"
+)
+def get_user_skills_list(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return list_user_skills(
+        db,
+        user_id
+    )
+
+
 @router.post(
     "/me"
 )

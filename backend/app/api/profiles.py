@@ -44,6 +44,21 @@ def get_my_profile(
     )
 
 
+@router.get(
+    "/{user_id}",
+    response_model=ProfileResponse
+)
+def get_user_profile(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return get_or_create_profile(
+        db,
+        user_id
+    )
+
+
 @router.put(
     "/me",
     response_model=ProfileResponse

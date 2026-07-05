@@ -5,7 +5,8 @@ import api from "../services/api";
 import MentorCard from "../components/MentorCard";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
-import { Search, SlidersHorizontal, AlertCircle } from "lucide-react";
+import Card from "../components/common/Card";
+import { Search, AlertCircle } from "lucide-react";
 
 export default function MentorList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,7 +52,7 @@ export default function MentorList() {
       </div>
 
       {/* Search and Filters Bar */}
-      <Card className="bg-bg border border-border p-4 shadow-xs">
+      <div className="bg-bg border border-border p-4 rounded-lg shadow-xs">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
             <Input
@@ -87,7 +88,7 @@ export default function MentorList() {
             )}
           </div>
         </form>
-      </Card>
+      </div>
 
       {/* Content Section */}
       {isLoading ? (
@@ -133,15 +134,6 @@ export default function MentorList() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// Dummy Card helper for embedding search form inside layout cleanly
-function Card({ children, className = "", ...props }) {
-  return (
-    <div className={`rounded-lg border border-border bg-bg-alt text-text p-4 ${className}`} {...props}>
-      {children}
     </div>
   );
 }
