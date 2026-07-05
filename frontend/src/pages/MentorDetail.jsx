@@ -16,7 +16,7 @@ import {
   Clock,
   Video,
   AlertCircle,
-  CheckCircle2
+  CheckCircle
 } from "lucide-react";
 
 export default function MentorDetail() {
@@ -257,7 +257,7 @@ export default function MentorDetail() {
       >
         {bookingSuccess ? (
           <div className="py-8 flex flex-col items-center gap-3 text-center">
-            <CheckCircle2 className="text-green-500" size={48} />
+            <CheckCircle className="text-green-500" size={48} />
             <h3 className="font-bold text-base text-text">Session Booked Successfully!</h3>
             <p className="text-xs text-text-secondary">
               Redirecting you to your sessions list...

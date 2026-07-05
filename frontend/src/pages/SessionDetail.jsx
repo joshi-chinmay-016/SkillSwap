@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
-import { Loader2, XCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, XCircle, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function SessionDetail() {
   const { id } = useParams();

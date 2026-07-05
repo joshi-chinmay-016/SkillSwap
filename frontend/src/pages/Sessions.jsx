@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
-import { Calendar, Video, Clock, CheckCircle2, XCircle, AlertCircle, MessageSquare } from "lucide-react";
+import { Calendar, Video, Clock, CheckCircle, XCircle, AlertCircle, MessageSquare } from "lucide-react";
 
 export default function Sessions() {
   const [activeTab, setActiveTab] = useState("upcoming");
@@ -188,7 +188,7 @@ export default function Sessions() {
                         isLoading={completeMutation.isPending}
                         className="text-green-600 border-green-500/20 hover:bg-green-500/10"
                       >
-                        <CheckCircle2 size={14} /> Complete
+                        <CheckCircle size={14} /> Complete
                       </Button>
                       <Button
                         variant="ghost"

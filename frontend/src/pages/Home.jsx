@@ -9,7 +9,7 @@ import {
   ArrowRight,
   CheckCircle,
   BookOpen,
-  Wallet,
+  Wallet as WalletIcon,
   Brain,
   Zap,
   Globe,
@@ -36,7 +36,7 @@ export default function Home() {
       description: "Schedule, join, and track your 1-on-1 mentoring sessions easily."
     },
     {
-      icon: Wallet,
+      icon: WalletIcon,
       title: "Skill Coin Economy",
       description: "Earn coins by teaching and spend them to learn from others."
     },
