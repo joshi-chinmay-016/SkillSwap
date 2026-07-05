@@ -2,24 +2,27 @@ import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import Avatar from "../components/common/Avatar";
+import Footer from "../components/common/Footer";
 import {
   LayoutDashboard,
   Users,
   Calendar,
   Compass,
-  Wallet,
+  Wallet as WalletIcon,
   Settings,
   LogOut,
   Bell,
   Sun,
   Moon,
   Menu,
-  X
+  X,
+  CheckCircle
 } from "lucide-react";
 
 export default function AppLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   const user = useAuthStore((state) => state.user);
@@ -53,7 +56,8 @@ export default function AppLayout() {
     { name: "Learning Journey", to: "/journey/roadmap", icon: Compass },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
     { name: "Sessions", to: "/sessions", icon: Calendar },
-    { name: "Wallet", to: "/wallet", icon: Wallet },
+    { name: "AI Chat", to: "/ai/chat", icon: Bell },
+    { name: "Wallet", to: "/wallet", icon: WalletIcon },
     { name: "Profile Settings", to: "/profile", icon: Settings },
   ];
 
@@ -107,14 +111,107 @@ export default function AppLayout() {
           </button>
 
           {/* Notifications */}
-          <button
-            type="button"
-            className="p-2 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer transition-colors relative"
-            title="Notifications"
-          >
-            <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="p-2 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer transition-colors relative"
+              title="Notifications"
+              aria-expanded={isNotificationsOpen}
+            >
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
+            </button>
+
+            {isNotificationsOpen && (
+              <>
+                {/* Dropdown Overlay backdrop to close */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsNotificationsOpen(false)}
+                />
+                
+                {/* Notifications Dropdown */}
+                <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-bg shadow-md py-1.5 z-50 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-4 py-2 border-b border-border flex items-center justify-between">
+                    <p className="font-semibold">Notifications</p>
+                    <span className="text-[10px] text-accent font-semibold">3 new</span>
+                  </div>
+                  
+                  <div className="max-h-80 overflow-y-auto">
+                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 bg-success/10 text-success rounded mt-0.5">
+                          <Calendar size={12} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-text text-xs">Session Reminder</p>
+                          <p className="text-[10px] text-text-secondary mt-0.5">
+                            Your React mentoring session starts in 30 minutes
+                          </p>
+                          <p className="text-[10px] text-text-secondary mt-1">2 minutes ago</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 bg-accent/10 text-accent rounded mt-0.5">
+                          <WalletIcon size={12} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-text text-xs">Coins Earned</p>
+                          <p className="text-[10px] text-text-secondary mt-0.5">
+                            You earned 5 Skill Coins for teaching a session
+                          </p>
+                          <p className="text-[10px] text-text-secondary mt-1">1 hour ago</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 bg-warning/10 text-warning rounded mt-0.5">
+                          <Users size={12} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-text text-xs">New Mentor Match</p>
+                          <p className="text-[10px] text-text-secondary mt-0.5">
+                            We found 3 new mentors matching your learning goals
+                          </p>
+                          <p className="text-[10px] text-text-secondary mt-1">3 hours ago</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 hover:bg-bg-alt cursor-pointer opacity-60">
+                      <div className="flex items-start gap-2">
+                        <div className="p-1.5 bg-bg-alt text-text-secondary rounded mt-0.5">
+                          <CheckCircle size={12} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-text text-xs">Profile Updated</p>
+                          <p className="text-[10px] text-text-secondary mt-0.5">
+                            Your profile was successfully updated
+                          </p>
+                          <p className="text-[10px] text-text-secondary mt-1">Yesterday</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-2 border-t border-border">
+                    <button
+                      type="button"
+                      className="w-full text-center text-xs font-semibold text-accent hover:text-accent-hover py-1"
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Divider */}
           <div className="h-6 w-px bg-border hidden sm:block" />
@@ -161,7 +258,7 @@ export default function AppLayout() {
                     onClick={() => setIsUserDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2 hover:bg-bg-alt text-text transition-colors"
                   >
-                    <Wallet size={14} className="text-text-secondary" />
+                    <WalletIcon size={14} className="text-text-secondary" />
                     Wallet Balance
                   </Link>
 
@@ -235,11 +332,14 @@ export default function AppLayout() {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto bg-bg-alt p-6 md:p-8 transition-colors duration-200">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto pb-8">
             <Outlet />
           </div>
         </main>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

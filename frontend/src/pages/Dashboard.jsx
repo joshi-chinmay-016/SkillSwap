@@ -8,7 +8,7 @@ import Button from "../components/common/Button";
 import Avatar from "../components/common/Avatar";
 import {
   Calendar,
-  Wallet,
+  Wallet as WalletIcon,
   ArrowRight,
   Sparkles,
   BookOpen,
@@ -212,7 +212,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between p-4 bg-bg border border-border rounded-lg text-left">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-lg bg-yellow-500/10 text-yellow-500">
-                    <Wallet size={20} />
+                    <WalletIcon size={20} />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">
