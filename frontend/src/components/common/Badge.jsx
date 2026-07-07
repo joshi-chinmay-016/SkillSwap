@@ -8,12 +8,14 @@ export default function Badge({
   size = "md",
   removable = false,
   onRemove,
+ onClose,
   className = "",
   ...props
 }) {
   const variants = {
     default: "bg-bg-alt text-text border-border",
     primary: "bg-accent/10 text-accent border-accent/20",
+    accent: "bg-accent/10 text-accent border-accent/20",
     success: "bg-green-500/10 text-green-600 border-green-500/20",
     warning: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
     danger: "bg-danger/10 text-danger border-danger/20",
@@ -32,6 +34,7 @@ export default function Badge({
   const handleRemove = (e) => {
     e.stopPropagation();
     onRemove?.();
+    onClose?.();
   };
 
   return (

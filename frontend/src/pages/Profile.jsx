@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useAuthStore } from "../store/authStore";
@@ -8,14 +8,21 @@ import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import Textarea from "../components/common/Textarea";
 import Avatar from "../components/common/Avatar";
+import Modal from "../components/common/Modal";
+import Select from "../components/common/Select";
+import Badge from "../components/common/Badge";
 import { useToast } from "../components/common/Toast";
-import { User, Mail, MapPin, GraduationCap, Save, Bell, Moon, Sun } from "lucide-react";
+import { User, Mail, MapPin, GraduationCap, Save, Bell, Moon, Sun, Plus, X, Search } from "lucide-react";
 
 export default function Profile() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
+  const [skillType, setSkillType] = useState("teach"); // 'teach' or 'learn'
+  const [newSkillName, setNewSkillName] = useState("");
+  const [selectedSkillId, setSelectedSkillId] = useState("");
 
   const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["profile"],
@@ -25,13 +32,86 @@ export default function Profile() {
     },
   });
 
-  const { data: userSkills = [], isLoading: isSkillsLoading } = useQuery({
+  const { data: userSkills = [], isLoading: isSkillsLoading, refetch: refetchUserSkills } = useQuery({
     queryKey: ["userSkills"],
     queryFn: async () => {
       const res = await api.get("/skills/me");
       return res.data;
     },
   });
+
+  const { data: allSkills = [] } = useQuery({
+    queryKey: ["allSkills"],
+    queryFn: async () => {
+      const res = await api.get("/skills");
+      return res.data;
+    },
+  });
+
+  const addSkillMutation = useMutation({
+    mutationFn: async (data) => {
+      const res = await api.post("/skills/me", data);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success("Skill added successfully", "Success");
+      refetchUserSkills();
+      setIsSkillsModalOpen(false);
+      setNewSkillName("");
+      setSelectedSkillId("");
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || "Failed to add skill", "Error");
+    },
+  });
+
+  const removeSkillMutation = useMutation({
+    mutationFn: async (skillId) => {
+      await api.delete(`/skills/me/${skillId}`);
+    },
+    onSuccess: () => {
+      toast.success("Skill removed successfully", "Success");
+      refetchUserSkills();
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || "Failed to remove skill", "Error");
+    },
+  });
+
+  const createSkillMutation = useMutation({
+    mutationFn: async (data) => {
+      console.log("Creating skill:", data);
+      const res = await api.post("/skills", data);
+      console.log("Skill created:", res.data);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      console.log("Skill creation success, adding to user skills:", data);
+      // After creating the skill, add it to user's skills
+      addSkillMutation.mutate({ skill_id: data.id, type: skillType });
+    },
+    onError: (error) => {
+      console.error("Skill creation error:", error);
+      toast.error(error.response?.data?.detail || "Failed to create skill", "Error");
+    },
+  });
+
+  const handleAddSkill = () => {
+    console.log("handleAddSkill called:", { selectedSkillId, newSkillName, skillType });
+    if (selectedSkillId) {
+      console.log("Adding existing skill:", { skill_id: parseInt(selectedSkillId), type: skillType });
+      addSkillMutation.mutate({ skill_id: parseInt(selectedSkillId), type: skillType });
+    } else if (newSkillName.trim()) {
+      console.log("Creating new skill:", { name: newSkillName.trim(), category: "general" });
+      createSkillMutation.mutate({ name: newSkillName.trim(), category: "general" });
+    } else {
+      console.log("No skill selected or entered");
+    }
+  };
+
+  const handleRemoveSkill = (userSkillId) => {
+    removeSkillMutation.mutate(userSkillId);
+  };
 
   const {
     register,
@@ -117,9 +197,22 @@ export default function Profile() {
           <Card title="Your Skills" className="mt-6">
             <div className="space-y-4">
               <div>
-                <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                  Teaching ({teachSkills.length})
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    Teaching ({teachSkills.length})
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setSkillType("teach");
+                      setIsSkillsModalOpen(true);
+                    }}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add
+                  </Button>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {isSkillsLoading ? (
                     <div className="h-6 w-20 bg-border/40 animate-pulse rounded-full" />
@@ -127,20 +220,34 @@ export default function Profile() {
                     <span className="text-xs text-text-secondary italic">None</span>
                   ) : (
                     teachSkills.map((s) => (
-                      <span
+                      <Badge
                         key={s.id}
-                        className="px-2.5 py-1 text-xs font-medium bg-green-500/10 text-green-600 rounded-full border border-green-500/10"
+                        variant="success"
+                        onClose={() => handleRemoveSkill(s.id)}
                       >
                         {s.skill?.name || s.name}
-                      </span>
+                      </Badge>
                     ))
                   )}
                 </div>
               </div>
               <div>
-                <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-                  Learning ({learnSkills.length})
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    Learning ({learnSkills.length})
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setSkillType("learn");
+                      setIsSkillsModalOpen(true);
+                    }}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add
+                  </Button>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {isSkillsLoading ? (
                     <div className="h-6 w-20 bg-border/40 animate-pulse rounded-full" />
@@ -148,25 +255,18 @@ export default function Profile() {
                     <span className="text-xs text-text-secondary italic">None</span>
                   ) : (
                     learnSkills.map((s) => (
-                      <span
+                      <Badge
                         key={s.id}
-                        className="px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full border border-accent/10"
+                        variant="accent"
+                        onClose={() => handleRemoveSkill(s.id)}
                       >
                         {s.skill?.name || s.name}
-                      </span>
+                      </Badge>
                     ))
                   )}
                 </div>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full mt-4"
-              onClick={() => window.location.href = "/onboarding"}
-            >
-              Update Skills
-            </Button>
           </Card>
         </div>
 
@@ -297,6 +397,83 @@ export default function Profile() {
           </Card>
         </div>
       </div>
+
+      {/* Add Skill Modal */}
+      <Modal
+        isOpen={isSkillsModalOpen}
+        onClose={() => {
+          setIsSkillsModalOpen(false);
+          setNewSkillName("");
+          setSelectedSkillId("");
+        }}
+        title={`Add ${skillType === "teach" ? "Teaching" : "Learning"} Skill`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Select from existing skills
+            </label>
+            <Select
+              placeholder="Choose a skill..."
+              options={allSkills.map((skill) => ({
+                value: skill.id.toString(),
+                label: skill.name,
+              }))}
+              value={selectedSkillId}
+              onChange={(value) => {
+                setSelectedSkillId(value);
+                setNewSkillName("");
+              }}
+              disabled={!!newSkillName}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-text-secondary">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Create a new skill
+            </label>
+            <Input
+              placeholder="Enter skill name..."
+              value={newSkillName}
+              onChange={(e) => {
+                setNewSkillName(e.target.value);
+                setSelectedSkillId("");
+              }}
+              disabled={!!selectedSkillId}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsSkillsModalOpen(false);
+                setNewSkillName("");
+                setSelectedSkillId("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAddSkill}
+              disabled={!selectedSkillId && !newSkillName.trim()}
+              loading={addSkillMutation.isPending || createSkillMutation.isPending}
+            >
+              Add Skill
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

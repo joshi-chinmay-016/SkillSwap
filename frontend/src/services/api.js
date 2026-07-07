@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "../store/authStore";
 
 const api = axios.create({
   baseURL: "http://localhost:8000",
@@ -7,13 +8,10 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     try {
-      const token = localStorage.getItem("token");
+      // Get token from authStore instead of localStorage directly
+      const token = useAuthStore.getState().token;
       if (token) {
-        // Strip extra quotes if stored as stringified JSON in Zustand
-        const cleanToken = token.startsWith('"') && token.endsWith('"')
-          ? JSON.parse(token)
-          : token;
-        config.headers.Authorization = `Bearer ${cleanToken}`;
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (e) {
       console.error("Error setting Authorization header:", e);

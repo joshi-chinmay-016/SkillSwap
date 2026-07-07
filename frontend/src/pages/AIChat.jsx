@@ -10,7 +10,11 @@ import { Send, Bot, User, Sparkles, MessageSquare } from "lucide-react";
 export default function AIChat() {
   const { toast } = useToast();
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hello! I'm your AI learning assistant. Ask me anything about skills, learning paths, or mentorship recommendations!" }
+    { role: "assistant", content: "Hello! I'm your AI learning assistant. Ask me anything about skills, learning paths, or mentorship recommendations!" },
+    { role: "assistant", content: "I can help you with:\n- Finding the right skills to learn\n- Creating learning roadmaps\n- Connecting with mentors\n- Career advice" },
+    { role: "assistant", content: "Try asking me something like:\n- What skills do I need for web development?\n- How can I become a data scientist?\n- Recommend a mentor for React" },
+    { role: "assistant", content: "I'm here to guide your learning journey!" }
+    
   ]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
@@ -65,9 +69,16 @@ export default function AIChat() {
       </div>
 
       {/* Chat Container */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-bg border border-border rounded-lg shadow-sm">
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div 
+          id="chat-messages"
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+          style={{ 
+            height: "500px",
+            overflowY: "scroll"
+          }}
+        >
           {messages.map((message, index) => (
             <div
               key={index}
@@ -147,7 +158,7 @@ export default function AIChat() {
             ))}
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

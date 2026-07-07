@@ -19,6 +19,9 @@ export default function Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [newTeachSkill, setNewTeachSkill] = useState("");
+  const [newLearnSkill, setNewLearnSkill] = useState("");
+  const [isCreatingSkill, setIsCreatingSkill] = useState(false);
 
   const user = useAuthStore((state) => state.user);
   const updateUserStore = useAuthStore((state) => state.updateUser);
@@ -98,6 +101,35 @@ export default function Onboarding() {
           ? prev.filter((id) => id !== skillId)
           : [...prev, skillId]
       );
+    }
+  };
+
+  const handleCreateSkill = async (skillName, listType) => {
+    if (!skillName.trim()) return;
+    
+    setIsCreatingSkill(true);
+    try {
+      const res = await api.post("/skills", {
+        name: skillName.trim(),
+        category: "general",
+        description: `${skillName} skill`,
+      });
+      
+      const newSkill = res.data;
+      setAvailableSkills((prev) => [...prev, newSkill]);
+      
+      if (listType === "teach") {
+        setSelectedTeach((prev) => [...prev, newSkill.id]);
+        setNewTeachSkill("");
+      } else {
+        setSelectedLearn((prev) => [...prev, newSkill.id]);
+        setNewLearnSkill("");
+      }
+    } catch (err) {
+      console.error("Failed to create skill:", err);
+      setErrorMessage("Failed to create skill. Please try again.");
+    } finally {
+      setIsCreatingSkill(false);
     }
   };
 
@@ -230,28 +262,53 @@ export default function Onboarding() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2.5 max-h-[300px] overflow-y-auto p-1">
-                    {availableSkills.map((skill) => {
-                      const isSelected = selectedTeach.includes(skill.id);
-                      return (
-                        <button
-                          key={skill.id}
-                          type="button"
-                          onClick={() => toggleSkill(skill.id, "teach")}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-accent text-white border-accent shadow-sm scale-102"
-                              : "bg-bg text-text border-border hover:border-accent/40"
-                          }`}
+                  <>
+                    <div className="flex flex-wrap gap-2.5 max-h-[300px] overflow-y-auto p-1">
+                      {availableSkills.map((skill) => {
+                        const isSelected = selectedTeach.includes(skill.id);
+                        return (
+                          <button
+                            key={skill.id}
+                            type="button"
+                            onClick={() => toggleSkill(skill.id, "teach")}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-accent text-white border-accent shadow-sm scale-102"
+                                : "bg-bg text-text border-border hover:border-accent/40"
+                            }`}
+                          >
+                            {skill.name}
+                            <span className="ml-1.5 opacity-60 text-[10px]">
+                              ({skill.category})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <label className="block text-xs font-medium text-text-secondary mb-2">
+                        Or create a new skill to teach
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter skill name..."
+                          value={newTeachSkill}
+                          onChange={(e) => setNewTeachSkill(e.target.value)}
+                          disabled={isCreatingSkill}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCreateSkill(newTeachSkill, "teach")}
+                          disabled={!newTeachSkill.trim() || isCreatingSkill}
+                          loading={isCreatingSkill}
                         >
-                          {skill.name}
-                          <span className="ml-1.5 opacity-60 text-[10px]">
-                            ({skill.category})
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="flex justify-between mt-6">
                   <Button variant="outline" onClick={handleBack}>
@@ -280,30 +337,55 @@ export default function Onboarding() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2.5 max-h-[300px] overflow-y-auto p-1">
-                    {availableSkills.map((skill) => {
-                      const isSelected = selectedLearn.includes(skill.id);
-                      const isTeaching = selectedTeach.includes(skill.id);
-                      return (
-                        <button
-                          key={skill.id}
-                          type="button"
-                          disabled={isTeaching}
-                          onClick={() => toggleSkill(skill.id, "learn")}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-accent text-white border-accent shadow-sm scale-102"
-                              : "bg-bg text-text border-border hover:border-accent/40"
-                          } ${isTeaching ? "opacity-30 cursor-not-allowed" : ""}`}
+                  <>
+                    <div className="flex flex-wrap gap-2.5 max-h-[300px] overflow-y-auto p-1">
+                      {availableSkills.map((skill) => {
+                        const isSelected = selectedLearn.includes(skill.id);
+                        const isTeaching = selectedTeach.includes(skill.id);
+                        return (
+                          <button
+                            key={skill.id}
+                            type="button"
+                            disabled={isTeaching}
+                            onClick={() => toggleSkill(skill.id, "learn")}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-accent text-white border-accent shadow-sm scale-102"
+                                : "bg-bg text-text border-border hover:border-accent/40"
+                            } ${isTeaching ? "opacity-30 cursor-not-allowed" : ""}`}
+                          >
+                            {skill.name}
+                            <span className="ml-1.5 opacity-60 text-[10px]">
+                              ({skill.category})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <label className="block text-xs font-medium text-text-secondary mb-2">
+                        Or create a new skill to learn
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter skill name..."
+                          value={newLearnSkill}
+                          onChange={(e) => setNewLearnSkill(e.target.value)}
+                          disabled={isCreatingSkill}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCreateSkill(newLearnSkill, "learn")}
+                          disabled={!newLearnSkill.trim() || isCreatingSkill}
+                          loading={isCreatingSkill}
                         >
-                          {skill.name}
-                          <span className="ml-1.5 opacity-60 text-[10px]">
-                            ({skill.category})
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="flex justify-between mt-6">
                   <Button variant="outline" onClick={handleBack}>
