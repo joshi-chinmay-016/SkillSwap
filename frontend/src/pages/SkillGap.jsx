@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -11,6 +12,7 @@ import { BookOpen, AlertTriangle, CheckCircle, XCircle, TrendingUp, Target, Spar
 
 export default function SkillGap() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [analysis, setAnalysis] = useState(null);
 
   const { data: userSkills = [] } = useQuery({
@@ -30,49 +32,35 @@ export default function SkillGap() {
 
   const skillGapMutation = useMutation({
     mutationFn: async (data) => {
+      console.log("Sending skill gap request:", data);
       const res = await api.post("/ai/skill-gap", data);
+      console.log("Skill gap response:", res.data);
       return res.data;
     },
     onSuccess: (data) => {
+      console.log("Skill gap success:", data);
       setAnalysis(data);
-      toast({ title: "Success", description: "Skill gap analysis completed!" });
+      toast.success("Skill gap analysis completed!", "Success");
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.detail || "Failed to analyze skill gap",
-        variant: "destructive" 
-      });
+      console.error("Skill gap error:", error);
+      toast.error(error.response?.data?.detail || "Failed to analyze skill gap", "Error");
     },
   });
 
   const onSubmit = (data) => {
-    skillGapMutation.mutate(data);
+    // Parse current_skills from comma-separated string to array
+    const payload = {
+      target_role: data.target_role,
+      current_skills: data.current_skills
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s.length > 0),
+    };
+    skillGapMutation.mutate(payload);
   };
 
-  const mockAnalysis = {
-    target_role: "Full Stack Developer",
-    current_skills: ["JavaScript", "HTML", "CSS"],
-    gap: [
-      { skill: "React.js", importance: "high", status: "missing" },
-      { skill: "Node.js", importance: "high", status: "missing" },
-      { skill: "TypeScript", importance: "medium", status: "missing" },
-      { skill: "Database Design", importance: "high", status: "missing" },
-      { skill: "API Development", importance: "high", status: "missing" },
-      { skill: "Git & Version Control", importance: "medium", status: "covered" },
-      { skill: "Testing", importance: "medium", status: "missing" },
-      { skill: "Cloud Deployment", importance: "low", status: "missing" },
-    ],
-    suggestions: [
-      "Start with React fundamentals and build small projects",
-      "Learn Node.js and Express for backend development",
-      "Practice building REST APIs",
-      "Study database concepts (SQL and NoSQL)",
-      "Learn TypeScript for better type safety",
-    ],
-  };
-
-  const displayAnalysis = analysis || mockAnalysis;
+  const displayAnalysis = analysis;
 
   const learnSkills = userSkills.filter((s) => s.type === "learn").map((s) => s.skill?.name || s.name);
 
@@ -138,8 +126,8 @@ export default function SkillGap() {
                 <div>
                   <h2 className="text-lg font-bold text-text">Target: {displayAnalysis.target_role}</h2>
                   <p className="text-sm text-text-secondary mt-1">
-                    {displayAnalysis.gap?.filter(g => g.status === "missing").length || 5} skills to learn • 
-                    {displayAnalysis.gap?.filter(g => g.status === "covered").length || 1} already mastered
+                    {displayAnalysis.missing_skills?.length || 0} skills to learn • 
+                    {displayAnalysis.matched_skills?.length || 0} already mastered
                   </p>
                 </div>
               </div>
@@ -157,7 +145,7 @@ export default function SkillGap() {
             {/* Missing Skills */}
             <Card title="Missing Skills" subtitle="Skills you need to acquire">
               <div className="space-y-2">
-                {displayAnalysis.gap?.filter(g => g.status === "missing").map((item, index) => (
+                {displayAnalysis.missing_skills?.map((skill, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-bg border border-border rounded-lg"
@@ -166,26 +154,26 @@ export default function SkillGap() {
                       <div className="p-1.5 bg-danger/10 text-danger rounded">
                         <XCircle size={14} />
                       </div>
-                      <span className="text-sm font-medium text-text">{item.skill}</span>
+                      <span className="text-sm font-medium text-text">{skill}</span>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      item.importance === "high" 
-                        ? "bg-danger/10 text-danger" 
-                        : item.importance === "medium"
-                        ? "bg-warning/10 text-warning"
-                        : "bg-bg-alt text-text-secondary"
-                    }`}>
-                      {item.importance}
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-danger/10 text-danger">
+                      Missing
                     </span>
                   </div>
                 ))}
+                {(!displayAnalysis.missing_skills || displayAnalysis.missing_skills.length === 0) && (
+                  <div className="py-8 text-center">
+                    <CheckCircle size={24} className="text-success mx-auto mb-2" />
+                    <p className="text-sm text-text-secondary">You have all the skills for this role!</p>
+                  </div>
+                )}
               </div>
             </Card>
 
             {/* Covered Skills */}
             <Card title="Skills You Have" subtitle="Already mastered for this role">
               <div className="space-y-2">
-                {displayAnalysis.gap?.filter(g => g.status === "covered").map((item, index) => (
+                {displayAnalysis.matched_skills?.map((skill, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-bg border border-border rounded-lg"
@@ -194,12 +182,12 @@ export default function SkillGap() {
                       <div className="p-1.5 bg-success/10 text-success rounded">
                         <CheckCircle size={14} />
                       </div>
-                      <span className="text-sm font-medium text-text">{item.skill}</span>
+                      <span className="text-sm font-medium text-text">{skill}</span>
                     </div>
                     <span className="text-xs font-semibold text-success">Covered</span>
                   </div>
                 ))}
-                {displayAnalysis.gap?.filter(g => g.status === "covered").length === 0 && (
+                {(!displayAnalysis.matched_skills || displayAnalysis.matched_skills.length === 0) && (
                   <div className="py-8 text-center">
                     <AlertTriangle size={24} className="text-text-secondary mx-auto mb-2" />
                     <p className="text-sm text-text-secondary">No skills match this role yet</p>
@@ -209,10 +197,10 @@ export default function SkillGap() {
             </Card>
           </div>
 
-          {/* AI Suggestions */}
+          {/* AI Recommendations */}
           <Card title="AI Recommendations" subtitle="Personalized learning path suggestions">
             <div className="space-y-3">
-              {displayAnalysis.suggestions?.map((suggestion, index) => (
+              {displayAnalysis.recommendations?.map((recommendation, index) => (
                 <div
                   key={index}
                   className="flex items-start gap-3 p-3 bg-bg border border-border rounded-lg"
@@ -220,13 +208,23 @@ export default function SkillGap() {
                   <div className="p-1.5 bg-accent/10 text-accent rounded mt-0.5">
                     <BookOpen size={14} />
                   </div>
-                  <p className="text-sm text-text">{suggestion}</p>
+                  <p className="text-sm text-text">{recommendation}</p>
                 </div>
               ))}
+              {(!displayAnalysis.recommendations || displayAnalysis.recommendations.length === 0) && (
+                <div className="py-8 text-center">
+                  <p className="text-sm text-text-secondary">No recommendations available</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 pt-4 border-t border-border">
-              <Button variant="primary" size="sm" className="w-full">
-                <Target size={16} className="mr-2" />
+              <Button 
+                variant="primary" 
+                size="sm" 
+                className="w-full"
+                onClick={() => navigate("/journey/roadmap")}
+              >
+                <Sparkles size={16} className="mr-2" />
                 Generate Learning Roadmap
               </Button>
             </div>

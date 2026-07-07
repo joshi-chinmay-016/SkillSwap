@@ -16,13 +16,17 @@ import {
   Moon,
   Menu,
   X,
-  CheckCircle
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Target
 } from "lucide-react";
 
 export default function AppLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   const user = useAuthStore((state) => state.user);
@@ -42,6 +46,18 @@ export default function AppLayout() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // Persist sidebar collapsed state
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    if (saved !== null) {
+      setIsSidebarCollapsed(saved === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", isSidebarCollapsed);
+  }, [isSidebarCollapsed]);
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
@@ -54,6 +70,7 @@ export default function AppLayout() {
   const navItems = [
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
     { name: "Learning Journey", to: "/journey/roadmap", icon: Compass },
+    { name: "Skill Gap", to: "/journey/skill-gap", icon: Target },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
     { name: "Sessions", to: "/sessions", icon: Calendar },
     { name: "AI Chat", to: "/ai/chat", icon: Bell },
@@ -282,7 +299,21 @@ export default function AppLayout() {
       {/* Main Layout Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden md:flex flex-col w-64 bg-bg border-r border-border p-4 gap-1.5 transition-colors duration-200">
+        <aside 
+          className={`hidden md:flex flex-col bg-bg border-r border-border p-4 gap-1.5 transition-all duration-300 ${
+            isSidebarCollapsed ? 'w-16' : 'w-64'
+          }`}
+        >
+          {/* Collapse Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text transition-colors mb-2"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+
           {navItems.map((item) => (
             <NavLink
               key={item.name}
@@ -292,11 +323,12 @@ export default function AppLayout() {
                   isActive
                     ? "bg-accent/10 text-accent border border-accent/15"
                     : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
-                }`
+                } ${isSidebarCollapsed ? 'justify-center' : ''}`
               }
+              title={isSidebarCollapsed ? item.name : undefined}
             >
               <item.icon size={16} />
-              {item.name}
+              {!isSidebarCollapsed && <span>{item.name}</span>}
             </NavLink>
           ))}
         </aside>

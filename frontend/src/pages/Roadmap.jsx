@@ -1,101 +1,69 @@
 import React, { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
+import Select from "../components/common/Select";
 import { useToast } from "../components/common/Toast";
-import { Sparkles, MapPin, CheckCircle, Circle, Clock, ArrowRight, BookOpen } from "lucide-react";
+import { Sparkles, MapPin, CheckCircle, Circle, Clock, ArrowRight, BookOpen, Target } from "lucide-react";
 
 export default function Roadmap() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [roadmap, setRoadmap] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  // Fetch user's skills for the form
+  const { data: userSkills = [] } = useQuery({
+    queryKey: ["skills", "me"],
+    queryFn: async () => {
+      const res = await api.get("/skills/me");
+      return res.data;
+    },
+  });
+
+  const { control, register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
-      target_skill: "",
+      current_skills: [],
+      target_role: "",
+      experience_level: "beginner",
+      duration_months: "3",
     },
   });
 
   const roadmapMutation = useMutation({
     mutationFn: async (data) => {
+      console.log("Sending roadmap request:", data);
       const res = await api.post("/ai/roadmap", data);
+      console.log("Roadmap response:", res.data);
       return res.data;
     },
     onSuccess: (data) => {
-      setRoadmap(data.roadmap || data);
-      toast({ title: "Success", description: "Roadmap generated successfully!" });
+      console.log("Roadmap success:", data);
+      setRoadmap(data);
+      toast.success("Roadmap generated successfully!", "Success");
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.detail || "Failed to generate roadmap",
-        variant: "destructive" 
-      });
+      console.error("Roadmap error:", error);
+      toast.error(error.response?.data?.detail || "Failed to generate roadmap", "Error");
     },
   });
 
   const onSubmit = (data) => {
-    roadmapMutation.mutate(data);
+    // Convert duration_months to number for backend
+    const payload = {
+      ...data,
+      current_skills: userSkills.map(s => s.skill?.name || s.name),
+      duration_months: parseInt(data.duration_months, 10),
+    };
+    roadmapMutation.mutate(payload);
   };
 
-  const mockRoadmap = {
-    target_skill: "React Development",
-    weeks: [
-      {
-        week: 1,
-        title: "React Fundamentals",
-        skills: ["JSX Syntax", "Components & Props", "State Management basics", "Event Handling"],
-        completed: false,
-      },
-      {
-        week: 2,
-        title: "Hooks Deep Dive",
-        skills: ["useState", "useEffect", "useContext", "Custom Hooks"],
-        completed: false,
-      },
-      {
-        week: 3,
-        title: "React Patterns",
-        skills: ["Controlled Components", "Compound Components", "Render Props", "Higher-Order Components"],
-        completed: false,
-      },
-      {
-        week: 4,
-        title: "State Management",
-        skills: ["Redux basics", "Context API patterns", "Zustand", "React Query"],
-        completed: false,
-      },
-      {
-        week: 5,
-        title: "Routing & Navigation",
-        skills: ["React Router v6", "Nested Routes", "Route Guards", "Programmatic Navigation"],
-        completed: false,
-      },
-      {
-        week: 6,
-        title: "Forms & Validation",
-        skills: ["React Hook Form", "Zod validation", "Form handling patterns", "Error handling"],
-        completed: false,
-      },
-      {
-        week: 7,
-        title: "Performance Optimization",
-        skills: ["memo & useMemo", "useCallback", "Code splitting", "Lazy loading"],
-        completed: false,
-      },
-      {
-        week: 8,
-        title: "Testing",
-        skills: ["Jest & RTL", "Component testing", "Integration testing", "E2E with Cypress"],
-        completed: false,
-      },
-    ],
-  };
-
-  const displayRoadmap = roadmap || mockRoadmap;
+  const displayRoadmap = roadmap;
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,20 +75,84 @@ export default function Roadmap() {
             Generate a personalized learning plan for any skill
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate("/journey/skill-gap")}
+        >
+          <Target size={16} className="mr-2" />
+          Analyze Skill Gap
+        </Button>
       </div>
 
       {/* Input Form */}
       {!roadmap && (
-        <Card title="Generate Your Roadmap" subtitle="Enter a skill you want to learn">
+        <Card title="Generate Your Roadmap" subtitle="Enter your learning goals">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">Current Skills</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {userSkills.map((skill) => (
+                  <div key={skill.id} className="px-3 py-1.5 bg-bg-alt border border-border rounded-md text-sm text-text">
+                    {skill.name}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-text-secondary">Your current skills will be used to personalize the roadmap</p>
+            </div>
+
             <Input
-              label="Target Skill"
-              placeholder="e.g., React Development, Machine Learning, UX Design"
+              label="Target Role"
+              placeholder="e.g., React Developer, Data Scientist, UX Designer"
               icon={<BookOpen size={16} />}
-              {...register("target_skill", { required: "Please enter a skill" })}
-              error={errors.target_skill?.message}
+              {...register("target_role", { required: "Please enter a target role" })}
+              error={errors.target_role?.message}
               disabled={isSubmitting}
             />
+
+            <Controller
+              name="experience_level"
+              control={control}
+              rules={{ required: "Please select experience level" }}
+              render={({ field }) => (
+                <Select
+                  label="Experience Level"
+                  options={[
+                    { value: "beginner", label: "Beginner" },
+                    { value: "intermediate", label: "Intermediate" },
+                    { value: "advanced", label: "Advanced" },
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.experience_level?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+
+            <Controller
+              name="duration_months"
+              control={control}
+              rules={{ required: "Please select duration" }}
+              render={({ field }) => (
+                <Select
+                  label="Duration (months)"
+                  options={[
+                    { value: "1", label: "1 month" },
+                    { value: "3", label: "3 months" },
+                    { value: "6", label: "6 months" },
+                    { value: "12", label: "12 months" },
+                    { value: "18", label: "18 months" },
+                    { value: "24", label: "24 months" },
+                  ]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.duration_months?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+
             <Button 
               type="submit" 
               variant="primary" 
@@ -143,9 +175,9 @@ export default function Roadmap() {
           <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-text">{displayRoadmap.target_skill || "Learning Roadmap"}</h2>
+                <h2 className="text-lg font-bold text-text">{displayRoadmap.title || "Learning Roadmap"}</h2>
                 <p className="text-sm text-text-secondary mt-1">
-                  {displayRoadmap.weeks?.length || 8} weeks • {displayRoadmap.weeks?.filter(w => w.completed).length || 0} completed
+                  {displayRoadmap.weeks?.length || 0} weeks • {displayRoadmap.weeks?.filter(w => w.completed).length || 0} completed
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -166,11 +198,11 @@ export default function Roadmap() {
                 <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-accent transition-all duration-500"
-                    style={{ width: `${((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 8)) * 100}%` }}
+                    style={{ width: `${((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 1)) * 100}%` }}
                   />
                 </div>
                 <span className="text-xs font-semibold text-text-secondary">
-                  {Math.round(((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 8)) * 100)}%
+                  {Math.round(((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 1)) * 100)}%
                 </span>
               </div>
             </div>
@@ -198,7 +230,7 @@ export default function Roadmap() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-text">Week {week.week}: {week.title}</h3>
+                      <h3 className="font-semibold text-text">Week {week.week}: {week.topic}</h3>
                       {selectedWeek === week.week ? (
                         <ArrowUp size={16} className="text-text-secondary" />
                       ) : (
@@ -206,25 +238,11 @@ export default function Roadmap() {
                       )}
                     </div>
                     <p className="text-sm text-text-secondary mt-1">
-                      {week.skills?.length || 4} skills to master
+                      {week.goal}
                     </p>
                     
                     {selectedWeek === week.week && (
                       <div className="mt-4 pt-4 border-t border-border">
-                        <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
-                          Skills & Topics
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {week.skills?.map((skill, skillIndex) => (
-                            <div 
-                              key={skillIndex}
-                              className="flex items-center gap-2 p-2 bg-bg border border-border rounded-lg"
-                            >
-                              <Circle size={12} className="text-text-secondary" />
-                              <span className="text-sm text-text">{skill}</span>
-                            </div>
-                          ))}
-                        </div>
                         <div className="mt-4 flex gap-2">
                           <Button variant="primary" size="sm">
                             <CheckCircle size={14} className="mr-2" />

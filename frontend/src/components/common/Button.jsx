@@ -9,9 +9,12 @@ export default function Button({
   size = "md",
   disabled = false,
   isLoading = false,
+  loading,
   className = "",
   ...props
 }) {
+  // Support both loading and isLoading props for backward compatibility
+  const actualLoading = loading !== undefined ? loading : isLoading;
   const baseStyles = "inline-flex items-center justify-center font-medium rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:pointer-events-none cursor-pointer";
   
   const variants = {
@@ -23,6 +26,7 @@ export default function Button({
   };
 
   const sizes = {
+    xs: "px-2 py-1 text-[10px] gap-1",
     sm: "px-3 py-1.5 text-xs gap-1.5",
     md: "px-4 py-2 text-sm gap-2",
     lg: "px-6 py-3 text-base gap-2.5",
@@ -34,14 +38,14 @@ export default function Button({
     <motion.button
       type={type}
       onClick={onClick}
-      disabled={disabled || isLoading}
-      whileHover={disabled || isLoading ? {} : { scale: 1.015 }}
-      whileTap={disabled || isLoading ? {} : { scale: 0.985 }}
+      disabled={disabled || actualLoading}
+      whileHover={disabled || actualLoading ? {} : { scale: 1.015 }}
+      whileTap={disabled || actualLoading ? {} : { scale: 0.985 }}
       transition={{ duration: 0.1, ease: "easeInOut" }}
       className={currentStyles}
       {...props}
     >
-      {isLoading && (
+      {actualLoading && (
         <svg
           className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
           xmlns="http://www.w3.org/2000/svg"
