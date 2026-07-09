@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 
 from app.models.skill import Skill
 from app.models.user_skill import UserSkill
@@ -48,6 +49,7 @@ def get_user_skills(
 
     return (
         db.query(UserSkill)
+        .options(joinedload(UserSkill.skill))
         .filter(
             UserSkill.user_id == user_id
         )
@@ -65,3 +67,21 @@ def get_skill_by_id(
         )
         .first()
     )
+
+def remove_user_skill(
+    db: Session,
+    user_skill_id: int,
+    user_id: int
+):
+    user_skill = (
+        db.query(UserSkill)
+        .filter(
+            UserSkill.id == user_skill_id,
+            UserSkill.user_id == user_id
+        )
+        .first()
+    )
+    if user_skill:
+        db.delete(user_skill)
+        db.commit()
+    return user_skill

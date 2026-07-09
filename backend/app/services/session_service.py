@@ -27,6 +27,9 @@ from app.services.reward_service import (
     reward_session_completion
 )
 
+from app.models.user import User
+from app.models.skill import Skill
+
 def schedule_session(
     db: Session,
     requester_id: int,
@@ -111,10 +114,19 @@ def my_sessions(
     user_id: int
 ):
 
-    return get_sessions_by_user(
+    sessions = get_sessions_by_user(
         db,
         user_id
     )
+
+    # Enrich with mentor and skill names
+    for session in sessions:
+        mentor = db.query(User).filter(User.id == session.mentor_id).first()
+        skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+        session.mentor_name = mentor.name if mentor else "Unknown"
+        session.skill_name = skill.name if skill else "Unknown"
+
+    return sessions
 
 
 def complete_session(
@@ -128,15 +140,21 @@ def complete_session(
     )
 
     session.status = "completed"
-    
+
     reward_session_completion(
-    db,
-    session.mentor_id
- )
+        db,
+        session.mentor_id
+    )
 
     db.commit()
 
     db.refresh(session)
+
+    # Enrich with mentor and skill names
+    mentor = db.query(User).filter(User.id == session.mentor_id).first()
+    skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+    session.mentor_name = mentor.name if mentor else "Unknown"
+    session.skill_name = skill.name if skill else "Unknown"
 
     return session
 
@@ -157,6 +175,12 @@ def cancel_session(
 
     db.refresh(session)
 
+    # Enrich with mentor and skill names
+    mentor = db.query(User).filter(User.id == session.mentor_id).first()
+    skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+    session.mentor_name = mentor.name if mentor else "Unknown"
+    session.skill_name = skill.name if skill else "Unknown"
+
     return session
 
 def upcoming_sessions(
@@ -164,11 +188,20 @@ def upcoming_sessions(
     user_id: int
 ):
 
-    return get_sessions_by_status(
+    sessions = get_sessions_by_status(
         db,
         user_id,
         "scheduled"
     )
+
+    # Enrich with mentor and skill names
+    for session in sessions:
+        mentor = db.query(User).filter(User.id == session.mentor_id).first()
+        skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+        session.mentor_name = mentor.name if mentor else "Unknown"
+        session.skill_name = skill.name if skill else "Unknown"
+
+    return sessions
 
 
 def completed_sessions_list(
@@ -176,11 +209,20 @@ def completed_sessions_list(
     user_id: int
 ):
 
-    return get_sessions_by_status(
+    sessions = get_sessions_by_status(
         db,
         user_id,
         "completed"
     )
+
+    # Enrich with mentor and skill names
+    for session in sessions:
+        mentor = db.query(User).filter(User.id == session.mentor_id).first()
+        skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+        session.mentor_name = mentor.name if mentor else "Unknown"
+        session.skill_name = skill.name if skill else "Unknown"
+
+    return sessions
 
 
 def cancelled_sessions_list(
@@ -188,11 +230,20 @@ def cancelled_sessions_list(
     user_id: int
 ):
 
-    return get_sessions_by_status(
+    sessions = get_sessions_by_status(
         db,
         user_id,
         "cancelled"
     )
+
+    # Enrich with mentor and skill names
+    for session in sessions:
+        mentor = db.query(User).filter(User.id == session.mentor_id).first()
+        skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+        session.mentor_name = mentor.name if mentor else "Unknown"
+        session.skill_name = skill.name if skill else "Unknown"
+
+    return sessions
 
 
 def session_dashboard(

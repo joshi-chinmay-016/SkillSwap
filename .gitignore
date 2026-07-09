@@ -16,6 +16,8 @@ __pycache__/
 .env
 .env.local
 .venv/
+backend/venv/
+backend/venv
 venv/
 env/
 build/

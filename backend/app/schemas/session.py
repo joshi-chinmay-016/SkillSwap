@@ -30,5 +30,9 @@ class SessionResponse(BaseModel):
 
     status: str
 
+    mentor_name: str | None = None
+
+    skill_name: str | None = None
+
     class Config:
         from_attributes = True

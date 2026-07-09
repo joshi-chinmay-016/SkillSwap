@@ -8,7 +8,8 @@ from app.repositories.notification_repository import (
     create_notification,
     get_notifications,
     get_notification_by_id,
-    unread_count
+    unread_count,
+    mark_all_read
 )
 
 
@@ -67,6 +68,17 @@ def get_unread_count(
 ):
 
     return unread_count(
+        db,
+        user_id
+    )
+
+
+def mark_all_notifications_read(
+    db: Session,
+    user_id: int
+):
+
+    return mark_all_read(
         db,
         user_id
     )

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import Avatar from "../components/common/Avatar";
 import Footer from "../components/common/Footer";
+import api from "../services/api";
 import {
   LayoutDashboard,
   Users,
@@ -28,10 +30,53 @@ export default function AppLayout() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  const queryClient = useQueryClient();
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+
+  // Fetch notifications
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await api.get("/notifications");
+      return res.data;
+    },
+  });
+
+  // Fetch unread count
+  const { data: unreadData } = useQuery({
+    queryKey: ["notifications", "unread"],
+    queryFn: async () => {
+      const res = await api.get("/notifications/unread/count");
+      return res.data;
+    },
+  });
+
+  const unreadCount = unreadData?.count || 0;
+
+  // Mark notification as read
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId) => {
+      await api.patch(`/notifications/${notificationId}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries(["notifications", "unread"]);
+    },
+  });
+
+  // Mark all as read
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      await api.patch("/notifications/read-all");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries(["notifications", "unread"]);
+    },
+  });
 
   // Apply theme to document element
   useEffect(() => {
@@ -137,7 +182,9 @@ export default function AppLayout() {
               aria-expanded={isNotificationsOpen}
             >
               <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
+              )}
             </button>
 
             {isNotificationsOpen && (
@@ -152,75 +199,43 @@ export default function AppLayout() {
                 <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-bg shadow-md py-1.5 z-50 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2 border-b border-border flex items-center justify-between">
                     <p className="font-semibold">Notifications</p>
-                    <span className="text-[10px] text-accent font-semibold">3 new</span>
+                    <span className="text-[10px] text-accent font-semibold">{unreadCount} new</span>
                   </div>
-                  
+
                   <div className="max-h-80 overflow-y-auto">
-                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
-                      <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-success/10 text-success rounded mt-0.5">
-                          <Calendar size={12} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-text text-xs">Session Reminder</p>
-                          <p className="text-[10px] text-text-secondary mt-0.5">
-                            Your React mentoring session starts in 30 minutes
-                          </p>
-                          <p className="text-[10px] text-text-secondary mt-1">2 minutes ago</p>
-                        </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-text-secondary text-xs">
+                        No notifications
                       </div>
-                    </div>
-
-                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
-                      <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-accent/10 text-accent rounded mt-0.5">
-                          <WalletIcon size={12} />
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-3 hover:bg-bg-alt cursor-pointer border-b border-border ${notification.is_read ? 'opacity-60' : ''}`}
+                          onClick={() => markAsReadMutation.mutate(notification.id)}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className={`p-1.5 rounded mt-0.5 ${notification.is_read ? 'bg-bg-alt text-text-secondary' : 'bg-accent/10 text-accent'}`}>
+                              <CheckCircle size={12} />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-text text-xs">{notification.message}</p>
+                              <p className="text-[10px] text-text-secondary mt-1">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-text text-xs">Coins Earned</p>
-                          <p className="text-[10px] text-text-secondary mt-0.5">
-                            You earned 5 Skill Coins for teaching a session
-                          </p>
-                          <p className="text-[10px] text-text-secondary mt-1">1 hour ago</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 hover:bg-bg-alt cursor-pointer border-b border-border">
-                      <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-warning/10 text-warning rounded mt-0.5">
-                          <Users size={12} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-text text-xs">New Mentor Match</p>
-                          <p className="text-[10px] text-text-secondary mt-0.5">
-                            We found 3 new mentors matching your learning goals
-                          </p>
-                          <p className="text-[10px] text-text-secondary mt-1">3 hours ago</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 hover:bg-bg-alt cursor-pointer opacity-60">
-                      <div className="flex items-start gap-2">
-                        <div className="p-1.5 bg-bg-alt text-text-secondary rounded mt-0.5">
-                          <CheckCircle size={12} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-text text-xs">Profile Updated</p>
-                          <p className="text-[10px] text-text-secondary mt-0.5">
-                            Your profile was successfully updated
-                          </p>
-                          <p className="text-[10px] text-text-secondary mt-1">Yesterday</p>
-                        </div>
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
 
                   <div className="p-2 border-t border-border">
                     <button
                       type="button"
-                      className="w-full text-center text-xs font-semibold text-accent hover:text-accent-hover py-1"
+                      onClick={() => markAllAsReadMutation.mutate()}
+                      disabled={unreadCount === 0}
+                      className="w-full text-center text-xs font-semibold text-accent hover:text-accent-hover py-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Mark all as read
                     </button>
@@ -323,11 +338,11 @@ export default function AppLayout() {
                   isActive
                     ? "bg-accent/10 text-accent border border-accent/15"
                     : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
-                } ${isSidebarCollapsed ? 'justify-center' : ''}`
+                } ${isSidebarCollapsed ? 'justify-center px-2 py-3' : ''}`
               }
               title={isSidebarCollapsed ? item.name : undefined}
             >
-              <item.icon size={16} />
+              <item.icon size={isSidebarCollapsed ? 20 : 16} />
               {!isSidebarCollapsed && <span>{item.name}</span>}
             </NavLink>
           ))}

@@ -28,7 +28,6 @@ export default function Roadmap() {
 
   const { control, register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
-      current_skills: [],
       target_role: "",
       experience_level: "beginner",
       duration_months: "3",
@@ -55,9 +54,15 @@ export default function Roadmap() {
 
   const onSubmit = (data) => {
     // Convert duration_months to number for backend
+    const currentSkillsList = userSkills.map(s => s.skill?.name || s.name).filter(name => name);
+    if (currentSkillsList.length === 0) {
+      toast.error("Please add at least one skill to your profile first", "Error");
+      return;
+    }
     const payload = {
-      ...data,
-      current_skills: userSkills.map(s => s.skill?.name || s.name),
+      current_skills: currentSkillsList,
+      target_role: data.target_role,
+      experience_level: data.experience_level,
       duration_months: parseInt(data.duration_months, 10),
     };
     roadmapMutation.mutate(payload);
