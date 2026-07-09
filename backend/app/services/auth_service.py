@@ -1,10 +1,15 @@
 from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.models.profile import Profile
 
 from app.repositories.user_repository import (
     get_user_by_email,
     create_user
+)
+
+from app.repositories.profile_repository import (
+    create_profile
 )
 
 from app.core.security import (
@@ -37,10 +42,26 @@ def register_user(
         password_hash=hash_password(password)
     )
 
-    return create_user(
+    user = create_user(
         db,
         user
     )
+
+    # Generate avatar URL using DiceBear
+    avatar_url = f"https://api.dicebear.com/7.x/adventurer/svg?seed={name.replace(' ', '')}"
+
+    # Create profile with avatar
+    profile = Profile(
+        user_id=user.id,
+        avatar_url=avatar_url
+    )
+
+    create_profile(
+        db,
+        profile
+    )
+
+    return user
 
 
 def login_user(

@@ -5,20 +5,6 @@ export default function Footer() {
   return (
     <footer className="bg-bg-alt border-t border-border mt-auto">
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Trusted By Section */}
-        <div className="mb-8">
-          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4 text-center">
-            Trusted by teams at
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 text-text-secondary">
-            <span className="text-sm font-medium">Google</span>
-            <span className="text-sm font-medium">Microsoft</span>
-            <span className="text-sm font-medium">AWS</span>
-            <span className="text-sm font-medium">Stripe</span>
-            <span className="text-sm font-medium">Vercel</span>
-          </div>
-        </div>
-
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {/* Branding */}

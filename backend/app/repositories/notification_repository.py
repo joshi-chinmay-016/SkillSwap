@@ -60,3 +60,20 @@ def unread_count(
         )
         .count()
     )
+
+
+def mark_all_read(
+    db: Session,
+    user_id: int
+):
+
+    (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.is_read == False
+        )
+        .update({"is_read": True})
+    )
+
+    db.commit()

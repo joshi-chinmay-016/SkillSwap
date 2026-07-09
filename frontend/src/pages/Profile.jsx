@@ -56,6 +56,7 @@ export default function Profile() {
     onSuccess: () => {
       toast.success("Skill added successfully", "Success");
       refetchUserSkills();
+      queryClient.invalidateQueries(["userSkills"]);
       setIsSkillsModalOpen(false);
       setNewSkillName("");
       setSelectedSkillId("");
@@ -72,6 +73,7 @@ export default function Profile() {
     onSuccess: () => {
       toast.success("Skill removed successfully", "Success");
       refetchUserSkills();
+      queryClient.invalidateQueries(["userSkills"]);
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || "Failed to remove skill", "Error");
@@ -134,20 +136,23 @@ export default function Profile() {
     },
     onSuccess: (data) => {
       updateUser({ name: data.name });
-      toast({ title: "Success", description: "Profile updated successfully" });
+      toast.success("Profile updated successfully", "Success");
       queryClient.invalidateQueries(["profile"]);
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.detail || "Failed to update profile",
-        variant: "destructive" 
-      });
+      toast.error(error.response?.data?.detail || "Failed to update profile", "Error");
     },
   });
 
   const onSubmit = (data) => {
-    updateProfileMutation.mutate(data);
+    // Only send fields that backend accepts
+    const payload = {
+      bio: data.bio,
+      department: data.department,
+      year: data.year ? parseInt(data.year) : null,
+      avatar_url: data.avatar_url,
+    };
+    updateProfileMutation.mutate(payload);
   };
 
   const teachSkills = userSkills.filter((s) => s.type === "teach");

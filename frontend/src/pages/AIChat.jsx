@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -96,7 +98,15 @@ export default function AIChat() {
                     : "bg-bg border border-border"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                {message.role === "assistant" ? (
+                  <div className="text-sm prose prose-sm max-w-none prose-headings:text-text prose-p:text-text prose-li:text-text prose-strong:text-text prose-ul:text-text prose-ol:text-text">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                )}
               </div>
               {message.role === "user" && (
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center">

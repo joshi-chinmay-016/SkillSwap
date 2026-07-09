@@ -27,18 +27,18 @@ const removeLocalStorageItem = (key) => {
 };
 
 export const useAuthStore = create((set) => ({
-  token: getLocalStorageItem("token"),
+  token: localStorage.getItem("token"),
   user: getLocalStorageItem("user"),
-  isAuthenticated: !!getLocalStorageItem("token"),
+  isAuthenticated: !!localStorage.getItem("token"),
 
   login: (token, user) => {
-    setLocalStorageItem("token", token);
+    localStorage.setItem("token", token);
     setLocalStorageItem("user", user);
     set({ token, user, isAuthenticated: true });
   },
 
   logout: () => {
-    removeLocalStorageItem("token");
+    localStorage.removeItem("token");
     removeLocalStorageItem("user");
     set({ token: null, user: null, isAuthenticated: false });
   },

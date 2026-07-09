@@ -107,3 +107,18 @@ def add_my_skill(
         request.skill_id,
         request.type
     )
+
+
+@router.delete(
+    "/me/{user_skill_id}"
+)
+def remove_my_skill(
+    user_skill_id: int,
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(get_db)
+):
+    from app.repositories.skill_repository import remove_user_skill
+    remove_user_skill(db, user_skill_id, current_user.id)
+    return {"message": "Skill removed successfully"}

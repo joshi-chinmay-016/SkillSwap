@@ -18,6 +18,7 @@ from app.schemas.notification import (
 from app.services.notification_service import (
     list_notifications,
     mark_notification_read,
+    mark_all_notifications_read,
     get_unread_count
 )
 
@@ -75,3 +76,19 @@ def unread(
             current_user.id
         )
     }
+
+
+@router.patch("/read-all")
+def mark_all_read(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(get_db)
+):
+
+    mark_all_notifications_read(
+        db,
+        current_user.id
+    )
+
+    return {"message": "All notifications marked as read"}
