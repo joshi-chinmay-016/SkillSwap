@@ -37,15 +37,6 @@ export default function Wallet() {
     }
   };
 
-  const mockTransactions = [
-    { id: 1, type: "earned", amount: 5, description: "Taught React session", date: "2026-07-04T10:00:00" },
-    { id: 2, type: "spent", amount: 5, description: "Booked Python mentoring", date: "2026-07-03T14:30:00" },
-    { id: 3, type: "bonus", amount: 10, description: "Welcome bonus", date: "2026-07-01T09:00:00" },
-    { id: 4, type: "earned", amount: 5, description: "Taught JavaScript session", date: "2026-06-30T16:00:00" },
-  ];
-
-  const displayTransactions = transactions.length > 0 ? transactions : mockTransactions;
-
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
@@ -68,7 +59,7 @@ export default function Wallet() {
           <div>
             <p className="text-sm font-medium text-white/80">Current Balance</p>
             <p className="text-4xl font-bold mt-2">
-              {isWalletLoading ? "..." : (wallet?.balance ?? 10)}
+              {isWalletLoading ? "..." : (wallet?.balance ?? "—")}
               <span className="text-lg font-semibold text-white/70 ml-2">Coins</span>
             </p>
           </div>
@@ -76,16 +67,20 @@ export default function Wallet() {
             <WalletIcon size={48} className="text-white" />
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-xs text-white/70">Total Earned</p>
-            <p className="text-lg font-semibold">25</p>
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-white/70">Total Earned</p>
+              <p className="text-lg font-semibold">
+                {isWalletLoading ? "..." : (wallet?.earned_coins ?? "—")}
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-xs text-white/70">Total Spent</p>
+              <p className="text-lg font-semibold">
+                {isWalletLoading ? "..." : (wallet?.spent_coins ?? "—")}
+              </p>
+            </div>
           </div>
-          <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-xs text-white/70">Total Spent</p>
-            <p className="text-lg font-semibold">15</p>
-          </div>
-        </div>
       </Card>
 
       {/* Transaction History */}
@@ -96,7 +91,7 @@ export default function Wallet() {
               <div key={i} className="h-16 w-full bg-border/40 animate-pulse rounded-lg" />
             ))}
           </div>
-        ) : displayTransactions.length === 0 ? (
+        ) : transactions.length === 0 ? (
           <div className="py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border mx-auto mb-3">
               <History size={24} />
@@ -108,7 +103,7 @@ export default function Wallet() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {displayTransactions.map((txn) => {
+            {transactions.map((txn) => {
               const { label, color, icon } = formatTransactionType(txn.type);
               const isPositive = txn.type === "earned" || txn.type === "bonus";
               
@@ -122,17 +117,15 @@ export default function Wallet() {
                       {icon}
                     </div>
                     <div>
-                      <p className="font-semibold text-sm text-text">{txn.description}</p>
-                      <p className="text-xs text-text-secondary mt-0.5">
-                        {new Date(txn.date).toLocaleDateString()} at {new Date(txn.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                      <p className="font-semibold text-sm text-text">{txn.reason}</p>
+                      <p className={`text-xs mt-0.5 ${color}`}>{label}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className={`font-bold text-sm ${isPositive ? "text-success" : "text-danger"}`}>
                       {isPositive ? "+" : "-"}{txn.amount}
                     </p>
-                    <p className={`text-xs ${color}`}>{label}</p>
+                    <p className="text-xs text-text-secondary">Coins</p>
                   </div>
                 </div>
               );

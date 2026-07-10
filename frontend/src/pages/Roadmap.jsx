@@ -9,10 +9,10 @@ import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import Select from "../components/common/Select";
 import { useToast } from "../components/common/Toast";
-import { Sparkles, MapPin, CheckCircle, Circle, Clock, ArrowRight, BookOpen, Target } from "lucide-react";
+import { Sparkles, MapPin, CheckCircle, Circle, Clock, ArrowRight, BookOpen, Target, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function Roadmap() {
-  const { toast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
   const [roadmap, setRoadmap] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
@@ -68,7 +68,6 @@ export default function Roadmap() {
     roadmapMutation.mutate(payload);
   };
 
-  const displayRoadmap = roadmap;
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,17 +90,21 @@ export default function Roadmap() {
       </div>
 
       {/* Input Form */}
-      {!roadmap && (
+      {!roadmap && !roadmapMutation.isPending && (
         <Card title="Generate Your Roadmap" subtitle="Enter your learning goals">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text mb-2">Current Skills</label>
               <div className="flex flex-wrap gap-2 mb-2">
-                {userSkills.map((skill) => (
-                  <div key={skill.id} className="px-3 py-1.5 bg-bg-alt border border-border rounded-md text-sm text-text">
-                    {skill.name}
-                  </div>
-                ))}
+                  {userSkills.length === 0 ? (
+                    <p className="text-xs text-text-secondary italic">No skills in your profile yet. Add skills in Profile settings.</p>
+                  ) : (
+                    userSkills.map((skill) => (
+                      <div key={skill.id} className="px-3 py-1.5 bg-bg-alt border border-border rounded-md text-sm text-text">
+                        {skill.skill?.name || skill.name}
+                      </div>
+                    ))
+                  )}
               </div>
               <p className="text-xs text-text-secondary">Your current skills will be used to personalize the roadmap</p>
             </div>
@@ -173,16 +176,25 @@ export default function Roadmap() {
         </Card>
       )}
 
+      {/* Loading state */}
+      {roadmapMutation.isPending && (
+        <div className="flex flex-col gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 w-full bg-border/40 animate-pulse rounded-xl" />
+          ))}
+        </div>
+      )}
+
       {/* Roadmap Display */}
-      {displayRoadmap && (
+      {roadmap && !roadmapMutation.isPending && (
         <>
           {/* Progress Overview */}
           <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-text">{displayRoadmap.title || "Learning Roadmap"}</h2>
+                <h2 className="text-lg font-bold text-text">{roadmap.title || "Learning Roadmap"}</h2>
                 <p className="text-sm text-text-secondary mt-1">
-                  {displayRoadmap.weeks?.length || 0} weeks • {displayRoadmap.weeks?.filter(w => w.completed).length || 0} completed
+                  {roadmap.weeks?.length || 0} weeks • {roadmap.weeks?.filter(w => w.completed).length || 0} completed
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -203,11 +215,11 @@ export default function Roadmap() {
                 <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-accent transition-all duration-500"
-                    style={{ width: `${((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 1)) * 100}%` }}
+                    style={{ width: `${((roadmap.weeks?.filter(w => w.completed).length || 0) / (roadmap.weeks?.length || 1)) * 100}%` }}
                   />
                 </div>
                 <span className="text-xs font-semibold text-text-secondary">
-                  {Math.round(((displayRoadmap.weeks?.filter(w => w.completed).length || 0) / (displayRoadmap.weeks?.length || 1)) * 100)}%
+                  {Math.round(((roadmap.weeks?.filter(w => w.completed).length || 0) / (roadmap.weeks?.length || 1)) * 100)}%
                 </span>
               </div>
             </div>
@@ -215,7 +227,7 @@ export default function Roadmap() {
 
           {/* Week-by-Week Timeline */}
           <div className="flex flex-col gap-4">
-            {displayRoadmap.weeks?.map((week, index) => (
+            {roadmap.weeks?.map((week, index) => (
               <Card 
                 key={week.week}
                 className={`cursor-pointer transition-all hover:shadow-md ${selectedWeek === week.week ? 'border-accent ring-2 ring-accent/20' : ''}`}
@@ -253,9 +265,9 @@ export default function Roadmap() {
                             <CheckCircle size={14} className="mr-2" />
                             Mark as Complete
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => navigate("/mentors")}>
                             <Clock size={14} className="mr-2" />
-                            Schedule Session
+                            Find a Mentor
                           </Button>
                         </div>
                       </div>

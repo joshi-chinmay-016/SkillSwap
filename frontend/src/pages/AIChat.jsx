@@ -10,7 +10,7 @@ import { useToast } from "../components/common/Toast";
 import { Send, Bot, User, Sparkles, MessageSquare } from "lucide-react";
 
 export default function AIChat() {
-  const { toast } = useToast();
+  const toast = useToast();
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hello! I'm your AI learning assistant. Ask me anything about skills, learning paths, or mentorship recommendations!" },
     { role: "assistant", content: "I can help you with:\n- Finding the right skills to learn\n- Creating learning roadmaps\n- Connecting with mentors\n- Career advice" },
@@ -30,11 +30,7 @@ export default function AIChat() {
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.detail || "Failed to get AI response",
-        variant: "destructive" 
-      });
+      toast.error(error.response?.data?.detail || "Failed to get AI response", "Error");
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
     },
   });

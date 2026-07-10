@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -10,7 +11,8 @@ import { useToast } from "../components/common/Toast";
 import { Sparkles, User, Star, MapPin, BookOpen, ArrowRight, Lightbulb } from "lucide-react";
 
 export default function MentorRecommendation() {
-  const { toast } = useToast();
+  const toast = useToast();
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
@@ -22,18 +24,47 @@ export default function MentorRecommendation() {
   const recommendationMutation = useMutation({
     mutationFn: async (data) => {
       const res = await api.post("/ai/mentor-recommendation", data);
-      return res.data;
+      return { recommendationData: res.data, targetSkill: data.target_skill };
     },
-    onSuccess: (data) => {
-      setRecommendations(data.mentors || data);
-      toast({ title: "Success", description: "Mentor recommendations generated!" });
+    onSuccess: async ({ recommendationData, targetSkill }) => {
+      try {
+        // Fetch real mentors from the database for the same skill
+        const mentorsRes = await api.get("/mentors/", { params: { skill: targetSkill } });
+        const realMentors = mentorsRes.data;
+        
+        // Match them by name (case-insensitive)
+        const mentorsList = (recommendationData.mentors || recommendationData).map((rec) => {
+          const matched = realMentors.find(
+            (m) => m.mentor_name?.toLowerCase().trim() === rec.mentor_name?.toLowerCase().trim()
+          );
+          return {
+            ...rec,
+            id: matched?.mentor_id || rec.id || Math.floor(Math.random() * 100000),
+            avatar_url: matched?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${rec.mentor_name || rec.name}`,
+            average_rating: matched?.average_rating || 4.5,
+            completed_sessions: matched?.completed_sessions || 0,
+            name: rec.mentor_name || rec.name,
+          };
+        });
+        
+        setRecommendations(mentorsList);
+      } catch (err) {
+        console.error("Failed to match recommendations with real mentors:", err);
+        // Fallback to raw recommendation data mapping
+        const fallbackList = (recommendationData.mentors || recommendationData).map((rec, idx) => ({
+          ...rec,
+          id: rec.id || idx + 1,
+          name: rec.mentor_name || rec.name,
+          avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${rec.mentor_name || rec.name}`,
+          average_rating: 4.5,
+          completed_sessions: 0
+        }));
+        setRecommendations(fallbackList);
+      }
+      toast.success("Mentor recommendations generated!", "Success");
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.detail || "Failed to get recommendations",
-        variant: "destructive" 
-      });
+      toast.error(error.response?.data?.detail || "Failed to get recommendations", "Error");
     },
   });
 
@@ -41,37 +72,6 @@ export default function MentorRecommendation() {
     recommendationMutation.mutate(data);
   };
 
-  const mockRecommendations = [
-    {
-      id: 1,
-      name: "Sarah Chen",
-      avatar_url: null,
-      expertise: ["React", "TypeScript", "Node.js"],
-      average_rating: 4.8,
-      completed_sessions: 42,
-      reason: "Sarah has extensive experience in React and has successfully mentored 42 students. Her teaching style focuses on practical, project-based learning which aligns well with your goal of becoming a full-stack developer.",
-    },
-    {
-      id: 2,
-      name: "Alex Kumar",
-      avatar_url: null,
-      expertise: ["JavaScript", "Python", "Data Structures"],
-      average_rating: 4.9,
-      completed_sessions: 38,
-      reason: "Alex specializes in fundamental programming concepts and has a strong background in both frontend and backend development. His systematic approach to teaching algorithms will help you build a solid foundation.",
-    },
-    {
-      id: 3,
-      name: "Jordan Lee",
-      avatar_url: null,
-      expertise: ["React", "Redux", "Testing"],
-      average_rating: 4.7,
-      completed_sessions: 29,
-      reason: "Jordan is an expert in modern React patterns and testing methodologies. If you want to learn industry best practices and write production-ready code, Jordan would be an excellent mentor choice.",
-    },
-  ];
-
-  const displayRecommendations = recommendations || mockRecommendations;
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,6 +81,7 @@ export default function MentorRecommendation() {
           <h1 className="text-2xl font-bold tracking-tight text-text">AI Mentor Recommendations</h1>
           <p className="text-sm text-text-secondary mt-1">
             Get personalized mentor suggestions based on your learning goals
+
           </p>
         </div>
       </div>
@@ -112,8 +113,17 @@ export default function MentorRecommendation() {
         </Card>
       )}
 
+      {/* Loading state */}
+      {recommendationMutation.isPending && (
+        <div className="flex flex-col gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-40 w-full bg-border/40 animate-pulse rounded-xl" />
+          ))}
+        </div>
+      )}
+
       {/* Recommendations Display */}
-      {displayRecommendations && (
+      {recommendations && !recommendationMutation.isPending && (
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -123,7 +133,7 @@ export default function MentorRecommendation() {
               <div>
                 <h2 className="text-lg font-bold text-text">AI-Recommended Mentors</h2>
                 <p className="text-sm text-text-secondary">
-                  {displayRecommendations.length} mentors matched to your learning goal
+                  {recommendations.length} mentors matched to your learning goal
                 </p>
               </div>
             </div>
@@ -136,65 +146,102 @@ export default function MentorRecommendation() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            {displayRecommendations.map((mentor) => (
-              <Card key={mentor.id} className="hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <Avatar 
-                    src={mentor.avatar_url} 
-                    alt={mentor.name} 
-                    size="xl" 
-                    className="shrink-0"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-text">{mentor.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex items-center gap-1">
-                            <Star size={14} className="text-warning fill-warning" />
-                            <span className="text-sm font-semibold text-text">
-                              {mentor.average_rating?.toFixed(1) || "4.5"}
-                            </span>
-                          </div>
-                          <span className="text-xs text-text-secondary">
-                            • {mentor.completed_sessions || 0} sessions completed
-                          </span>
-                        </div>
-                      </div>
-                      <Button variant="primary" size="sm">
-                        <User size={14} className="mr-2" />
-                        View Profile
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {mentor.expertise?.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full border border-accent/10"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 p-3 bg-bg-alt border border-border rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
+          {recommendations.length === 0 ? (
+            <Card>
+              <div className="py-12 text-center flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border">
+                  <Sparkles size={24} />
+                </div>
+                <p className="font-semibold text-sm">No mentors available for this skill</p>
+                <p className="text-xs text-text-secondary mt-1">
+                  No registered mentors were found for your requested skill at this time.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => navigate("/mentors")} className="mt-2">
+                  Browse All Mentors
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {recommendations.map((mentor) => (
+                <Card key={mentor.id} className="hover:shadow-md transition-shadow">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <Avatar 
+                      src={mentor.avatar_url} 
+                      alt={mentor.name} 
+                      size="xl" 
+                      className="shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
                         <div>
-                          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">
-                            Why this mentor?
-                          </p>
-                          <p className="text-sm text-text">{mentor.reason}</p>
+                          <h3 className="text-lg font-bold text-text">{mentor.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            {mentor.average_rating != null ? (
+                              <div className="flex items-center gap-1">
+                                <Star size={14} className="text-warning fill-warning" />
+                                <span className="text-sm font-semibold text-text">
+                                  {mentor.average_rating.toFixed(1)}
+                                </span>
+                              </div>
+                            ) : null}
+                            {mentor.completed_sessions != null ? (
+                              <span className="text-xs text-text-secondary">
+                                • {mentor.completed_sessions} sessions completed
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
+                        <Button 
+                          variant="primary" 
+                          size="sm"
+                          onClick={() => {
+                            if (mentor.id) {
+                              navigate(`/mentors/${mentor.id}`, {
+                                state: { mentorName: mentor.name || mentor.mentor_name, averageRating: mentor.average_rating }
+                              });
+                            } else {
+                              navigate("/mentors");
+                            }
+                          }}
+                        >
+                          <User size={14} className="mr-2" />
+                          View Profile
+                        </Button>
                       </div>
+
+                      {mentor.expertise?.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {mentor.expertise.map((skill, index) => (
+                            <span
+                              key={index}
+                              className="px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full border border-accent/10"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {mentor.reason && (
+                        <div className="mt-4 p-3 bg-bg-alt border border-border rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">
+                                Why this mentor?
+                              </p>
+                              <p className="text-sm text-text">{mentor.reason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
           <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
             <div className="flex items-center justify-between">
@@ -204,7 +251,11 @@ export default function MentorRecommendation() {
                   Browse all available mentors and filter by specific skills
                 </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate("/mentors")}
+              >
                 Browse All Mentors
                 <ArrowRight size={14} className="ml-2" />
               </Button>

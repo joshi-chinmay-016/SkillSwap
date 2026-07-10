@@ -6,12 +6,14 @@ import api from "../services/api";
 import Card from "../components/common/Card";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
+import { AVATAR_OPTIONS } from "../utils/avatars";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[0]);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -53,11 +55,12 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      // 1. Call Register endpoint
+      // 1. Call Register endpoint with selected avatar
       await api.post("/auth/register", {
         name,
         email,
         password,
+        avatar_url: selectedAvatar.url,
       });
 
       // 2. Auto-login on success
@@ -68,7 +71,7 @@ export default function Register() {
 
       const token = authResponse.data.access_token;
 
-      // 3. Fetch user info
+      // 3. Fetch user info (now includes avatar_url)
       const userResponse = await api.get("/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -154,6 +157,36 @@ export default function Register() {
               error={errors.email}
               disabled={isLoading}
             />
+
+            {/* Avatar Picker */}
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-2">
+                Choose your avatar
+              </label>
+              <div className="grid grid-cols-6 gap-2">
+                {AVATAR_OPTIONS.map((avatar) => (
+                  <button
+                    key={avatar.id}
+                    type="button"
+                    onClick={() => setSelectedAvatar(avatar)}
+                    className={`
+                      relative w-full aspect-square rounded-full overflow-hidden
+                      transition-all duration-150 cursor-pointer
+                      ${selectedAvatar.id === avatar.id
+                        ? "ring-2 ring-accent ring-offset-2 ring-offset-bg scale-110 shadow-lg"
+                        : "hover:scale-105 opacity-70 hover:opacity-100"
+                      }
+                    `}
+                  >
+                    <img
+                      src={avatar.url}
+                      alt={avatar.emoji}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <Input
               label="Password"

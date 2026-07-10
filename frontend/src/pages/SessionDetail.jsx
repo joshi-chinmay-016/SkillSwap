@@ -27,7 +27,7 @@ export default function SessionDetail() {
   const {
     mutate: generateSummary,
     data: summaryData,
-    isLoading: summaryLoading,
+    isPending: summaryLoading,
     isError: summaryError,
   } = useMutation({
     mutationFn: async (notes) => {
