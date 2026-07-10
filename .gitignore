@@ -1,3 +1,5 @@
+.antigravity/*
+
 docs/*
 .venv/*
 venv/*
@@ -58,3 +60,7 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+
+
+fix_venv.py
