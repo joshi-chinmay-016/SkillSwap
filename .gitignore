@@ -61,3 +61,7 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+
+
+fix_venv.py
