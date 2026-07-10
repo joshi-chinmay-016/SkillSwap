@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useAuthStore } from "../store/authStore";
@@ -16,7 +16,7 @@ import { User, Mail, MapPin, GraduationCap, Save, Bell, Moon, Sun, Plus, X, Sear
 
 export default function Profile() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const toast = useToast();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
@@ -119,15 +119,28 @@ export default function Profile() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm({
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
-      bio: profile?.bio || "",
-      department: profile?.department || "",
-      year: profile?.year || "",
+      bio: "",
+      department: "",
+      year: "",
     },
   });
+
+  useEffect(() => {
+    if (profile || user) {
+      reset({
+        name: user?.name || "",
+        email: user?.email || "",
+        bio: profile?.bio || "",
+        department: profile?.department || "",
+        year: profile?.year || "",
+      });
+    }
+  }, [profile, user, reset]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data) => {
@@ -135,7 +148,9 @@ export default function Profile() {
       return res.data;
     },
     onSuccess: (data) => {
-      updateUser({ name: data.name });
+      if (data.avatar_url) {
+        updateUser({ avatar_url: data.avatar_url });
+      }
       toast.success("Profile updated successfully", "Success");
       queryClient.invalidateQueries(["profile"]);
     },
@@ -150,7 +165,7 @@ export default function Profile() {
       bio: data.bio,
       department: data.department,
       year: data.year ? parseInt(data.year) : null,
-      avatar_url: data.avatar_url,
+      avatar_url: profile?.avatar_url,
     };
     updateProfileMutation.mutate(payload);
   };
@@ -228,6 +243,7 @@ export default function Profile() {
                       <Badge
                         key={s.id}
                         variant="success"
+                        removable={true}
                         onClose={() => handleRemoveSkill(s.id)}
                       >
                         {s.skill?.name || s.name}
@@ -263,6 +279,7 @@ export default function Profile() {
                       <Badge
                         key={s.id}
                         variant="accent"
+                        removable={true}
                         onClose={() => handleRemoveSkill(s.id)}
                       >
                         {s.skill?.name || s.name}
@@ -282,24 +299,16 @@ export default function Profile() {
               <Input
                 label="Full Name"
                 icon={<User size={16} />}
-                {...register("name", { required: "Name is required" })}
-                error={errors.name?.message}
-                disabled={isSubmitting}
+                {...register("name")}
+                disabled={true}
               />
 
               <Input
                 label="Email"
                 type="email"
                 icon={<Mail size={16} />}
-                {...register("email", { 
-                  required: "Email is required",
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: "Invalid email address"
-                  }
-                })}
-                error={errors.email?.message}
-                disabled={isSubmitting}
+                {...register("email")}
+                disabled={true}
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

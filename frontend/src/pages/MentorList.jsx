@@ -6,7 +6,7 @@ import MentorCard from "../components/MentorCard";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
-import { Search, AlertCircle } from "lucide-react";
+import { Search, AlertCircle, Sparkles } from "lucide-react";
 
 export default function MentorList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,13 +42,24 @@ export default function MentorList() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header section */}
-      <div className="text-left">
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text m-0">
-          Find a Peer Mentor
-        </h1>
-        <p className="text-xs text-text-secondary mt-1">
-          Search for student mentors by skill and schedule a 1-on-1 swap session
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text m-0">
+            Find a Peer Mentor
+          </h1>
+          <p className="text-xs text-text-secondary mt-1">
+            Search for student mentors by skill and schedule a 1-on-1 swap session
+          </p>
+        </div>
+        <Button 
+          variant="primary" 
+          size="sm"
+          onClick={() => navigate("/ai/mentor-recommendation")}
+          className="shrink-0 animate-pulse hover:animate-none"
+        >
+          <Sparkles size={14} className="mr-1.5" />
+          AI Recommendations
+        </Button>
       </div>
 
       {/* Search and Filters Bar */}

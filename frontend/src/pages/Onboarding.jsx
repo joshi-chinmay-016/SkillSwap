@@ -137,12 +137,11 @@ export default function Onboarding() {
     setIsSubmitting(true);
     setErrorMessage("");
     try {
-      // 1. Update Profile (bio, department, year)
+      // 1. Update Profile (bio, department, year) — keep existing avatar
       await api.put("/profiles/me", {
         bio,
         department,
         year: parseInt(year) || 1,
-        avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.name || "SkillSwap"}`,
       });
 
       // 2. Assign Teach Skills

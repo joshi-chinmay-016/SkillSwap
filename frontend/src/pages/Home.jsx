@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
+import Footer from "../components/common/Footer";
 
 export default function Home() {
   const features = [
@@ -326,47 +327,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-bg-alt border-t border-border py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-accent/10 flex items-center justify-center text-accent">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
-              </div>
-              <span className="font-semibold text-text">
-                Skill<span className="text-accent">Swap</span>
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary">
-              © 2026 SkillSwap. AI-driven peer learning platform.
-            </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-xs text-text-secondary hover:text-text transition-colors">
-                Privacy
-              </a>
-              <a href="#" className="text-xs text-text-secondary hover:text-text transition-colors">
-                Terms
-              </a>
-              <a href="#" className="text-xs text-text-secondary hover:text-text transition-colors">
-                Contact
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

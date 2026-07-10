@@ -11,7 +11,7 @@ import { useToast } from "../components/common/Toast";
 import { BookOpen, AlertTriangle, CheckCircle, XCircle, TrendingUp, Target, Sparkles } from "lucide-react";
 
 export default function SkillGap() {
-  const { toast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState(null);
 
@@ -60,7 +60,6 @@ export default function SkillGap() {
     skillGapMutation.mutate(payload);
   };
 
-  const displayAnalysis = analysis;
 
   const learnSkills = userSkills.filter((s) => s.type === "learn").map((s) => s.skill?.name || s.name);
 
@@ -77,7 +76,7 @@ export default function SkillGap() {
       </div>
 
       {/* Input Form */}
-      {!analysis && (
+      {!analysis && !skillGapMutation.isPending && (
         <Card title="Analyze Your Skill Gap" subtitle="Compare your current skills with your target role">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
@@ -113,8 +112,18 @@ export default function SkillGap() {
         </Card>
       )}
 
+      {/* Loading state */}
+      {skillGapMutation.isPending && (
+        <div className="flex flex-col gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 w-full bg-border/40 animate-pulse rounded-xl" />
+          ))}
+        </div>
+      )}
+
+
       {/* Analysis Results */}
-      {displayAnalysis && (
+      {analysis && (
         <>
           {/* Summary Card */}
           <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
@@ -124,10 +133,10 @@ export default function SkillGap() {
                   <TrendingUp size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-text">Target: {displayAnalysis.target_role}</h2>
+                  <h2 className="text-lg font-bold text-text">Target: {analysis.target_role}</h2>
                   <p className="text-sm text-text-secondary mt-1">
-                    {displayAnalysis.missing_skills?.length || 0} skills to learn • 
-                    {displayAnalysis.matched_skills?.length || 0} already mastered
+                    {analysis.missing_skills?.length || 0} skills to learn • 
+                    {analysis.matched_skills?.length || 0} already mastered
                   </p>
                 </div>
               </div>
@@ -145,7 +154,7 @@ export default function SkillGap() {
             {/* Missing Skills */}
             <Card title="Missing Skills" subtitle="Skills you need to acquire">
               <div className="space-y-2">
-                {displayAnalysis.missing_skills?.map((skill, index) => (
+                {analysis.missing_skills?.map((skill, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-bg border border-border rounded-lg"
@@ -161,7 +170,7 @@ export default function SkillGap() {
                     </span>
                   </div>
                 ))}
-                {(!displayAnalysis.missing_skills || displayAnalysis.missing_skills.length === 0) && (
+                {(!analysis.missing_skills || analysis.missing_skills.length === 0) && (
                   <div className="py-8 text-center">
                     <CheckCircle size={24} className="text-success mx-auto mb-2" />
                     <p className="text-sm text-text-secondary">You have all the skills for this role!</p>
@@ -173,7 +182,7 @@ export default function SkillGap() {
             {/* Covered Skills */}
             <Card title="Skills You Have" subtitle="Already mastered for this role">
               <div className="space-y-2">
-                {displayAnalysis.matched_skills?.map((skill, index) => (
+                {analysis.matched_skills?.map((skill, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-bg border border-border rounded-lg"
@@ -187,7 +196,7 @@ export default function SkillGap() {
                     <span className="text-xs font-semibold text-success">Covered</span>
                   </div>
                 ))}
-                {(!displayAnalysis.matched_skills || displayAnalysis.matched_skills.length === 0) && (
+                {(!analysis.matched_skills || analysis.matched_skills.length === 0) && (
                   <div className="py-8 text-center">
                     <AlertTriangle size={24} className="text-text-secondary mx-auto mb-2" />
                     <p className="text-sm text-text-secondary">No skills match this role yet</p>
@@ -200,7 +209,7 @@ export default function SkillGap() {
           {/* AI Recommendations */}
           <Card title="AI Recommendations" subtitle="Personalized learning path suggestions">
             <div className="space-y-3">
-              {displayAnalysis.recommendations?.map((recommendation, index) => (
+              {analysis.recommendations?.map((recommendation, index) => (
                 <div
                   key={index}
                   className="flex items-start gap-3 p-3 bg-bg border border-border rounded-lg"
@@ -211,7 +220,7 @@ export default function SkillGap() {
                   <p className="text-sm text-text">{recommendation}</p>
                 </div>
               ))}
-              {(!displayAnalysis.recommendations || displayAnalysis.recommendations.length === 0) && (
+              {(!analysis.recommendations || analysis.recommendations.length === 0) && (
                 <div className="py-8 text-center">
                   <p className="text-sm text-text-secondary">No recommendations available</p>
                 </div>

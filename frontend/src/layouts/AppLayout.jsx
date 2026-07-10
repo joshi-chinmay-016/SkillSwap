@@ -21,7 +21,8 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Target
+  Target,
+  MessageSquare
 } from "lucide-react";
 
 export default function AppLayout() {
@@ -118,7 +119,7 @@ export default function AppLayout() {
     { name: "Skill Gap", to: "/journey/skill-gap", icon: Target },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
     { name: "Sessions", to: "/sessions", icon: Calendar },
-    { name: "AI Chat", to: "/ai/chat", icon: Bell },
+    { name: "AI Chat", to: "/ai/chat", icon: MessageSquare },
     { name: "Wallet", to: "/wallet", icon: WalletIcon },
     { name: "Profile Settings", to: "/profile", icon: Settings },
   ];

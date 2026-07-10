@@ -219,7 +219,7 @@ export default function Dashboard() {
                       Current Balance
                     </p>
                     <p className="text-2xl font-bold text-text mt-0.5">
-                      {wallet?.balance ?? 10} <span className="text-xs font-semibold text-text-secondary">Coins</span>
+                      {wallet?.balance ?? "—"} <span className="text-xs font-semibold text-text-secondary">Coins</span>
                     </p>
                   </div>
                 </div>
