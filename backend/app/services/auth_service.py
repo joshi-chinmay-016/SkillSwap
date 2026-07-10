@@ -23,7 +23,8 @@ def register_user(
     db: Session,
     name: str,
     email: str,
-    password: str
+    password: str,
+    avatar_url: str | None = None
 ):
 
     existing_user = get_user_by_email(
@@ -47,13 +48,13 @@ def register_user(
         user
     )
 
-    # Generate avatar URL using DiceBear
-    avatar_url = f"https://api.dicebear.com/7.x/adventurer/svg?seed={name.replace(' ', '')}"
+    # Use provided avatar or generate a fallback
+    final_avatar_url = avatar_url or f"https://api.dicebear.com/7.x/adventurer/svg?seed={name.replace(' ', '')}"
 
     # Create profile with avatar
     profile = Profile(
         user_id=user.id,
-        avatar_url=avatar_url
+        avatar_url=final_avatar_url
     )
 
     create_profile(

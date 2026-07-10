@@ -44,7 +44,8 @@ def register(
             db,
             request.name,
             request.email,
-            request.password
+            request.password,
+            request.avatar_url
         )
 
         return RegisterResponse(
@@ -93,11 +94,15 @@ def login(
 def get_me(
     current_user = Depends(
         get_current_user
-    )
+    ),
+    db: Session = Depends(get_db)
 ):
+    from app.services.profile_service import get_or_create_profile
+    profile = get_or_create_profile(db, current_user.id)
 
     return {
         "id": current_user.id,
         "name": current_user.name,
-        "email": current_user.email
+        "email": current_user.email,
+        "avatar_url": profile.avatar_url if profile else None
     }

@@ -11,6 +11,10 @@ from app.ai.prompts.skill_gap_prompt import (
     build_skill_gap_prompt
 )
 
+from app.ai.prompts.system_prompts import (
+    SKILL_GAP_SYSTEM_PROMPT
+)
+
 from app.ai.utils import (
     parse_json_response
 )
@@ -35,7 +39,11 @@ class SkillGapService:
         )
 
         response = self.llm.generate(
-            prompt=prompt
+
+            prompt=prompt,
+
+            system_prompt=SKILL_GAP_SYSTEM_PROMPT
+
         )
 
         data = parse_json_response(

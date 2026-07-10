@@ -39,6 +39,7 @@ def schedule_session(
     meeting_link
 ):
 
+    # Check availability only if mentor has set it up
     day_of_week = (
         scheduled_at.strftime(
             "%A"
@@ -53,31 +54,27 @@ def schedule_session(
         )
     )
 
-    if not availability:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Mentor unavailable on this day"
+    # Only enforce availability constraints if the mentor
+    # has explicitly configured their schedule
+    if availability:
+        session_time = (
+            scheduled_at.time()
         )
 
-    session_time = (
-        scheduled_at.time()
-    )
+        if (
+            session_time
+            <
+            availability.start_time
+            or
+            session_time
+            >
+            availability.end_time
+        ):
 
-    if (
-        session_time
-        <
-        availability.start_time
-        or
-        session_time
-        >
-        availability.end_time
-    ):
-
-        raise HTTPException(
-            status_code=400,
-            detail="Outside mentor availability"
-        )
+            raise HTTPException(
+                status_code=400,
+                detail="Outside mentor availability hours"
+            )
 
     existing_session = (
         get_mentor_session_at_time(
@@ -94,6 +91,21 @@ def schedule_session(
             detail="Time slot already booked"
         )
 
+    # Deduct coins from requester's wallet
+    from app.services.wallet_service import debit_wallet
+    try:
+        debit_wallet(
+            db,
+            requester_id,
+            5,
+            "Session Booking"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
     session = SessionModel(
         requester_id=requester_id,
         mentor_id=mentor_id,
@@ -103,10 +115,18 @@ def schedule_session(
         status="scheduled"
     )
 
-    return create_session(
+    created = create_session(
         db,
         session
     )
+
+    # Enrich with mentor and skill names
+    mentor = db.query(User).filter(User.id == created.mentor_id).first()
+    skill = db.query(Skill).filter(Skill.id == created.skill_id).first()
+    created.mentor_name = mentor.name if mentor else "Unknown"
+    created.skill_name = skill.name if skill else "Unknown"
+
+    return created
 
 
 def my_sessions(
