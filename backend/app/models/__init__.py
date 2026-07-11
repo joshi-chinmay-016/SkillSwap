@@ -10,3 +10,4 @@ from app.models.badge import Badge
 from app.models.mentor_availability import MentorAvailability
 from app.models.wallet import Wallet
 from app.models.wallet_transaction import WalletTransaction
+from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask

@@ -33,3 +33,9 @@ class User(Base):
         "UserSkill",
         back_populates="user"
     )
+
+    journeys = relationship(
+        "LearningJourney",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

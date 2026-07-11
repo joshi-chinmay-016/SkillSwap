@@ -99,6 +99,9 @@ from app.api.websocket import (
 from app.api.wallet import (
     router as wallet_router
 )
+from app.api.journeys import (
+    router as journey_router
+)
 
 """ from here market model"""
 from app.market import models as _market_models
@@ -131,6 +134,7 @@ app.include_router(availability_router)
 app.include_router(reminder_router)
 app.include_router(websocket_router)
 app.include_router(wallet_router)
+app.include_router(journey_router)
 app.include_router(ai_router)
 app.include_router(roadmap_router)
 app.include_router(skill_gap_router)

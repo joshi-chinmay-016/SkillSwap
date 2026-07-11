@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.profile import Profile
 from app.models.skill import Skill
 from app.models.user_skill import UserSkill
+from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 
 import app.market.models
 
