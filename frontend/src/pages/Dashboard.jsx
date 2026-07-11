@@ -119,7 +119,7 @@ export default function Dashboard() {
                 <div className="w-10 h-10 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border">
                   <Calendar size={18} />
                 </div>
-                <div className="text-left text-center">
+                <div className="text-left">
                   <p className="font-semibold text-sm">No upcoming sessions</p>
                   <p className="text-xs text-text-secondary mt-0.5">
                     Schedule a mentoring class with one of our peer experts.
