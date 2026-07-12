@@ -50,10 +50,17 @@ class LearningJourneyResponse(BaseModel):
         from_attributes = True
 
 
+class JourneyTaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    resources: Optional[List[str]] = None
+
+
 class JourneyMilestoneCreate(BaseModel):
     week: int
     topic: str
     goal: str
+    tasks: List[JourneyTaskCreate] = []
 
 
 class LearningJourneyCreate(BaseModel):

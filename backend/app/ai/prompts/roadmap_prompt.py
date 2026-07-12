@@ -58,7 +58,15 @@ The response MUST strictly follow this schema:
       {{
           "week": 1,
           "topic": "...",
-          "goal": "..."
+          "goal": "...",
+          "tasks": [
+              {{
+                  "title": "...",
+                  "description": "...",
+                  "resources": []
+              }},
+              // additional tasks
+          ]
       }}
   ]
 }}

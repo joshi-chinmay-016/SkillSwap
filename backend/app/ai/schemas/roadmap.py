@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class RoadmapRequest(BaseModel):
@@ -24,6 +24,13 @@ class RoadmapRequest(BaseModel):
     )
 
 
+class RoadmapTask(BaseModel):
+
+    title: str
+
+    description: Optional[str] = None
+
+
 class RoadmapWeek(BaseModel):
 
     week: int
@@ -31,6 +38,8 @@ class RoadmapWeek(BaseModel):
     topic: str
 
     goal: str
+
+    tasks: List[RoadmapTask] = Field(default_factory=list)
 
 
 class RoadmapResponse(BaseModel):

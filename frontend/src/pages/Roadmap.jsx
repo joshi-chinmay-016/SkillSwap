@@ -88,7 +88,7 @@ export default function Roadmap() {
   const saveJourneyMutation = useMutation({
     mutationFn: async () => {
       if (!roadmap || !roadmapRequestSnapshot) return;
-      
+        
       const payload = {
         title: roadmap.title,
         target_role: roadmapRequestSnapshot.target_role,
@@ -97,7 +97,8 @@ export default function Roadmap() {
         weeks: roadmap.weeks.map(w => ({
           week: w.week,
           topic: w.topic,
-          goal: w.goal
+          goal: w.goal,
+          tasks: w.tasks?.map(t => ({ title: t.title, description: t.description, resources: t.resources }))
         }))
       };
       

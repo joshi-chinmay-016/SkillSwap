@@ -8,6 +8,7 @@ import ProgressBar from "../components/common/ProgressBar";
 import Skeleton, { SkeletonCard } from "../components/common/Skeleton";
 import { useToast } from "../components/common/Toast";
 import { Compass, Users, Sparkles, BookOpen, Target, Clock, ArrowLeft, Calendar, Award, CheckCircle, Circle, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
+import TaskItem from "../components/TaskItem";
 
 export default function LearningJourney() {
   const { id } = useParams();
@@ -231,25 +232,32 @@ export default function LearningJourney() {
 
                   {/* Expanded Content */}
                   {isSelected && (
-                    <div className="px-4 pb-4 pt-2 border-t border-border/60 bg-bg-alt/30 text-xs text-text-secondary space-y-4">
-                      <div>
-                        <h5 className="font-bold text-text text-[11px] uppercase tracking-wider mb-1">Weekly Goal</h5>
-                        <p className="text-text-secondary leading-relaxed bg-bg border border-border p-3 rounded-md">
-                          {milestone.goal}
-                        </p>
-                      </div>
+                      <div className="px-4 pb-4 pt-2 border-t border-border/60 bg-bg-alt/30 text-xs text-text-secondary space-y-4">
+                        <div>
+                          <h5 className="font-bold text-text text-[11px] uppercase tracking-wider mb-1">Weekly Goal</h5>
+                          <p className="text-text-secondary leading-relaxed bg-bg border border-border p-3 rounded-md">
+                            {milestone.goal}
+                          </p>
+                        </div>
 
-                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/40">
-                        <Button 
-                          variant="outline" 
-                          size="xs"
-                          onClick={() => navigate(`/mentors?role=${encodeURIComponent(journey.target_role)}`)}
-                        >
-                          <Users size={12} className="mr-1.5" />
-                          Find Mentor for Help
-                        </Button>
+                        {milestone.tasks && milestone.tasks.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {milestone.tasks.map(task => (
+                              <TaskItem key={task.id} task={task} />
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-border/40">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => navigate(`/mentors?role=${encodeURIComponent(journey.target_role)}`)}
+                          >
+                            <Users size={12} className="mr-1.5" />
+                            Find Mentor for Help
+                          </Button>
+                        </div>
                       </div>
-                    </div>
                   )}
                 </div>
               );
