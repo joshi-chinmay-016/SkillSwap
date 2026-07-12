@@ -377,6 +377,14 @@ export default function Roadmap() {
                     <p className="text-xs text-text-secondary mt-1">
                       {week.goal}
                     </p>
+                    {/* Tasks list */}
+                    {week.tasks?.length > 0 && (
+                      <ul className="mt-2 list-disc list-inside text-xs text-text-secondary">
+                        {week.tasks.map((t, idx) => (
+                          <li key={idx}>{t.title}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </Card>
