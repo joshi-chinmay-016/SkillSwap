@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import List, Optional
 
-from app.models.journey import LearningJourney, JourneyMilestone
+from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.schemas.journey import LearningJourneyCreate, LearningJourneyUpdate
 from app.repositories.journey_repository import (
     get_learning_journey_by_id,
@@ -48,6 +48,16 @@ def create_journey(db: Session, user_id: int, journey_data: LearningJourneyCreat
                 status="pending"
             )
             db.add(db_milestone)
+            db.flush()  # get milestone id
+
+            # Persist tasks if any
+            for t in getattr(w, "tasks", []):
+                db_task = JourneyTask(
+                    milestone_id=db_milestone.id,
+                    title=t.title,
+                    description=t.description
+                )
+                db.add(db_task)
             
         db.commit()
         db.refresh(db_journey)

@@ -6,7 +6,8 @@ from .chat import (
 from .roadmap import (
     RoadmapRequest,
     RoadmapResponse,
-    RoadmapWeek
+    RoadmapWeek,
+    RoadmapTask
 )
 
 from .skill_gap import (
@@ -25,6 +26,7 @@ __all__ = [
     "RoadmapRequest",
     "RoadmapResponse",
     "RoadmapWeek",
+    "RoadmapTask",
     "SkillGapRequest",
     "SkillGapResponse",
     "SessionSummaryRequest",
