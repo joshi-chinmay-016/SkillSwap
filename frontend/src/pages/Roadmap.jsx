@@ -302,12 +302,7 @@ export default function Roadmap() {
 
       {/* Loading state */}
       {roadmapMutation.isPending && (
-        <div className="flex flex-col gap-4">
-          <div className="h-10 w-1/3 bg-border/40 animate-pulse rounded-lg" />
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 w-full bg-border/40 animate-pulse rounded-xl" />
-          ))}
-        </div>
+        <SkillGapLoadingScreen isOpen={true} onCancel={() => roadmapMutation.reset()} />
       )}
 
       {/* Roadmap Display */}

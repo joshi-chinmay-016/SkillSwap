@@ -9,6 +9,7 @@ import Input from "../components/common/Input";
 import Textarea from "../components/common/Textarea";
 import { useToast } from "../components/common/Toast";
 import { BookOpen, AlertTriangle, CheckCircle, XCircle, TrendingUp, Target, Sparkles } from "lucide-react";
+import SkillGapLoadingScreen from "../components/skill-gap/SkillGapLoadingScreen";
 
 export default function SkillGap() {
   const toast = useToast();
@@ -114,13 +115,8 @@ export default function SkillGap() {
 
       {/* Loading state */}
       {skillGapMutation.isPending && (
-        <div className="flex flex-col gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 w-full bg-border/40 animate-pulse rounded-xl" />
-          ))}
-        </div>
+        <SkillGapLoadingScreen isOpen={true} onCancel={() => skillGapMutation.reset()} />
       )}
-
 
       {/* Analysis Results */}
       {analysis && (

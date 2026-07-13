@@ -7,6 +7,7 @@ import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import { Search, AlertCircle, Sparkles } from "lucide-react";
+import SkillGapLoadingScreen from "../components/skill-gap/SkillGapLoadingScreen";
 
 export default function MentorList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,13 +103,10 @@ export default function MentorList() {
       </div>
 
       {/* Content Section */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-44 w-full bg-border/40 animate-pulse rounded-lg border border-border" />
-          ))}
-        </div>
-      ) : isError ? (
+      {isLoading && (
+          <SkillGapLoadingScreen isOpen={true} onCancel={() => refetch()} />
+        )}
+        {isError ? (
         <div className="py-12 bg-bg border border-border rounded-xl flex flex-col items-center gap-2">
           <AlertCircle className="text-danger" size={32} />
           <p className="font-semibold text-sm">Failed to load mentors</p>
