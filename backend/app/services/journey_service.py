@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import List, Optional
+from datetime import datetime
 
 from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.schemas.journey import LearningJourneyCreate, LearningJourneyUpdate
@@ -8,6 +9,7 @@ from app.repositories.journey_repository import (
     get_learning_journey_by_id,
     get_active_learning_journey_by_user,
     get_all_learning_journeys_by_user,
+    get_task_by_id,
     update_learning_journey
 )
 
@@ -131,3 +133,148 @@ def archive_journey(db: Session, journey_id: int, user_id: int) -> LearningJourn
     journey = get_journey_by_id_and_user(db, journey_id, user_id)
     journey.status = "archived"
     return update_learning_journey(db, journey)
+
+
+def toggle_task_completion(
+    db: Session,
+    task_id: int,
+    user_id: int,
+    is_completed: bool
+) -> JourneyTask:
+    from app.services.learning_activity_service import record_learning_activity
+    from sqlalchemy import func
+
+    # Get the task
+    task = get_task_by_id(db, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    # Get the milestone to verify ownership
+    milestone = (
+        db.query(JourneyMilestone)
+        .filter(JourneyMilestone.id == task.milestone_id)
+        .first()
+    )
+    if not milestone:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Milestone not found"
+        )
+
+    # Get the journey to verify ownership
+    journey = get_learning_journey_by_id(db, milestone.journey_id)
+    if not journey or journey.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this task"
+        )
+
+    # Capture previous state before mutation
+    was_task_completed = task.is_completed
+    previous_milestone_status = milestone.status
+    previous_journey_progress = journey.progress_percentage
+
+    # Update task state
+    task.is_completed = is_completed
+    if is_completed:
+        task.completed_at = datetime.utcnow()
+    else:
+        task.completed_at = None
+
+    db.flush()
+
+    # Recalculate milestone status
+    all_tasks = (
+        db.query(JourneyTask)
+        .filter(JourneyTask.milestone_id == milestone.id)
+        .all()
+    )
+
+    if not all_tasks:
+        # Zero-task milestone remains pending
+        new_milestone_status = "pending"
+    else:
+        completed_count = sum(1 for t in all_tasks if t.is_completed)
+        if completed_count == 0:
+            new_milestone_status = "pending"
+        elif completed_count == len(all_tasks):
+            new_milestone_status = "completed"
+        else:
+            new_milestone_status = "in_progress"
+
+    milestone.status = new_milestone_status
+    db.flush()
+
+    # Recalculate journey progress
+    all_milestones = (
+        db.query(JourneyMilestone)
+        .filter(JourneyMilestone.journey_id == journey.id)
+        .all()
+    )
+
+    if not all_milestones:
+        new_journey_progress = 0.0
+    else:
+        total_tasks = 0
+        completed_tasks = 0
+        for m in all_milestones:
+            m_tasks = (
+                db.query(JourneyTask)
+                .filter(JourneyTask.milestone_id == m.id)
+                .all()
+            )
+            total_tasks += len(m_tasks)
+            completed_tasks += sum(1 for t in m_tasks if t.is_completed)
+
+        if total_tasks == 0:
+            new_journey_progress = 0.0
+        else:
+            new_journey_progress = (completed_tasks / total_tasks) * 100.0
+
+    journey.progress_percentage = new_journey_progress
+
+    # Detect transitions and create learning activities
+    # Task completion transition
+    if not was_task_completed and is_completed:
+        record_learning_activity(
+            db,
+            user_id=user_id,
+            activity_type="task_completed",
+            entity_type="journey_task",
+            entity_id=task.id,
+            activity_data={
+                "journey_id": journey.id,
+                "milestone_id": milestone.id
+            }
+        )
+
+    # Milestone completion transition
+    if previous_milestone_status != "completed" and new_milestone_status == "completed":
+        record_learning_activity(
+            db,
+            user_id=user_id,
+            activity_type="milestone_completed",
+            entity_type="journey_milestone",
+            entity_id=milestone.id,
+            activity_data={
+                "journey_id": journey.id
+            }
+        )
+
+    # Journey completion transition
+    if previous_journey_progress < 100.0 and new_journey_progress >= 100.0:
+        record_learning_activity(
+            db,
+            user_id=user_id,
+            activity_type="journey_completed",
+            entity_type="learning_journey",
+            entity_id=journey.id,
+            activity_data={}
+        )
+
+    db.commit()
+    db.refresh(task)
+    return task

@@ -14,7 +14,8 @@ import {
   BookOpen,
   Award,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Activity
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -54,6 +55,17 @@ export default function Dashboard() {
     queryKey: ["upcomingSessions"],
     queryFn: async () => {
       const res = await api.get("/sessions/upcoming");
+      return res.data;
+    },
+  });
+
+  // 5. Fetch Recent Learning Activities
+  const { data: activityData, isLoading: isActivitiesLoading } = useQuery({
+    queryKey: ["activities", "recent"],
+    queryFn: async () => {
+      const res = await api.get("/learning-activities/me", {
+        params: { page: 1, size: 5 }
+      });
       return res.data;
     },
   });
@@ -276,6 +288,78 @@ export default function Dashboard() {
                 </div>
               </button>
             </div>
+          </Card>
+
+          {/* Recent Activity Widget */}
+          <Card
+            title="Recent Activity"
+            subtitle="Your latest learning events"
+            footer={
+              activityData?.activities?.length > 0 && (
+                <Link to="/activity" className="text-accent font-semibold hover:underline flex items-center gap-1">
+                  View all activities <ChevronRight size={14} />
+                </Link>
+              )
+            }
+          >
+            {isActivitiesLoading ? (
+              <div className="flex flex-col gap-3 py-1">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 w-full bg-border/40 animate-pulse rounded-lg" />
+                ))}
+              </div>
+            ) : !activityData?.activities?.length ? (
+              <div className="py-6 text-center flex flex-col items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border">
+                  <Activity size={14} />
+                </div>
+                <div>
+                  <p className="font-semibold text-xs">No recent activity</p>
+                  <p className="text-[10px] text-text-secondary mt-0.5">
+                    Activities appear here as you complete journey tasks.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {activityData.activities.map((activity) => {
+                  let icon = "🎯";
+                  let title = "Learning Action";
+                  if (activity.activity_type === "task_completed") {
+                    icon = "✅";
+                    title = "Task Completed";
+                  } else if (activity.activity_type === "milestone_completed") {
+                    icon = "🏆";
+                    title = "Milestone Achieved";
+                  } else if (activity.activity_type === "journey_completed") {
+                    icon = "🎉";
+                    title = "Journey Completed";
+                  }
+
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-center gap-3 p-2 bg-bg border border-border/65 rounded-lg text-left"
+                    >
+                      <div className="text-base flex-shrink-0">{icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-xs text-text truncate">
+                          {title}
+                        </p>
+                        <p className="text-[10px] text-text-secondary mt-0.5">
+                          {new Date(activity.created_at).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
 

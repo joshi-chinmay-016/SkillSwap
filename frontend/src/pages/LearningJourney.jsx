@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -14,6 +14,7 @@ export default function LearningJourney() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [selectedMilestone, setSelectedMilestone] = useState(null);
 
   const { data: journey, isLoading, error } = useQuery({
@@ -23,6 +24,29 @@ export default function LearningJourney() {
       return res.data;
     },
     retry: false,
+  });
+
+  const toggleTaskMutation = useMutation({
+    mutationFn: async ({ taskId, isCompleted }) => {
+      const res = await api.patch(`/journeys/tasks/${taskId}/toggle`, {
+        is_completed: isCompleted,
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(["journey", id]);
+      queryClient.invalidateQueries(["activities"]); // Invalidate activities so the feed/dashboard updates
+      toast.show(
+        data.is_completed ? "Task completed! 🎉" : "Task marked incomplete",
+        "success"
+      );
+    },
+    onError: (err) => {
+      toast.show(
+        err.response?.data?.detail || "Failed to update task completion",
+        "error"
+      );
+    },
   });
 
   const getStatusColor = (status) => {
@@ -243,11 +267,21 @@ export default function LearningJourney() {
                         {milestone.tasks && milestone.tasks.length > 0 && (
                           <div className="mt-3 space-y-2">
                             {milestone.tasks.map(task => (
-                              <TaskItem key={task.id} task={task} />
+                              <TaskItem
+                                key={task.id}
+                                task={task}
+                                onToggle={(taskId, isCompleted) => {
+                                  toggleTaskMutation.mutate({ taskId, isCompleted });
+                                }}
+                                isToggling={toggleTaskMutation.isPending && toggleTaskMutation.variables?.taskId === task.id}
+                              />
                             ))}
                           </div>
                         )}
-                        <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-border/40">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-border/40">
+                          <span className="text-[10px] font-semibold text-text-secondary">
+                            {milestone.tasks ? milestone.tasks.filter(t => t.is_completed).length : 0} of {milestone.tasks ? milestone.tasks.length : 0} tasks completed
+                          </span>
                           <Button
                             variant="outline"
                             size="xs"
