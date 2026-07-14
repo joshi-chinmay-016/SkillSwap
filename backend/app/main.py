@@ -34,7 +34,7 @@ app.add_middleware(
 
     allow_methods=["*"],
 
-    allow_headers=["*"],
+    allow_headers=["*"], 
 
 )
 from app.api.auth import router as auth_router
@@ -99,8 +99,13 @@ from app.api.websocket import (
 from app.api.wallet import (
     router as wallet_router
 )
+
+from app.api.learning_activities import (
+    router as learning_activities_router
+)
+
 from app.api.journeys import (
-    router as journey_router
+    router as journeys_router
 )
 
 """ from here market model"""
@@ -134,7 +139,8 @@ app.include_router(availability_router)
 app.include_router(reminder_router)
 app.include_router(websocket_router)
 app.include_router(wallet_router)
-app.include_router(journey_router)
+app.include_router(learning_activities_router)
+app.include_router(journeys_router)
 app.include_router(ai_router)
 app.include_router(roadmap_router)
 app.include_router(skill_gap_router)

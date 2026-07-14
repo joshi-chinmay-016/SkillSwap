@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Target,
-  MessageSquare
+  MessageSquare,
+  Activity
 } from "lucide-react";
 
 export default function AppLayout() {
@@ -121,6 +122,7 @@ export default function AppLayout() {
     { name: "Sessions", to: "/sessions", icon: Calendar },
     { name: "AI Chat", to: "/ai/chat", icon: MessageSquare },
     { name: "Wallet", to: "/wallet", icon: WalletIcon },
+    { name: "Learning Activity", to: "/activity", icon: Activity },
     { name: "Profile Settings", to: "/profile", icon: Settings },
   ];
 

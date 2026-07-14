@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.dependencies.current_user import get_current_user
 from app.schemas.journey import (
     LearningJourneyCreate,
     LearningJourneyUpdate,
-    LearningJourneyResponse
+    LearningJourneyResponse,
+    JourneyTaskResponse
 )
 from app.services import journey_service
 
@@ -15,6 +17,10 @@ router = APIRouter(
     prefix="/journeys",
     tags=["Learning Journeys"]
 )
+
+
+class TaskToggleRequest(BaseModel):
+    is_completed: bool
 
 
 @router.post(
@@ -87,3 +93,21 @@ def delete_learning_journey(
     current_user = Depends(get_current_user)
 ):
     return journey_service.archive_journey(db, journey_id, current_user.id)
+
+
+@router.patch(
+    "/tasks/{task_id}/toggle",
+    response_model=JourneyTaskResponse
+)
+def toggle_task_completion(
+    task_id: int,
+    request: TaskToggleRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    return journey_service.toggle_task_completion(
+        db,
+        task_id,
+        current_user.id,
+        request.is_completed
+    )

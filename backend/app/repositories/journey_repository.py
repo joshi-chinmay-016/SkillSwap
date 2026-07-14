@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, selectinload
 from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from typing import List, Optional
+from datetime import datetime
 
 def get_learning_journey_by_id(db: Session, journey_id: int) -> Optional[LearningJourney]:
     return (
@@ -38,6 +39,13 @@ def get_all_learning_journeys_by_user(db: Session, user_id: int) -> List[Learnin
         .filter(LearningJourney.user_id == user_id)
         .order_by(LearningJourney.created_at.desc())
         .all()
+    )
+
+def get_task_by_id(db: Session, task_id: int) -> Optional[JourneyTask]:
+    return (
+        db.query(JourneyTask)
+        .filter(JourneyTask.id == task_id)
+        .first()
     )
 
 def save_learning_journey(db: Session, journey: LearningJourney) -> LearningJourney:
