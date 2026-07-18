@@ -127,10 +127,12 @@ SkillSwap Arena is an AI-powered peer learning and skill exchange platform that 
 * Smart Mentor Recommendations
 * AI-Powered Matching
 * Leaderboard Enhancements
+* Chat service
 * Session Reminders
 * Learning Analytics
 * Advanced Reputation System
 * Mentor Stock market
+
 ---
 
 Status: 🚀 Active Development
