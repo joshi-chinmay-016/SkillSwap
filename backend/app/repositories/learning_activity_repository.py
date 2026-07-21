@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.learning_activity import LearningActivity
 from typing import List, Optional
@@ -48,3 +49,29 @@ def get_user_activities(
     )
 
     return activities, total
+
+
+def get_user_heatmap_data(
+    db: Session,
+    user_id: int
+) -> List[dict]:
+    date_col = func.date(LearningActivity.created_at)
+    results = (
+        db.query(
+            date_col.label("date"),
+            func.count().label("count")
+        )
+        .filter(LearningActivity.user_id == user_id)
+        .group_by(date_col)
+        .order_by(date_col.asc())
+        .all()
+    )
+
+    return [
+        {
+            "date": str(row.date),
+            "count": int(row.count)
+        }
+        for row in results
+    ]
+

@@ -1,14 +1,29 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
+import logging
 
 from app.core.database import get_db
 from app.dependencies.current_user import get_current_user
-from app.schemas.learning_activity import LearningActivityListResponse
-from app.services.learning_activity_service import get_user_activity_history
+from app.schemas.learning_activity import (
+    LearningActivityListResponse,
+    HeatmapResponse
+)
+from app.services.learning_activity_service import (
+    get_user_activity_history,
+    get_user_activity_heatmap
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/learning-activities",
+    tags=["Learning Activities"]
+)
+
+activities_router = APIRouter(
+    prefix="/activities",
     tags=["Learning Activities"]
 )
 
@@ -38,3 +53,33 @@ def get_my_activities(
         page=page,
         size=size
     )
+
+
+@router.get(
+    "/heatmap",
+    response_model=HeatmapResponse
+)
+@activities_router.get(
+    "/heatmap",
+    response_model=HeatmapResponse
+)
+def get_heatmap(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    try:
+        return get_user_activity_heatmap(db, current_user.id)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while generating heatmap for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred while fetching activity heatmap"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error while generating heatmap for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate learning activity heatmap"
+        )
+
+
