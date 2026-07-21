@@ -35,3 +35,22 @@ class HeatmapResponse(BaseModel):
     total_activities: int = 0
     activity: list[HeatmapActivityItem] = []
 
+
+class MilestoneInfo(BaseModel):
+    name: str
+    threshold: int
+
+
+class StreakResponse(BaseModel):
+    current_streak: int = 0
+    longest_streak: int = 0
+    total_active_days: int = 0
+    last_active_date: Optional[str] = None
+    consistency_score: float = 0.0
+    current_milestone: Optional[MilestoneInfo] = None
+    next_milestone: Optional[MilestoneInfo] = None
+    remaining_days: int = 0
+    progress_percentage: float = 0.0
+
+
+

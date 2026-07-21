@@ -2,7 +2,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.learning_activity import LearningActivity
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 
 
 def create_learning_activity(
@@ -74,4 +74,34 @@ def get_user_heatmap_data(
         }
         for row in results
     ]
+
+
+def get_user_distinct_activity_dates(
+    db: Session,
+    user_id: int
+) -> List[date]:
+    """
+    Retrieves distinct activity dates for the given user ordered chronologically ascending.
+    """
+    date_col = func.date(LearningActivity.created_at)
+    results = (
+        db.query(date_col.label("date"))
+        .filter(LearningActivity.user_id == user_id)
+        .group_by(date_col)
+        .order_by(date_col.asc())
+        .all()
+    )
+
+    distinct_dates = []
+    for row in results:
+        d = row.date
+        if isinstance(d, str):
+            d = datetime.strptime(d, "%Y-%m-%d").date()
+        elif isinstance(d, datetime):
+            d = d.date()
+        if d and d not in distinct_dates:
+            distinct_dates.append(d)
+
+    return distinct_dates
+
 

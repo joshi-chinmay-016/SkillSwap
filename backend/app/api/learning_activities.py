@@ -8,11 +8,13 @@ from app.core.database import get_db
 from app.dependencies.current_user import get_current_user
 from app.schemas.learning_activity import (
     LearningActivityListResponse,
-    HeatmapResponse
+    HeatmapResponse,
+    StreakResponse
 )
 from app.services.learning_activity_service import (
     get_user_activity_history,
-    get_user_activity_heatmap
+    get_user_activity_heatmap,
+    get_user_learning_streak
 )
 
 logger = logging.getLogger(__name__)
@@ -81,5 +83,34 @@ def get_heatmap(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate learning activity heatmap"
         )
+
+
+@router.get(
+    "/streak",
+    response_model=StreakResponse
+)
+@activities_router.get(
+    "/streak",
+    response_model=StreakResponse
+)
+def get_streak(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    try:
+        return get_user_learning_streak(db, current_user.id)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while calculating streak for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred while fetching learning streak"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error while calculating streak for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to calculate learning streak"
+        )
+
 
 
