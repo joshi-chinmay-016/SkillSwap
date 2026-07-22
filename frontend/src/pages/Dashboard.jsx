@@ -6,6 +6,7 @@ import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Avatar from "../components/common/Avatar";
+import HeatmapCard from "../components/dashboard/HeatmapCard";
 import {
   Calendar,
   Wallet as WalletIcon,
@@ -105,7 +106,7 @@ export default function Dashboard() {
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column (Main Stats & Sessions) */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Upcoming Sessions Widget */}
@@ -172,6 +173,9 @@ export default function Dashboard() {
               </div>
             )}
           </Card>
+
+          {/* Learning Activity Heatmap Widget */}
+          <HeatmapCard />
 
           {/* User Skills Summary Widget */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
