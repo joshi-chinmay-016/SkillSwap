@@ -13,6 +13,9 @@ import Select from "../components/common/Select";
 import Badge from "../components/common/Badge";
 import { useToast } from "../components/common/Toast";
 import { User, Mail, MapPin, GraduationCap, Save, Bell, Moon, Sun, Plus, X, Search } from "lucide-react";
+import StreakCard from "../components/streak/StreakCard";
+import { useStreak } from "../hooks/useStreak";
+import MilestoneCard from "../components/streak/MilestoneCard";
 
 export default function Profile() {
   const queryClient = useQueryClient();
@@ -47,6 +50,8 @@ export default function Profile() {
       return res.data;
     },
   });
+  // Fetch streak analytics
+  const { data: streakData, isLoading: streakLoading, isError: streakError, refetch: refetchStreak } = useStreak();
 
   const addSkillMutation = useMutation({
     mutationFn: async (data) => {
@@ -213,7 +218,17 @@ export default function Profile() {
             </div>
           </Card>
 
-          {/* Skills Summary */}
+          {/* Learning Streak */}
+<StreakCard />
+{streakData && (
+  <MilestoneCard
+    currentMilestone={streakData.current_milestone}
+    nextMilestone={streakData.next_milestone}
+    remainingDays={streakData.remaining_days}
+    progressPercentage={streakData.progress_percentage}
+  />
+)}
+{/* Skills Summary */}
           <Card title="Your Skills" className="mt-6">
             <div className="space-y-4">
               <div>

@@ -4,9 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
 import Card from "../components/common/Card";
+import { useStreak } from "../hooks/useStreak";
+import HeatmapCard from "../components/dashboard/HeatmapCard";
 import Button from "../components/common/Button";
 import Avatar from "../components/common/Avatar";
-import HeatmapCard from "../components/dashboard/HeatmapCard";
+import StreakCard from "../components/streak/StreakCard";
+import MilestoneCard from "../components/streak/MilestoneCard";
 import {
   Calendar,
   Wallet as WalletIcon,
@@ -173,6 +176,19 @@ export default function Dashboard() {
               </div>
             )}
           </Card>
+            <StreakCard />
+            {(() => {
+              const { data, isLoading, isError } = useStreak();
+              if (isLoading || isError || !data) return null;
+              return (
+                <MilestoneCard
+                  currentMilestone={data.current_milestone}
+                  nextMilestone={data.next_milestone}
+                  remainingDays={data.remaining_days}
+                  progressPercentage={data.progress_percentage}
+                />
+              );
+            })()}
 
           {/* Learning Activity Heatmap Widget */}
           <HeatmapCard />

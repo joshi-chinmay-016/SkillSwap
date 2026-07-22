@@ -114,13 +114,20 @@ from app.market import models as _market_models
 
 
 
-from app.ai.api import (
-    ai_router,
-    roadmap_router,
-    skill_gap_router,
-    session_summary_router,
-    mentor_recommendation_router
-)
+# Optional AI routes – guarded to avoid import errors when AI dependencies are missing
+try:
+    from app.ai.api import (
+        ai_router,
+        roadmap_router,
+        skill_gap_router,
+        session_summary_router,
+        mentor_recommendation_router,
+    )
+except Exception as e:
+    # Log the import error and skip AI routers in environments without the required packages
+    import logging
+    logging.getLogger(__name__).warning(f"AI routers not loaded due to import error: {e}")
+    ai_router = roadmap_router = skill_gap_router = session_summary_router = mentor_recommendation_router = None
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -143,11 +150,17 @@ app.include_router(wallet_router)
 app.include_router(learning_activities_router)
 app.include_router(activities_router)
 app.include_router(journeys_router)
-app.include_router(ai_router)
-app.include_router(roadmap_router)
-app.include_router(skill_gap_router)
-app.include_router(session_summary_router)
-app.include_router(mentor_recommendation_router)
+# Include optional AI routers only if they were successfully imported
+if ai_router:
+    app.include_router(ai_router)
+if roadmap_router:
+    app.include_router(roadmap_router)
+if skill_gap_router:
+    app.include_router(skill_gap_router)
+if session_summary_router:
+    app.include_router(session_summary_router)
+if mentor_recommendation_router:
+    app.include_router(mentor_recommendation_router)
 
 @app.get("/")
 def root():

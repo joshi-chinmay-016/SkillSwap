@@ -1,4 +1,4 @@
-from test_heatmap import (
+# from test_heatmap import (
     test_heatmap_unauthenticated_returns_401,
     test_heatmap_empty_user,
     test_heatmap_single_and_multiple_activities,
