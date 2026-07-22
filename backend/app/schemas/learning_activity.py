@@ -21,3 +21,17 @@ class LearningActivityListResponse(BaseModel):
     total: int
     page: int
     size: int
+
+
+class HeatmapActivityItem(BaseModel):
+    date: str
+    count: int
+
+
+class HeatmapResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    total_active_days: int = 0
+    total_activities: int = 0
+    activity: list[HeatmapActivityItem] = []
+

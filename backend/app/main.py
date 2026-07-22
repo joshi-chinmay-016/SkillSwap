@@ -101,7 +101,8 @@ from app.api.wallet import (
 )
 
 from app.api.learning_activities import (
-    router as learning_activities_router
+    router as learning_activities_router,
+    activities_router
 )
 
 from app.api.journeys import (
@@ -140,6 +141,7 @@ app.include_router(reminder_router)
 app.include_router(websocket_router)
 app.include_router(wallet_router)
 app.include_router(learning_activities_router)
+app.include_router(activities_router)
 app.include_router(journeys_router)
 app.include_router(ai_router)
 app.include_router(roadmap_router)
