@@ -25,6 +25,7 @@ import Wallet from "../pages/Wallet";
 import AIChat from "../pages/AIChat";
 import MentorRecommendation from "../pages/MentorRecommendation";
 import LearningJourney from "../pages/LearningJourney";
+import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
 
 export default function AppRoutes() {
@@ -54,6 +55,8 @@ export default function AppRoutes() {
           <Route path="/journey/roadmap" element={<Roadmap />} />
           <Route path="/journey/skill-gap" element={<SkillGap />} />
           <Route path="/journey/:id" element={<LearningJourney />} />
+          <Route path="/journeys/:journeyId/sessions" element={<LearningJourney />} />
+          <Route path="/learning-sessions/:sessionId" element={<SessionPage />} />
           <Route path="/activity" element={<ActivityFeed />} />
           <Route path="/ai/chat" element={<AIChat />} />
           <Route path="/ai/mentor-recommendation" element={<MentorRecommendation />} />

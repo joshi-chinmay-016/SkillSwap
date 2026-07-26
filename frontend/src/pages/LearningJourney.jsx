@@ -9,6 +9,7 @@ import Skeleton, { SkeletonCard } from "../components/common/Skeleton";
 import { useToast } from "../components/common/Toast";
 import { Compass, Users, Sparkles, BookOpen, Target, Clock, ArrowLeft, Calendar, Award, CheckCircle, Circle, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
 import TaskItem from "../components/TaskItem";
+import JourneySessions from "../components/JourneySessions/JourneySessions";
 
 export default function LearningJourney() {
   const { id } = useParams();
@@ -302,6 +303,11 @@ export default function LearningJourney() {
                 No milestones in this journey.
               </Card>
             )}
+          </div>
+
+          {/* Learning Sessions Section */}
+          <div className="mt-4">
+            <JourneySessions journeyId={journey.id} />
           </div>
         </div>
 

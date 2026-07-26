@@ -113,6 +113,11 @@ from app.api.achievements import (
     router as achievements_router
 )
 
+from app.api.learning_sessions import (
+    journey_sessions_router as learning_sessions_journey_router,
+    sessions_router as learning_sessions_router
+)
+
 """ from here market model"""
 from app.market import models as _market_models
 
@@ -138,7 +143,8 @@ app.include_router(profiles_router)
 app.include_router(skills_router)
 app.include_router(matches_router)
 app.include_router(request_router)
-app.include_router(notifications_router)
+app.include_router(learning_sessions_journey_router)
+app.include_router(learning_sessions_router)
 app.include_router(session_router)
 app.include_router(feedback_router)
 app.include_router(leaderboard_router)
