@@ -13,4 +13,5 @@ from app.models.wallet_transaction import WalletTransaction
 from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.models.learning_activity import LearningActivity
 from app.models.achievement import Achievement
-from app.models.user_achievement import UserAchievement
+from app.models.user_achievement import UserAchievement
+from app.models.learning_session import LearningSession

@@ -21,6 +21,7 @@ def create_learning_activity(
         activity_data=activity_data
     )
     db.add(activity)
+    db.flush()
     return activity
 
 

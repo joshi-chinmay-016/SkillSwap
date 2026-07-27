@@ -102,6 +102,12 @@ class LearningJourney(Base):
         order_by="JourneyMilestone.week_number"
     )
 
+    learning_sessions = relationship(
+        "LearningSession",
+        back_populates="journey",
+        cascade="all, delete-orphan"
+    )
+
 
 class JourneyMilestone(Base):
     __tablename__ = "journey_milestones"
