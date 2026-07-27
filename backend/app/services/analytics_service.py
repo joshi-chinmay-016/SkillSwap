@@ -8,6 +8,9 @@ from app.repositories.analytics_repository import (
 from app.repositories.analytics_repository import (
     get_mentor_metrics
 )
+from app.services.learning_activity_service import (
+    get_user_learning_analytics
+)
 
 def top_teach_skills(
     db: Session

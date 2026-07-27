@@ -16,6 +16,7 @@ import { User, Mail, MapPin, GraduationCap, Save, Bell, Moon, Sun, Plus, X, Sear
 import StreakCard from "../components/streak/StreakCard";
 import { useStreak } from "../hooks/useStreak";
 import MilestoneCard from "../components/streak/MilestoneCard";
+import AnalyticsSection from "../components/analytics/AnalyticsSection";
 
 export default function Profile() {
   const queryClient = useQueryClient();
@@ -424,6 +425,9 @@ export default function Profile() {
               </div>
             </div>
           </Card>
+
+          {/* Profile Analytics Summary Section */}
+          <AnalyticsSection title="Personal Learning Analytics" />
         </div>
       </div>
 

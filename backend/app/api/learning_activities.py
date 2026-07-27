@@ -9,12 +9,14 @@ from app.dependencies.current_user import get_current_user
 from app.schemas.learning_activity import (
     LearningActivityListResponse,
     HeatmapResponse,
-    StreakResponse
+    StreakResponse,
+    AnalyticsResponse
 )
 from app.services.learning_activity_service import (
     get_user_activity_history,
     get_user_activity_heatmap,
-    get_user_learning_streak
+    get_user_learning_streak,
+    get_user_learning_analytics
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +113,35 @@ def get_streak(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to calculate learning streak"
         )
+
+
+@router.get(
+    "/analytics",
+    response_model=AnalyticsResponse
+)
+@activities_router.get(
+    "/analytics",
+    response_model=AnalyticsResponse
+)
+def get_analytics(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    try:
+        return get_user_learning_analytics(db, current_user.id)
+    except SQLAlchemyError as e:
+        logger.error(f"Database error while generating analytics for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred while fetching learning analytics"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error while generating analytics for user_id={current_user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate learning analytics"
+        )
+
 
 
 

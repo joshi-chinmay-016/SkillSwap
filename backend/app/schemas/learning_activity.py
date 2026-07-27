@@ -53,4 +53,38 @@ class StreakResponse(BaseModel):
     progress_percentage: float = 0.0
 
 
+class LearningTrendInfo(BaseModel):
+    percentage: float = 0.0
+    direction: str = "stable"
+
+
+class MostActiveDayInfo(BaseModel):
+    day: str
+    count: int
+
+
+class AnalyticsSummaryInfo(BaseModel):
+    total_activities: int = 0
+    total_active_days: int = 0
+    average_per_day: float = 0.0
+    current_streak: int = 0
+    longest_streak: int = 0
+
+
+class AnalyticsResponse(BaseModel):
+    weekly_activity: Dict[str, int]
+    monthly_activity: Dict[str, int]
+    activity_distribution: Dict[str, int]
+    learning_trend: LearningTrendInfo
+    learning_velocity: float = 0.0
+    most_active_day: Optional[MostActiveDayInfo] = None
+    average_per_day: float = 0.0
+    summary: AnalyticsSummaryInfo
+
+    class Config:
+        from_attributes = True
+
+
+
+
 

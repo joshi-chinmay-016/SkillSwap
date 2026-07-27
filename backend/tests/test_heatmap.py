@@ -29,17 +29,18 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
     User.__table__.create(bind=engine, checkfirst=True)
     LearningActivity.__table__.create(bind=engine, checkfirst=True)
     yield
     LearningActivity.__table__.drop(bind=engine, checkfirst=True)
     User.__table__.drop(bind=engine, checkfirst=True)
+    app.dependency_overrides.pop(get_db, None)
 
 
 

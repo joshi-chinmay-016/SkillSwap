@@ -8,13 +8,23 @@ from app.repositories.learning_activity_repository import (
     create_learning_activity,
     get_user_activities,
     get_user_heatmap_data,
-    get_user_distinct_activity_dates
+    get_user_distinct_activity_dates,
+    get_user_weekly_activity_counts,
+    get_user_monthly_activity_counts,
+    get_user_activity_distribution_counts,
+    get_user_recent_period_activity_counts,
+    get_user_activity_count_in_days,
+    get_user_activity_totals
 )
 from app.schemas.learning_activity import (
     HeatmapActivityItem,
     HeatmapResponse,
     StreakResponse,
-    MilestoneInfo
+    MilestoneInfo,
+    AnalyticsResponse,
+    LearningTrendInfo,
+    MostActiveDayInfo,
+    AnalyticsSummaryInfo
 )
 
 STREAK_MILESTONES = [
@@ -247,6 +257,154 @@ def get_user_activity_heatmap(
         total_activities=total_activities,
         activity=activity_items
     )
+
+
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DOW_MAP = {
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+    0: "Sunday"
+}
+
+MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+]
+MONTH_MAP = {i + 1: month for i, month in enumerate(MONTHS)}
+
+DEFAULT_ACTIVITY_TYPES = [
+    "Task Completed",
+    "Milestone Completed",
+    "Journey Completed",
+    "Session Completed"
+]
+
+ACTIVITY_TYPE_MAPPING = {
+    "task_completed": "Task Completed",
+    "task": "Task Completed",
+    "milestone_completed": "Milestone Completed",
+    "milestone": "Milestone Completed",
+    "journey_completed": "Journey Completed",
+    "journey": "Journey Completed",
+    "session_completed": "Session Completed",
+    "session": "Session Completed",
+}
+
+
+def get_user_learning_analytics(
+    db: Session,
+    user_id: int,
+    ref_date: Optional[date] = None
+) -> AnalyticsResponse:
+    """
+    Generates aggregated learning intelligence analytics for an authenticated user.
+    Reads aggregated SQL query results without modifying data.
+    Computes learning trend, velocity, most active day, average per day, and summary.
+    Logs authenticated user ID and execution time.
+    """
+    start_time = time.perf_counter()
+
+    # 1. Weekly Activity Aggregation
+    weekly_raw = get_user_weekly_activity_counts(db, user_id)
+    weekly_activity = {day: 0 for day in WEEKDAYS}
+    for dow_int, count in weekly_raw:
+        day_name = DOW_MAP.get(dow_int)
+        if day_name in weekly_activity:
+            weekly_activity[day_name] += count
+
+    # 2. Monthly Activity Aggregation
+    monthly_raw = get_user_monthly_activity_counts(db, user_id)
+    monthly_activity = {month: 0 for month in MONTHS}
+    for month_int, count in monthly_raw:
+        month_name = MONTH_MAP.get(month_int)
+        if month_name in monthly_activity:
+            monthly_activity[month_name] += count
+
+    # 3. Activity Distribution Aggregation
+    dist_raw = get_user_activity_distribution_counts(db, user_id)
+    activity_distribution = {act_type: 0 for act_type in DEFAULT_ACTIVITY_TYPES}
+    for raw_type, count in dist_raw:
+        mapped_label = ACTIVITY_TYPE_MAPPING.get(raw_type)
+        if not mapped_label:
+            mapped_label = raw_type.replace("_", " ").title()
+        activity_distribution[mapped_label] = activity_distribution.get(mapped_label, 0) + count
+
+    # 4. Learning Trend (Current Week vs Previous Week)
+    curr_count, prev_count = get_user_recent_period_activity_counts(db, user_id, ref_date=ref_date)
+    if prev_count == 0:
+        if curr_count > 0:
+            trend_percentage = 100.0
+            trend_direction = "up"
+        else:
+            trend_percentage = 0.0
+            trend_direction = "stable"
+    else:
+        if curr_count > prev_count:
+            trend_percentage = round(((curr_count - prev_count) / prev_count) * 100.0, 1)
+            trend_direction = "up"
+        elif curr_count < prev_count:
+            trend_percentage = round(((prev_count - curr_count) / prev_count) * 100.0, 1)
+            trend_direction = "down"
+        else:
+            trend_percentage = 0.0
+            trend_direction = "stable"
+
+    learning_trend = LearningTrendInfo(
+        percentage=trend_percentage,
+        direction=trend_direction
+    )
+
+    # 5. Learning Velocity (Average activities per day over last 30 days)
+    last_30_count = get_user_activity_count_in_days(db, user_id, days=30, ref_date=ref_date)
+    learning_velocity = round(last_30_count / 30.0, 1)
+
+    # 6. Most Active Day (Weekday with highest count, tie-breaking chronologically Monday..Sunday)
+    best_day = None
+    max_count = 0
+    for day in WEEKDAYS:
+        c = weekly_activity.get(day, 0)
+        if c > max_count:
+            max_count = c
+            best_day = day
+
+    most_active_day = MostActiveDayInfo(day=best_day, count=max_count) if max_count > 0 and best_day else None
+
+    # 7. Totals, Average Per Active Day, and Analytics Summary
+    total_activities, total_active_days = get_user_activity_totals(db, user_id)
+    average_per_day = round(total_activities / total_active_days, 1) if total_active_days > 0 else 0.0
+
+    streak_info = get_user_learning_streak(db, user_id, ref_today=ref_date)
+    summary = AnalyticsSummaryInfo(
+        total_activities=total_activities,
+        total_active_days=total_active_days,
+        average_per_day=average_per_day,
+        current_streak=streak_info.current_streak,
+        longest_streak=streak_info.longest_streak
+    )
+
+    execution_time_ms = (time.perf_counter() - start_time) * 1000
+    logger.info(
+        f"Advanced analytics calculated for user_id={user_id} in {execution_time_ms:.2f}ms: "
+        f"trend={trend_direction} ({trend_percentage}%), velocity={learning_velocity}, "
+        f"total_activities={total_activities}, streak={streak_info.current_streak}."
+    )
+
+    return AnalyticsResponse(
+        weekly_activity=weekly_activity,
+        monthly_activity=monthly_activity,
+        activity_distribution=activity_distribution,
+        learning_trend=learning_trend,
+        learning_velocity=learning_velocity,
+        most_active_day=most_active_day,
+        average_per_day=average_per_day,
+        summary=summary
+    )
+
+
 
 
 

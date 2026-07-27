@@ -10,6 +10,7 @@ import Button from "../components/common/Button";
 import Avatar from "../components/common/Avatar";
 import StreakCard from "../components/streak/StreakCard";
 import MilestoneCard from "../components/streak/MilestoneCard";
+import AnalyticsSection from "../components/analytics/AnalyticsSection";
 import {
   Calendar,
   Wallet as WalletIcon,
@@ -192,6 +193,10 @@ export default function Dashboard() {
 
           {/* Learning Activity Heatmap Widget */}
           <HeatmapCard />
+
+          {/* Learning Analytics Intelligence Engine Section */}
+          <AnalyticsSection />
+
 
           {/* User Skills Summary Widget */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
