@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     Index
 )
+import sqlalchemy as sa
 from sqlalchemy.orm import (
     Mapped,
     mapped_column
@@ -53,7 +54,7 @@ class LearningActivity(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default="now()",
+        server_default=sa.func.now(),
         nullable=False
     )
 
