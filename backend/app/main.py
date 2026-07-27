@@ -109,6 +109,10 @@ from app.api.journeys import (
     router as journeys_router
 )
 
+from app.api.achievements import (
+    router as achievements_router
+)
+
 """ from here market model"""
 from app.market import models as _market_models
 
@@ -150,6 +154,7 @@ app.include_router(wallet_router)
 app.include_router(learning_activities_router)
 app.include_router(activities_router)
 app.include_router(journeys_router)
+app.include_router(achievements_router)
 # Include optional AI routers only if they were successfully imported
 if ai_router:
     app.include_router(ai_router)

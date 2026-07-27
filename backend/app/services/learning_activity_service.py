@@ -182,7 +182,7 @@ def record_learning_activity(
     entity_id: int,
     activity_data: Optional[dict] = None
 ):
-    return create_learning_activity(
+    activity = create_learning_activity(
         db,
         user_id,
         activity_type,
@@ -190,6 +190,13 @@ def record_learning_activity(
         entity_id,
         activity_data
     )
+    try:
+        from app.services.achievement_engine import evaluate_user_achievements
+        evaluate_user_achievements(db, user_id)
+    except Exception as e:
+        logger.error(f"Achievement evaluation failed after activity creation for user_id={user_id}: {str(e)}")
+    return activity
+
 
 
 def get_user_activity_history(
