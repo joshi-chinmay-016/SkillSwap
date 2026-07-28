@@ -96,6 +96,14 @@ class LearningSession(Base):
         back_populates="learning_sessions"
     )
 
+    # One-to-one: each completed session may have exactly one summary
+    summary = relationship(
+        "SessionSummary",
+        back_populates="session",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         Index(
             "idx_learning_sessions_user_status",

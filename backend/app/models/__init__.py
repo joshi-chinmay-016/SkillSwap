@@ -14,4 +14,6 @@ from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.models.learning_activity import LearningActivity
 from app.models.achievement import Achievement
 from app.models.user_achievement import UserAchievement
-from app.models.learning_session import LearningSession
+from app.models.learning_session import LearningSession
+from app.models.session_summary import SessionSummary
+
