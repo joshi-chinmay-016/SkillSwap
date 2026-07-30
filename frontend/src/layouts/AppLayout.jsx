@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Target,
   MessageSquare,
-  Activity
+  Activity,
+  Bot
 } from "lucide-react";
 
 export default function AppLayout() {
@@ -116,6 +117,7 @@ export default function AppLayout() {
 
   const navItems = [
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+    { name: "AI Mentor", to: "/mentor", icon: Bot },
     { name: "Learning Journey", to: "/journey/roadmap", icon: Compass },
     { name: "Skill Gap", to: "/journey/skill-gap", icon: Target },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
@@ -125,6 +127,7 @@ export default function AppLayout() {
     { name: "Learning Activity", to: "/activity", icon: Activity },
     { name: "Profile Settings", to: "/profile", icon: Settings },
   ];
+
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col transition-colors duration-200">
@@ -140,7 +143,7 @@ export default function AppLayout() {
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          
+
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 font-bold text-lg tracking-tight select-none">
             <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white">
@@ -197,7 +200,7 @@ export default function AppLayout() {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsNotificationsOpen(false)}
                 />
-                
+
                 {/* Notifications Dropdown */}
                 <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-bg shadow-md py-1.5 z-50 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2 border-b border-border flex items-center justify-between">
@@ -272,14 +275,14 @@ export default function AppLayout() {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsUserDropdownOpen(false)}
                 />
-                
+
                 {/* Dropdown Menu */}
                 <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-bg shadow-md py-1.5 z-50 text-xs text-left animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2 border-b border-border">
                     <p className="font-semibold truncate">{user?.name}</p>
                     <p className="text-[10px] text-text-secondary truncate mt-0.5">{user?.email}</p>
                   </div>
-                  
+
                   <Link
                     to="/profile"
                     onClick={() => setIsUserDropdownOpen(false)}
@@ -317,10 +320,9 @@ export default function AppLayout() {
       {/* Main Layout Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar Navigation */}
-        <aside 
-          className={`hidden md:flex flex-col bg-bg border-r border-border p-4 gap-1.5 transition-all duration-300 ${
-            isSidebarCollapsed ? 'w-16' : 'w-64'
-          }`}
+        <aside
+          className={`hidden md:flex flex-col bg-bg border-r border-border p-4 gap-1.5 transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : 'w-64'
+            }`}
         >
           {/* Collapse Toggle Button */}
           <button
@@ -337,10 +339,9 @@ export default function AppLayout() {
               key={item.name}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                  isActive
-                    ? "bg-accent/10 text-accent border border-accent/15"
-                    : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${isActive
+                  ? "bg-accent/10 text-accent border border-accent/15"
+                  : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
                 } ${isSidebarCollapsed ? 'justify-center px-2 py-3' : ''}`
               }
               title={isSidebarCollapsed ? item.name : undefined}
@@ -365,10 +366,9 @@ export default function AppLayout() {
                   to={item.to}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                      isActive
-                        ? "bg-accent/10 text-accent border border-accent/15"
-                        : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${isActive
+                      ? "bg-accent/10 text-accent border border-accent/15"
+                      : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
                     }`
                   }
                 >
@@ -387,7 +387,7 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
-      
+
       {/* Footer */}
       <Footer />
     </div>

@@ -18,10 +18,20 @@ from .mentor_recommendation_service import (
     MentorRecommendationService
 )
 
+from .ai_mentor_service import (
+    AIMentorService
+)
+
+from .mentor_intelligence_engine import (
+    MentorIntelligenceEngine
+)
+
 __all__ = [
     "LLMService",
     "RoadmapService",
     "SkillGapService",
     "SessionSummaryService",
-    "MentorRecommendationService"
+    "MentorRecommendationService",
+    "AIMentorService",
+    "MentorIntelligenceEngine"
 ]

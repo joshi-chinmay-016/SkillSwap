@@ -19,6 +19,8 @@ from app.core.security import (
 )
 
 
+import urllib.parse
+
 def register_user(
     db: Session,
     name: str,
@@ -37,32 +39,38 @@ def register_user(
             "Email already exists"
         )
 
-    user = User(
-        name=name,
-        email=email,
-        password_hash=hash_password(password)
-    )
+    try:
+        user = User(
+            name=name,
+            email=email,
+            password_hash=hash_password(password)
+        )
 
-    user = create_user(
-        db,
-        user
-    )
+        user = create_user(
+            db,
+            user
+        )
 
-    # Use provided avatar or generate a fallback
-    final_avatar_url = avatar_url or f"https://api.dicebear.com/7.x/adventurer/svg?seed={name.replace(' ', '')}"
+        # Use provided avatar or generate a fallback
+        safe_seed = urllib.parse.quote(name.strip().replace(" ", ""))
+        final_avatar_url = avatar_url or f"https://api.dicebear.com/7.x/adventurer/svg?seed={safe_seed}"
 
-    # Create profile with avatar
-    profile = Profile(
-        user_id=user.id,
-        avatar_url=final_avatar_url
-    )
+        # Create profile with avatar
+        profile = Profile(
+            user_id=user.id,
+            avatar_url=final_avatar_url
+        )
 
-    create_profile(
-        db,
-        profile
-    )
+        create_profile(
+            db,
+            profile
+        )
 
-    return user
+        return user
+    except Exception:
+        db.rollback()
+        raise
+
 
 
 def login_user(

@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -15,7 +15,7 @@ class Profile(Base):
     )
 
     bio: Mapped[str] = mapped_column(
-        String(500),
+        Text,
         nullable=True
     )
 
@@ -29,9 +29,10 @@ class Profile(Base):
     )
 
     avatar_url: Mapped[str] = mapped_column(
-        String(255),
+        Text,
         nullable=True
     )
+
 
     user = relationship(
         "User",
