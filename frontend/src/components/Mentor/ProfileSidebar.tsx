@@ -1,19 +1,25 @@
 // src/components/Mentor/ProfileSidebar.tsx
 
 import React from "react";
-import { UserCheck, Zap, AlertCircle, Compass, BookOpen, Layers } from "lucide-react";
+import { UserCheck, Zap, AlertCircle, Compass, BookOpen, X } from "lucide-react";
 import type { AIContextResponse } from "../../types/aiContext";
 
 interface ProfileSidebarProps {
   context: AIContextResponse | null;
   isLoading: boolean;
   onTopicClick?: (topic: string) => void;
+  onClose?: () => void;
 }
 
-export default function ProfileSidebar({ context, isLoading, onTopicClick }: ProfileSidebarProps) {
+export default function ProfileSidebar({
+  context,
+  isLoading,
+  onTopicClick,
+  onClose,
+}: ProfileSidebarProps) {
   if (isLoading) {
     return (
-      <div className="w-full lg:w-72 bg-bg border-r border-border p-4 space-y-4 animate-pulse shrink-0">
+      <div className="w-full lg:w-72 bg-bg border-l border-border p-4 space-y-4 animate-pulse shrink-0">
         <div className="h-5 bg-bg-alt rounded w-2/3" />
         <div className="h-20 bg-bg-alt rounded-lg" />
         <div className="h-16 bg-bg-alt rounded-lg" />
@@ -24,8 +30,21 @@ export default function ProfileSidebar({ context, isLoading, onTopicClick }: Pro
 
   if (!context) {
     return (
-      <div className="w-full lg:w-72 bg-bg border-r border-border p-4 shrink-0 text-xs text-text-secondary">
-        <div className="p-3 rounded-lg bg-bg-alt border border-border flex items-start gap-2.5">
+      <div className="w-full lg:w-72 bg-bg border-l border-border p-4 shrink-0 text-xs text-text-secondary">
+        <div className="flex items-center justify-between pb-2 border-b border-border mb-3">
+          <span className="font-bold text-text uppercase tracking-wider text-[11px]">AI Profile Status</span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer"
+              title="Close panel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="p-3.5 rounded-xl bg-bg-alt border border-border flex items-start gap-2.5 shadow-xs">
           <AlertCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-text mb-1">Generic Mode Active</p>
@@ -39,15 +58,27 @@ export default function ProfileSidebar({ context, isLoading, onTopicClick }: Pro
   }
 
   return (
-    <div className="w-full lg:w-72 bg-bg border-b lg:border-b-0 lg:border-r border-border p-4 space-y-4 overflow-y-auto shrink-0 text-xs">
+    <div className="w-full lg:w-72 bg-bg border-l border-border p-4 space-y-4 overflow-y-auto shrink-0 text-xs h-full">
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
           <UserCheck className="w-4 h-4 text-accent" />
           <h2 className="font-bold text-text uppercase tracking-wider text-[11px]">AI Learner Profile</h2>
         </div>
-        <span className="px-2 py-0.5 bg-accent/10 text-accent font-semibold rounded-full text-[10px]">
-          {context.completed_sessions} Sessions
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="px-2 py-0.5 bg-accent/10 text-accent font-semibold rounded-full text-[10px]">
+            {context.completed_sessions} Sessions
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer"
+              title="Close profile panel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Learning Style */}

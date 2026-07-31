@@ -64,6 +64,50 @@ class MentorPromptBuilder:
 
         return "\n\n".join(sections)
 
+    def build_conversation_prompt(
+        self,
+        question: str,
+        history: list,
+        context: Optional["AIContext"],
+        meta: "PersonalizationMeta",
+    ) -> str:
+        """
+        Compose a user-turn prompt that includes recent conversation history.
+
+        Prompt order:
+            1. Mode header
+            2. Learner profile
+            3. Personalization metadata
+            4. Recent conversation history
+            5. Current user question
+        """
+        sections: list[str] = []
+
+        # ── 1. Mode header ──────────────────────────────────────────────────
+        mode_description = MENTOR_MODES.get(
+            meta.mode, MENTOR_MODES["teaching"]
+        )
+        sections.append(f"[Mentor Mode: {meta.mode.title()}]\n{mode_description}")
+
+        # ── 2. Learner profile ───────────────────────────────────────────────
+        sections.append(self._build_learner_profile(context))
+
+        # ── 3. Personalization guidance ──────────────────────────────────────
+        sections.append(self._build_personalization_block(meta))
+
+        # ── 4. Conversation History ──────────────────────────────────────────
+        if history:
+            history_lines = ["[Recent Conversation History]"]
+            for msg in history:
+                role_label = "Learner" if msg.role.upper() == "USER" else "AI Mentor"
+                history_lines.append(f"{role_label}: {msg.content}")
+            sections.append("\n\n".join(history_lines))
+
+        # ── 5. Current User question ──────────────────────────────────────────
+        sections.append(f"[Current Learner Question]\n{question.strip()}")
+
+        return "\n\n".join(sections)
+
     # ──────────────────────────────────────────────────────────────────────────
     # Private helpers
     # ──────────────────────────────────────────────────────────────────────────

@@ -135,6 +135,83 @@ class AIMentorService:
             difficulty_level=parsed.get("difficulty_level", meta.difficulty_level),
         )
 
+    def chat_in_conversation(
+        self,
+        db: Session,
+        user_id: int,
+        question: str,
+        history: list,
+    ) -> MentorChatResponse:
+        """
+        Multi-turn entry point for persistent conversations.
+
+        Parameters
+        ----------
+        db       : SQLAlchemy session
+        user_id  : authenticated user's ID
+        question : current user message
+        history  : list of previous MentorMessage instances (ordered asc)
+
+        Returns
+        -------
+        MentorChatResponse
+        """
+        logger.info(
+            "AIMentorService.chat_in_conversation: user_id=%d history_len=%d",
+            user_id,
+            len(history),
+        )
+
+        # ── 1. Fetch AI Context ───────────────────────────────────────────────
+        context = get_user_ai_context(db, user_id)
+
+        # ── 2. Analyze profile ────────────────────────────────────────────────
+        meta: PersonalizationMeta = self.intelligence.analyze(context, question)
+
+        # ── 3. Build multi-turn prompt ────────────────────────────────────────
+        user_prompt = self.prompt_builder.build_conversation_prompt(
+            question=question,
+            history=history,
+            context=context,
+            meta=meta,
+        )
+
+        # ── 4. Generate LLM response ──────────────────────────────────────────
+        t0 = time.perf_counter()
+        raw = self.llm.generate(
+            prompt=user_prompt,
+            system_prompt=MENTOR_SYSTEM_PROMPT,
+            temperature=0.65,
+        )
+        elapsed = time.perf_counter() - t0
+        logger.info("AIMentorService: LLM latency=%.2fs", elapsed)
+
+        # ── 5. Validate + parse ───────────────────────────────────────────────
+        parsed = self._try_parse(raw)
+        if parsed is None:
+            logger.warning("AIMentorService: first response failed validation — retrying")
+            raw = self.llm.generate(
+                prompt=user_prompt,
+                system_prompt=MENTOR_SYSTEM_PROMPT,
+                temperature=0.45,
+            )
+            parsed = self._try_parse(raw)
+
+        if parsed is None:
+            logger.error("AIMentorService: both LLM attempts failed validation — using plain text fallback")
+            return MentorChatResponse(
+                response=self._sanitize_text(raw),
+                recommended_topics=meta.recommended_topics,
+                difficulty_level=meta.difficulty_level,
+            )
+
+        return MentorChatResponse(
+            response=parsed.get("response", ""),
+            recommended_topics=parsed.get("recommended_topics", meta.recommended_topics),
+            difficulty_level=parsed.get("difficulty_level", meta.difficulty_level),
+        )
+
+
     # ──────────────────────────────────────────────────────────────────────────
     # Private helpers
     # ──────────────────────────────────────────────────────────────────────────
