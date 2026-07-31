@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     GEMINI_MODEL: str = "gemini-1.5-flash"
 
+    MENTOR_MAX_HISTORY_MESSAGES: int = 10
+
     class Config:
         env_file = ".env"
 

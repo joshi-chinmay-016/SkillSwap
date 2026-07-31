@@ -12,8 +12,11 @@ from app.models.user_skill import UserSkill
 from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.models.learning_activity import LearningActivity
 from app.models.learning_session import LearningSession
+from app.models.mentor_conversation import MentorConversation
+from app.models.mentor_message import MentorMessage
 
 import app.market.models
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

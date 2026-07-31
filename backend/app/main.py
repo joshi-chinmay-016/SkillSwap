@@ -132,12 +132,13 @@ try:
         session_summary_router,
         mentor_recommendation_router,
         ai_mentor_router,
+        mentor_conversations_router,
     )
 except Exception as e:
     # Log the import error and skip AI routers in environments without the required packages
     import logging
     logging.getLogger(__name__).warning(f"AI routers not loaded due to import error: {e}")
-    ai_router = roadmap_router = skill_gap_router = session_summary_router = mentor_recommendation_router = ai_mentor_router = None
+    ai_router = roadmap_router = skill_gap_router = session_summary_router = mentor_recommendation_router = ai_mentor_router = mentor_conversations_router = None
 
 app.include_router(auth_router)
 app.include_router(profiles_router)
@@ -175,6 +176,9 @@ if mentor_recommendation_router:
     app.include_router(mentor_recommendation_router)
 if ai_mentor_router:
     app.include_router(ai_mentor_router)
+if mentor_conversations_router:
+    app.include_router(mentor_conversations_router)
+
 
 
 

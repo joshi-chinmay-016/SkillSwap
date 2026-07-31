@@ -45,3 +45,9 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    mentor_conversations = relationship(
+        "MentorConversation",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

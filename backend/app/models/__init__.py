@@ -17,5 +17,5 @@ from app.models.user_achievement import UserAchievement
 from app.models.learning_session import LearningSession
 from app.models.session_summary import SessionSummary
 from app.models.ai_context import AIContext
-
-
+from app.models.mentor_conversation import MentorConversation, ConversationStatus
+from app.models.mentor_message import MentorMessage, MessageRole

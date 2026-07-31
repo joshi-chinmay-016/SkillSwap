@@ -104,6 +104,12 @@ class LearningSession(Base):
         cascade="all, delete-orphan"
     )
 
+    mentor_conversations = relationship(
+        "MentorConversation",
+        back_populates="session",
+        foreign_keys="MentorConversation.session_id",
+    )
+
     __table_args__ = (
         Index(
             "idx_learning_sessions_user_status",

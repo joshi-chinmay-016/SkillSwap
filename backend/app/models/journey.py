@@ -108,6 +108,12 @@ class LearningJourney(Base):
         cascade="all, delete-orphan"
     )
 
+    mentor_conversations = relationship(
+        "MentorConversation",
+        back_populates="journey",
+        foreign_keys="MentorConversation.journey_id",
+    )
+
 
 class JourneyMilestone(Base):
     __tablename__ = "journey_milestones"

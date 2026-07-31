@@ -1,17 +1,31 @@
 // src/components/Mentor/MessageBubble.tsx
 
 import React from "react";
-import { Bot, User, AlertTriangle } from "lucide-react";
+import { Bot, User, AlertTriangle, RefreshCw } from "lucide-react";
 import MentorResponseCard from "./MentorResponseCard";
 import type { MessageItem } from "../../types/mentor";
 
 interface MessageBubbleProps {
   message: MessageItem;
   onTopicClick?: (topic: string) => void;
+  onRetryMessage?: (messageId: number | string) => void;
 }
 
-export default function MessageBubble({ message, onTopicClick }: MessageBubbleProps) {
-  const isUser = message.role === "user";
+export default function MessageBubble({ message, onTopicClick, onRetryMessage }: MessageBubbleProps) {
+  const isUser = message.role.toUpperCase() === "USER";
+
+  const formatTimestamp = (raw?: string) => {
+    if (!raw) return "";
+    try {
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return raw;
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return raw;
+    }
+  };
+
+  const timeLabel = formatTimestamp(message.created_at || message.timestamp);
 
   if (message.isError) {
     return (
@@ -19,9 +33,18 @@ export default function MessageBubble({ message, onTopicClick }: MessageBubblePr
         <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-danger/10 border border-danger/20 text-danger flex items-center justify-center shadow-xs">
           <AlertTriangle className="w-4 h-4" />
         </div>
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-3 bg-danger/10 border border-danger/20 text-danger text-xs">
-          <p className="font-semibold mb-1">Response Error</p>
+        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-3 bg-danger/10 border border-danger/20 text-danger text-xs space-y-2">
+          <p className="font-semibold">Response Error</p>
           <p>{message.content}</p>
+          {onRetryMessage && message.id && (
+            <button
+              type="button"
+              onClick={() => onRetryMessage(message.id)}
+              className="flex items-center gap-1 text-[11px] font-semibold text-danger hover:underline cursor-pointer pt-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Retry Generation
+            </button>
+          )}
         </div>
       </div>
     );
@@ -45,9 +68,11 @@ export default function MessageBubble({ message, onTopicClick }: MessageBubblePr
         {isUser ? (
           <div>
             <p className="text-xs leading-relaxed whitespace-pre-wrap">{message.content}</p>
-            <span className="block text-[10px] text-white/70 text-right mt-1 font-mono">
-              {message.timestamp}
-            </span>
+            {timeLabel && (
+              <span className="block text-[10px] text-white/70 text-right mt-1 font-mono">
+                {timeLabel}
+              </span>
+            )}
           </div>
         ) : (
           <div>
@@ -57,9 +82,11 @@ export default function MessageBubble({ message, onTopicClick }: MessageBubblePr
               difficultyLevel={message.difficulty_level}
               onTopicClick={onTopicClick}
             />
-            <span className="block text-[10px] text-text-secondary text-right mt-2 font-mono">
-              {message.timestamp}
-            </span>
+            {timeLabel && (
+              <span className="block text-[10px] text-text-secondary text-right mt-2 font-mono">
+                {timeLabel}
+              </span>
+            )}
           </div>
         )}
       </div>
