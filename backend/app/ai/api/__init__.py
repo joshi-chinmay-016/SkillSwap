@@ -18,10 +18,15 @@ from .mentor_recommendation import (
     router as mentor_recommendation_router
 )
 
+from .mentor_router import (
+    router as ai_mentor_router
+)
+
 __all__ = [
     "ai_router",
     "roadmap_router",
     "skill_gap_router",
     "session_summary_router",
-    "mentor_recommendation_router"
+    "mentor_recommendation_router",
+    "ai_mentor_router"
 ]

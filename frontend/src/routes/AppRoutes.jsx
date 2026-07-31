@@ -27,6 +27,7 @@ import MentorRecommendation from "../pages/MentorRecommendation";
 import LearningJourney from "../pages/LearningJourney";
 import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
+import AIMentorPage from "../pages/AIMentorPage";
 
 export default function AppRoutes() {
   return (
@@ -48,6 +49,7 @@ export default function AppRoutes() {
         {/* Dashboard and Core Sections have AppLayout (Header + Sidebar) */}
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/mentor" element={<AIMentorPage />} />
           <Route path="/mentors" element={<MentorList />} />
           <Route path="/mentors/:id" element={<MentorDetail />} />
           <Route path="/sessions" element={<Sessions />} />
@@ -64,6 +66,7 @@ export default function AppRoutes() {
           <Route path="/wallet" element={<Wallet />} />
         </Route>
       </Route>
+
 
       {/* Fallback redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />

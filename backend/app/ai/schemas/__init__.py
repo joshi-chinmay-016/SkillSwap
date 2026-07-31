@@ -20,6 +20,12 @@ from .session_summary import (
     SessionSummaryResponse
 )
 
+from .mentor import (
+    MentorChatRequest,
+    MentorChatResponse,
+    PersonalizationMeta,
+)
+
 __all__ = [
     "ChatRequest",
     "ChatResponse",
@@ -30,5 +36,8 @@ __all__ = [
     "SkillGapRequest",
     "SkillGapResponse",
     "SessionSummaryRequest",
-    "SessionSummaryResponse"
+    "SessionSummaryResponse",
+    "MentorChatRequest",
+    "MentorChatResponse",
+    "PersonalizationMeta",
 ]

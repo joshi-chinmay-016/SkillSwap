@@ -7,7 +7,7 @@ Create Date: 2026-07-29 10:04:00.000000
 
 # revision identifiers, used by Alembic.
 revision = "c60a1_add_session_summaries"
-down_revision = "b59a1_add_learning_session_models"
+down_revision = "b59a10000001"
 branch_labels = None
 depends_on = None
 

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import CodeBlock from "../components/common/CodeBlock";
 import api from "../services/api";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -96,7 +97,37 @@ export default function AIChat() {
               >
                 {message.role === "assistant" ? (
                   <div className="text-sm prose prose-sm max-w-none prose-headings:text-text prose-p:text-text prose-li:text-text prose-strong:text-text prose-ul:text-text prose-ol:text-text">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || "");
+                          const codeString = String(children).replace(/\n$/, "");
+
+
+                          if (!inline && (match || codeString.includes("\n"))) {
+                            return (
+                              <CodeBlock
+                                code={codeString}
+                                language={match ? match[1] : "code"}
+                              />
+                            );
+                          }
+
+                          return (
+                            <code
+                              className="font-mono text-[12px] font-semibold text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded shadow-2xs"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                        pre({ children }) {
+                          return <>{children}</>;
+                        },
+                      }}
+                    >
                       {message.content}
                     </ReactMarkdown>
                   </div>
@@ -104,6 +135,7 @@ export default function AIChat() {
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 )}
               </div>
+
               {message.role === "user" && (
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center">
                   <User size={16} />

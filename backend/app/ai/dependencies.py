@@ -3,7 +3,8 @@ from app.ai.services import (
     RoadmapService,
     SkillGapService,
     SessionSummaryService,
-    MentorRecommendationService
+    MentorRecommendationService,
+    AIMentorService
 )
 
 _llm_service = LLMService()
@@ -15,6 +16,8 @@ _skill_gap_service = SkillGapService()
 _session_summary_service = SessionSummaryService()
 
 _mentor_recommendation_service = MentorRecommendationService()
+
+_ai_mentor_service = AIMentorService(llm_service=_llm_service)
 
 
 def get_llm_service():
@@ -35,3 +38,7 @@ def get_session_summary_service():
 
 def get_mentor_recommendation_service():
     return _mentor_recommendation_service
+
+
+def get_ai_mentor_service():
+    return _ai_mentor_service
