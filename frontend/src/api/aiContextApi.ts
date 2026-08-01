@@ -18,3 +18,14 @@ export async function regenerateAIContext(): Promise<AIContextResponse> {
   const response = await api.post<AIContextResponse>("/users/me/context/regenerate");
   return response.data;
 }
+
+/**
+ * Update user-editable AI Context fields (learning_interests, learning_style).
+ */
+export async function updateAIContext(data: {
+  learning_interests?: string[];
+  learning_style?: string;
+}): Promise<AIContextResponse> {
+  const response = await api.patch<AIContextResponse>("/users/me/context", data);
+  return response.data;
+}

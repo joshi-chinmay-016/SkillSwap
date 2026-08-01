@@ -40,6 +40,7 @@ class MentorPromptBuilder:
         question: str,
         context: Optional["AIContext"],
         meta: "PersonalizationMeta",
+        tool_results: Optional[list] = None,
     ) -> str:
         """
         Compose the full user-turn prompt that is sent to the LLM.
@@ -59,7 +60,12 @@ class MentorPromptBuilder:
         # ── 3. Personalization guidance ──────────────────────────────────────
         sections.append(self._build_personalization_block(meta))
 
-        # ── 4. User question ─────────────────────────────────────────────────
+        # ── 4. Platform Data (if tools executed) ─────────────────────────────
+        platform_data = self._build_platform_data_block(tool_results)
+        if platform_data:
+            sections.append(platform_data)
+
+        # ── 5. User question ─────────────────────────────────────────────────
         sections.append(f"[Learner Question]\n{question.strip()}")
 
         return "\n\n".join(sections)
@@ -70,6 +76,7 @@ class MentorPromptBuilder:
         history: list,
         context: Optional["AIContext"],
         meta: "PersonalizationMeta",
+        tool_results: Optional[list] = None,
     ) -> str:
         """
         Compose a user-turn prompt that includes recent conversation history.
@@ -78,8 +85,9 @@ class MentorPromptBuilder:
             1. Mode header
             2. Learner profile
             3. Personalization metadata
-            4. Recent conversation history
-            5. Current user question
+            4. Platform data (if available)
+            5. Recent conversation history
+            6. Current user question
         """
         sections: list[str] = []
 
@@ -95,7 +103,12 @@ class MentorPromptBuilder:
         # ── 3. Personalization guidance ──────────────────────────────────────
         sections.append(self._build_personalization_block(meta))
 
-        # ── 4. Conversation History ──────────────────────────────────────────
+        # ── 4. Platform Data (if tools executed) ─────────────────────────────
+        platform_data = self._build_platform_data_block(tool_results)
+        if platform_data:
+            sections.append(platform_data)
+
+        # ── 5. Conversation History ──────────────────────────────────────────
         if history:
             history_lines = ["[Recent Conversation History]"]
             for msg in history:
@@ -103,7 +116,7 @@ class MentorPromptBuilder:
                 history_lines.append(f"{role_label}: {msg.content}")
             sections.append("\n\n".join(history_lines))
 
-        # ── 5. Current User question ──────────────────────────────────────────
+        # ── 6. Current User question ──────────────────────────────────────────
         sections.append(f"[Current Learner Question]\n{question.strip()}")
 
         return "\n\n".join(sections)
@@ -204,3 +217,27 @@ class MentorPromptBuilder:
             )
 
         return "\n\n".join(lines)
+
+    def _build_platform_data_block(self, tool_results: Optional[list]) -> str:
+        """
+        Format retrieved tool results into a structured platform data section.
+        """
+        if not tool_results:
+            return ""
+
+        valid_results = [r for r in tool_results if r and getattr(r, "success", False) and getattr(r, "data", None)]
+        if not valid_results:
+            return ""
+
+        import json
+        lines = [
+            "[Platform Data — Retrieved from SkillSwap]",
+            "The following data was retrieved from the platform. Use it to answer accurately.",
+            "Do NOT invent or modify this data.\n"
+        ]
+        for r in valid_results:
+            lines.append(f"Tool: {r.tool}")
+            lines.append(json.dumps(r.data, indent=2))
+            lines.append("")
+
+        return "\n".join(lines).strip()

@@ -25,6 +25,10 @@ from app.ai.prompts.system_prompts import MENTOR_SYSTEM_PROMPT
 from app.ai.schemas.mentor import MentorChatResponse, PersonalizationMeta
 from app.ai.utils import parse_json_response
 from app.services.ai_context_service import get_user_ai_context
+from app.ai.services.intent_classification_service import IntentClassificationService
+from app.ai.tools.tool_dispatcher import ToolDispatcher
+from app.ai.models.mentor_intent import MentorIntent, IntentResult
+from app.ai.tools.mentor_tool import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +43,17 @@ class AIMentorService:
     Every call is stateless at this layer.
     """
 
-    def __init__(self, llm_service: LLMService):
+    def __init__(
+        self,
+        llm_service: LLMService,
+        intent_service: Optional[IntentClassificationService] = None,
+        dispatcher: Optional[ToolDispatcher] = None,
+    ):
         self.llm = llm_service
         self.intelligence = MentorIntelligenceEngine()
         self.prompt_builder = MentorPromptBuilder()
+        self.intent_service = intent_service or IntentClassificationService()
+        self.dispatcher = dispatcher
 
     # ──────────────────────────────────────────────────────────────────────────
     # Public API
@@ -69,6 +80,9 @@ class AIMentorService:
         """
         logger.info("AIMentorService.chat: user_id=%d", user_id)
 
+        # ── 0. Classify Intent ───────────────────────────────────────────────
+        intent_result = self._classify_intent(user_id, None, question)
+
         # ── 1. Fetch AI Context ───────────────────────────────────────────────
         context = get_user_ai_context(db, user_id)
         if context:
@@ -80,7 +94,10 @@ class AIMentorService:
         else:
             logger.info("AIMentorService: no AI context found — using generic mentor")
 
-        # ── 2. Analyze profile ────────────────────────────────────────────────
+        # ── 2. Dispatch Tool (if applicable) ──────────────────────────────────
+        tool_results = self._dispatch_tool(db, user_id, intent_result)
+
+        # ── 3. Analyze profile ────────────────────────────────────────────────
         meta: PersonalizationMeta = self.intelligence.analyze(context, question)
         logger.info(
             "AIMentorService: difficulty=%s weak=%s strong=%s",
@@ -89,14 +106,15 @@ class AIMentorService:
             meta.topic_is_strong,
         )
 
-        # ── 3. Build prompt ───────────────────────────────────────────────────
+        # ── 4. Build prompt ───────────────────────────────────────────────────
         user_prompt = self.prompt_builder.build(
             question=question,
             context=context,
             meta=meta,
+            tool_results=tool_results,
         )
 
-        # ── 4. First LLM call ─────────────────────────────────────────────────
+        # ── 5. First LLM call ─────────────────────────────────────────────────
         t0 = time.perf_counter()
         raw = self.llm.generate(
             prompt=user_prompt,
@@ -106,10 +124,10 @@ class AIMentorService:
         elapsed = time.perf_counter() - t0
         logger.info("AIMentorService: LLM latency=%.2fs", elapsed)
 
-        # ── 5. Validate + parse ───────────────────────────────────────────────
+        # ── 6. Validate + parse ───────────────────────────────────────────────
         parsed = self._try_parse(raw)
         if parsed is None:
-            # ── 6. Retry once with slightly lower temperature ─────────────────
+            # ── 7. Retry once with slightly lower temperature ─────────────────
             logger.warning("AIMentorService: first response failed validation — retrying")
             raw = self.llm.generate(
                 prompt=user_prompt,
@@ -118,21 +136,24 @@ class AIMentorService:
             )
             parsed = self._try_parse(raw)
 
-        # ── 7. Graceful fallback if both attempts fail ────────────────────────
+        # ── 8. Graceful fallback if both attempts fail ────────────────────────
+        tool_meta = self._extract_tool_meta(tool_results)
         if parsed is None:
             logger.error("AIMentorService: both LLM attempts failed validation — using plain text fallback")
             return MentorChatResponse(
                 response=self._sanitize_text(raw),
                 recommended_topics=meta.recommended_topics,
                 difficulty_level=meta.difficulty_level,
+                **tool_meta,
             )
 
-        # ── 8. Return structured response ─────────────────────────────────────
+        # ── 9. Return structured response ─────────────────────────────────────
         logger.info("AIMentorService: response generated successfully")
         return MentorChatResponse(
             response=parsed.get("response", ""),
             recommended_topics=parsed.get("recommended_topics", meta.recommended_topics),
             difficulty_level=parsed.get("difficulty_level", meta.difficulty_level),
+            **tool_meta,
         )
 
     def chat_in_conversation(
@@ -162,21 +183,28 @@ class AIMentorService:
             len(history),
         )
 
+        # ── 0. Classify Intent ───────────────────────────────────────────────
+        intent_result = self._classify_intent(user_id, None, question)
+
         # ── 1. Fetch AI Context ───────────────────────────────────────────────
         context = get_user_ai_context(db, user_id)
 
-        # ── 2. Analyze profile ────────────────────────────────────────────────
+        # ── 2. Dispatch Tool (if applicable) ──────────────────────────────────
+        tool_results = self._dispatch_tool(db, user_id, intent_result)
+
+        # ── 3. Analyze profile ────────────────────────────────────────────────
         meta: PersonalizationMeta = self.intelligence.analyze(context, question)
 
-        # ── 3. Build multi-turn prompt ────────────────────────────────────────
+        # ── 4. Build multi-turn prompt ────────────────────────────────────────
         user_prompt = self.prompt_builder.build_conversation_prompt(
             question=question,
             history=history,
             context=context,
             meta=meta,
+            tool_results=tool_results,
         )
 
-        # ── 4. Generate LLM response ──────────────────────────────────────────
+        # ── 5. Generate LLM response ──────────────────────────────────────────
         t0 = time.perf_counter()
         raw = self.llm.generate(
             prompt=user_prompt,
@@ -186,7 +214,7 @@ class AIMentorService:
         elapsed = time.perf_counter() - t0
         logger.info("AIMentorService: LLM latency=%.2fs", elapsed)
 
-        # ── 5. Validate + parse ───────────────────────────────────────────────
+        # ── 6. Validate + parse ───────────────────────────────────────────────
         parsed = self._try_parse(raw)
         if parsed is None:
             logger.warning("AIMentorService: first response failed validation — retrying")
@@ -197,20 +225,81 @@ class AIMentorService:
             )
             parsed = self._try_parse(raw)
 
+        tool_meta = self._extract_tool_meta(tool_results)
+
         if parsed is None:
             logger.error("AIMentorService: both LLM attempts failed validation — using plain text fallback")
             return MentorChatResponse(
                 response=self._sanitize_text(raw),
                 recommended_topics=meta.recommended_topics,
                 difficulty_level=meta.difficulty_level,
+                **tool_meta,
             )
 
         return MentorChatResponse(
             response=parsed.get("response", ""),
             recommended_topics=parsed.get("recommended_topics", meta.recommended_topics),
             difficulty_level=parsed.get("difficulty_level", meta.difficulty_level),
+            **tool_meta,
         )
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # Private helpers
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _classify_intent(
+        self,
+        user_id: int,
+        conversation_id: Optional[int],
+        question: str,
+    ) -> IntentResult:
+        """Classify user intent safely with fallback to UNKNOWN."""
+        if not self.intent_service:
+            return IntentResult(
+                intent=MentorIntent.UNKNOWN,
+                confidence=0.0,
+                reason="Intent classification service not configured.",
+            )
+        try:
+            return self.intent_service.classify(user_id, conversation_id, question)
+        except Exception as exc:
+            logger.error("AIMentorService: intent classification failed: %s", str(exc))
+            return IntentResult(
+                intent=MentorIntent.UNKNOWN,
+                confidence=0.0,
+                reason=f"Error: {str(exc)}",
+            )
+
+    def _dispatch_tool(
+        self,
+        db: Session,
+        user_id: int,
+        intent_result: IntentResult,
+    ) -> Optional[list[ToolResult]]:
+        """Dispatch registered tool for classified intent."""
+        if not self.dispatcher:
+            return None
+        try:
+            result = self.dispatcher.dispatch(db=db, user_id=user_id, intent_result=intent_result)
+            return [result] if result else None
+        except Exception as exc:
+            logger.error("AIMentorService: tool dispatch failed: %s", str(exc))
+            return None
+
+
+    @staticmethod
+    def _extract_tool_meta(tool_results: Optional[list[ToolResult]]) -> dict:
+        if not tool_results:
+            return {}
+        first = tool_results[0]
+        if not first:
+            return {}
+        return {
+            "tool_used": first.tool,
+            "tool_success": first.success,
+            "tool_execution_time": round(first.execution_time_ms) if first.execution_time_ms else 0,
+            "tool_data": first.data if first.success else None,
+        }
 
     # ──────────────────────────────────────────────────────────────────────────
     # Private helpers

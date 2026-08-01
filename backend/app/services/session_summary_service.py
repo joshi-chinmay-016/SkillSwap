@@ -84,6 +84,9 @@ def create_summary(
             f"session_id={session_id}, user_id={user_id}"
         )
 
+        # Auto-rebuild the AI learning profile after summary creation
+        _trigger_profile_rebuild(db, user_id)
+
         return SessionSummaryCreateResponse(
             summary_id=summary.id,
             uuid=summary.uuid,
@@ -131,6 +134,11 @@ def create_summary_internal(
         f"AI-generated session summary persisted: summary_id={summary.id}, "
         f"session_id={session_id}"
     )
+
+    # Auto-rebuild the AI learning profile after AI-generated summary
+    session = repo_get_session(db, session_id)
+    if session:
+        _trigger_profile_rebuild(db, session.user_id)
 
 
 def get_summary(
@@ -240,4 +248,27 @@ def delete_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete session summary: {str(e)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Auto-rebuild trigger
+# ---------------------------------------------------------------------------
+
+def _trigger_profile_rebuild(db: Session, user_id: int) -> None:
+    """
+    Fire-and-forget AI profile rebuild after summary creation.
+    Never raises — failures are logged as warnings only.
+    """
+    try:
+        from app.services.ai_context_service import rebuild_user_ai_context
+        rebuild_user_ai_context(db, user_id)
+        logger.info(
+            "AI learning profile auto-rebuilt after summary creation: "
+            "user_id=%d", user_id
+        )
+    except Exception as exc:
+        logger.warning(
+            "AI profile auto-rebuild failed (non-blocking) for "
+            "user_id=%d: %s", user_id, str(exc)
         )

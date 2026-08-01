@@ -113,6 +113,10 @@ from app.api.achievements import (
     router as achievements_router
 )
 
+from app.api.ai_context_router import (
+    router as ai_context_router
+)
+
 from app.api.learning_sessions import (
     journey_sessions_router as learning_sessions_journey_router,
     sessions_router as learning_sessions_router
@@ -163,6 +167,7 @@ app.include_router(learning_activities_router)
 app.include_router(activities_router)
 app.include_router(journeys_router)
 app.include_router(achievements_router)
+app.include_router(ai_context_router)
 # Include optional AI routers only if they were successfully imported
 if ai_router:
     app.include_router(ai_router)

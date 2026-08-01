@@ -135,6 +135,10 @@ class MentorConversationChatResponse(BaseModel):
     assistant_message: MentorMessageResponse
     recommended_topics: List[str] = []
     difficulty_level: str = "Intermediate"
+    tool_used: Optional[str] = None
+    tool_success: Optional[bool] = None
+    tool_execution_time: Optional[int] = None
+    tool_data: Optional[dict] = None
 
 
 class MentorRetryResponse(BaseModel):
@@ -146,3 +150,7 @@ class MentorRetryResponse(BaseModel):
     assistant_message: MentorMessageResponse
     recommended_topics: List[str] = []
     difficulty_level: str = "Intermediate"
+    tool_used: Optional[str] = None
+    tool_success: Optional[bool] = None
+    tool_execution_time: Optional[int] = None
+    tool_data: Optional[dict] = None

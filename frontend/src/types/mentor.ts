@@ -8,6 +8,10 @@ export interface MentorChatResponse {
   response: string;
   recommended_topics: string[];
   difficulty_level: "Beginner" | "Intermediate" | "Advanced" | string;
+  tool_used?: string | null;
+  tool_success?: boolean | null;
+  tool_execution_time?: number | null;
+  tool_data?: Record<string, any> | null;
 }
 
 export interface MessageItem {
@@ -19,6 +23,10 @@ export interface MessageItem {
   recommended_topics?: string[];
   difficulty_level?: string;
   isError?: boolean;
+  tool_used?: string | null;
+  tool_success?: boolean | null;
+  tool_execution_time?: number | null;
+  tool_data?: Record<string, any> | null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -44,6 +52,10 @@ export interface MentorMessage {
   role: "USER" | "ASSISTANT" | string;
   content: string;
   created_at: string;
+  tool_used?: string | null;
+  tool_success?: boolean | null;
+  tool_execution_time?: number | null;
+  tool_data?: Record<string, any> | null;
 }
 
 export interface MentorConversationCreate {
@@ -76,4 +88,8 @@ export interface MentorConversationChatResponse {
   assistant_message: MentorMessage;
   recommended_topics: string[];
   difficulty_level: string;
+  tool_used?: string | null;
+  tool_success?: boolean | null;
+  tool_execution_time?: number | null;
+  tool_data?: Record<string, any> | null;
 }

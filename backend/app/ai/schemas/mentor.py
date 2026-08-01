@@ -15,6 +15,10 @@ class MentorChatResponse(BaseModel):
     response: str
     recommended_topics: List[str] = []
     difficulty_level: str = "Intermediate"
+    tool_used: Optional[str] = None
+    tool_success: Optional[bool] = None
+    tool_execution_time: Optional[int] = None
+    tool_data: Optional[dict] = None
 
 
 @dataclass

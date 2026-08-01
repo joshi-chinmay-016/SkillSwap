@@ -21,6 +21,12 @@ class Settings(BaseSettings):
 
     MENTOR_MAX_HISTORY_MESSAGES: int = 10
 
+    MENTOR_TOOL_TIMEOUT_SECONDS: int = 5
+
+    MENTOR_INTENT_CONFIDENCE_THRESHOLD: float = 0.50
+
+    MENTOR_LLM_FALLBACK_ENABLED: bool = False
+
     class Config:
         env_file = ".env"
 

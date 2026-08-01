@@ -17,6 +17,10 @@ export function useMentorChat() {
         content: data.response,
         recommended_topics: data.recommended_topics || [],
         difficulty_level: data.difficulty_level || "Intermediate",
+        tool_used: data.tool_used,
+        tool_success: data.tool_success,
+        tool_execution_time: data.tool_execution_time,
+        tool_data: data.tool_data,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, assistantMsg]);

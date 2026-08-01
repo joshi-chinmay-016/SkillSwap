@@ -1,7 +1,5 @@
-// src/components/Mentor/SuggestedPrompts.tsx
-
 import React from "react";
-import { Sparkles, HelpCircle, Code, Lightbulb, Compass } from "lucide-react";
+import { Sparkles, BarChart2, BookOpen, Map, UserCheck, Wrench } from "lucide-react";
 
 interface SuggestedPromptsProps {
   onSelectPrompt: (prompt: string) => void;
@@ -9,10 +7,12 @@ interface SuggestedPromptsProps {
 }
 
 const DEFAULT_SUGGESTIONS = [
-  { label: "Explain Graphs", icon: Compass, prompt: "Explain Graph Data Structures and Graph Traversal algorithms step by step." },
-  { label: "Review Binary Search", icon: Code, prompt: "Review Binary Search algorithm, edge cases, and time complexity." },
-  { label: "Help with DP", icon: Lightbulb, prompt: "Help me understand Dynamic Programming principles and memoization." },
-  { label: "Suggest Next Topic", icon: Sparkles, prompt: "Based on my learning profile, what topic should I learn next and why?" },
+  { label: "Show my progress", icon: BarChart2, prompt: "How many sessions have I completed and what is my current streak?" },
+  { label: "Summarize my last session", icon: BookOpen, prompt: "Summarize my last learning session and key takeaways." },
+  { label: "Analyze my learning", icon: Wrench, prompt: "Show my learning analytics, trends, and statistics." },
+  { label: "My active journey", icon: Map, prompt: "What is my current roadmap and next milestone in my learning journey?" },
+  { label: "Review my strengths", icon: UserCheck, prompt: "Show my strong topics and weak topics from my learning profile." },
+  { label: "What to learn next?", icon: Sparkles, prompt: "Based on my learning profile, what topic should I learn next?" },
 ];
 
 export default function SuggestedPrompts({ onSelectPrompt, disabled }: SuggestedPromptsProps) {
