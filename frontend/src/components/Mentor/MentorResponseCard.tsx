@@ -1,15 +1,18 @@
-// src/components/Mentor/MentorResponseCard.tsx
-
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Compass, Layers } from "lucide-react";
+import { Compass, Layers, Clock } from "lucide-react";
 import CodeBlock from "../common/CodeBlock";
+import ToolCard from "./ToolCard";
 
 interface MentorResponseCardProps {
   content: string;
   recommendedTopics?: string[];
   difficultyLevel?: string;
+  toolUsed?: string | null;
+  toolSuccess?: boolean | null;
+  toolExecutionTime?: number | null;
+  toolData?: Record<string, any> | null;
   onTopicClick?: (topic: string) => void;
 }
 
@@ -17,6 +20,10 @@ export default function MentorResponseCard({
   content,
   recommendedTopics = [],
   difficultyLevel = "Intermediate",
+  toolUsed,
+  toolSuccess,
+  toolExecutionTime,
+  toolData,
   onTopicClick,
 }: MentorResponseCardProps) {
   const getDifficultyBadge = (level: string) => {
@@ -32,6 +39,16 @@ export default function MentorResponseCard({
 
   return (
     <div className="space-y-3">
+      {/* Tool Card (rendered when backend used an internal tool) */}
+      {toolUsed && (
+        <ToolCard
+          toolUsed={toolUsed}
+          toolSuccess={toolSuccess}
+          toolExecutionTime={toolExecutionTime}
+          toolData={toolData}
+        />
+      )}
+
       {/* Markdown Body */}
       <div className="text-sm text-text prose prose-sm max-w-none prose-headings:text-text prose-headings:font-bold prose-p:text-text prose-p:leading-relaxed prose-li:text-text prose-strong:text-text prose-ul:text-text prose-ol:text-text">
         <ReactMarkdown

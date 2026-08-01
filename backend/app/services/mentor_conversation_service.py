@@ -279,6 +279,10 @@ def chat_in_conversation(
             assistant_message=MentorMessageResponse.model_validate(assistant_msg),
             recommended_topics=mentor_response.recommended_topics,
             difficulty_level=mentor_response.difficulty_level,
+            tool_used=mentor_response.tool_used,
+            tool_success=mentor_response.tool_success,
+            tool_execution_time=mentor_response.tool_execution_time,
+            tool_data=mentor_response.tool_data,
         )
 
     except HTTPException:

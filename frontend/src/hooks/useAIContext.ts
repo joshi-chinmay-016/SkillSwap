@@ -1,7 +1,7 @@
 // src/hooks/useAIContext.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAIContext, regenerateAIContext } from "../api/aiContextApi";
+import { getAIContext, regenerateAIContext, updateAIContext } from "../api/aiContextApi";
 import type { AIContextResponse } from "../types/aiContext";
 
 export function useAIContext() {
@@ -21,6 +21,17 @@ export function useAIContext() {
     },
   });
 
+  const updateMutation = useMutation<
+    AIContextResponse,
+    Error,
+    { learning_interests?: string[]; learning_style?: string }
+  >({
+    mutationFn: updateAIContext,
+    onSuccess: (newData) => {
+      queryClient.setQueryData(["aiContext", "me"], newData);
+    },
+  });
+
   return {
     context: contextQuery.data ?? null,
     isLoading: contextQuery.isLoading,
@@ -29,5 +40,7 @@ export function useAIContext() {
     refetch: contextQuery.refetch,
     regenerate: regenerateMutation.mutate,
     isRegenerating: regenerateMutation.isPending,
+    update: updateMutation.mutate,
+    isUpdating: updateMutation.isPending,
   };
 }

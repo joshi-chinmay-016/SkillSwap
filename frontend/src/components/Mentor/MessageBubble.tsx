@@ -80,6 +80,10 @@ export default function MessageBubble({ message, onTopicClick, onRetryMessage }:
               content={message.content}
               recommendedTopics={message.recommended_topics}
               difficultyLevel={message.difficulty_level}
+              toolUsed={message.tool_used}
+              toolSuccess={message.tool_success}
+              toolExecutionTime={message.tool_execution_time}
+              toolData={message.tool_data}
               onTopicClick={onTopicClick}
             />
             {timeLabel && (

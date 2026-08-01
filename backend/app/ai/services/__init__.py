@@ -26,6 +26,10 @@ from .mentor_intelligence_engine import (
     MentorIntelligenceEngine
 )
 
+from .intent_classification_service import (
+    IntentClassificationService
+)
+
 __all__ = [
     "LLMService",
     "RoadmapService",
@@ -33,5 +37,6 @@ __all__ = [
     "SessionSummaryService",
     "MentorRecommendationService",
     "AIMentorService",
-    "MentorIntelligenceEngine"
+    "MentorIntelligenceEngine",
+    "IntentClassificationService"
 ]
