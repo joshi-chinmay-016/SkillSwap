@@ -29,6 +29,8 @@ from app.ai.services.intent_classification_service import IntentClassificationSe
 from app.ai.tools.tool_dispatcher import ToolDispatcher
 from app.ai.models.mentor_intent import MentorIntent, IntentResult
 from app.ai.tools.mentor_tool import ToolResult
+from app.ai.services.memory_retrieval_service import MemoryRetrievalService
+from app.ai.services.memory_update_service import MemoryUpdateService
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,10 @@ class AIMentorService:
 
     Does NOT manage conversation history (that belongs to Day 63).
     Every call is stateless at this layer.
+
+    Day 65 additions:
+        - MemoryRetrievalService: fetches relevant long-term memories before prompt building
+        - MemoryUpdateService: refreshes last_used_at after response generation
     """
 
     def __init__(
@@ -48,12 +54,16 @@ class AIMentorService:
         llm_service: LLMService,
         intent_service: Optional[IntentClassificationService] = None,
         dispatcher: Optional[ToolDispatcher] = None,
+        memory_retrieval: Optional[MemoryRetrievalService] = None,
+        memory_update: Optional[MemoryUpdateService] = None,
     ):
         self.llm = llm_service
         self.intelligence = MentorIntelligenceEngine()
         self.prompt_builder = MentorPromptBuilder()
         self.intent_service = intent_service or IntentClassificationService()
         self.dispatcher = dispatcher
+        self.memory_retrieval = memory_retrieval or MemoryRetrievalService()
+        self.memory_update = memory_update or MemoryUpdateService()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Public API
@@ -285,6 +295,19 @@ class AIMentorService:
         except Exception as exc:
             logger.error("AIMentorService: tool dispatch failed: %s", str(exc))
             return None
+
+    def _retrieve_memories(
+        self,
+        db: Session,
+        user_id: int,
+        question: str,
+    ) -> list:
+        """Retrieve relevant active memories for the current question. Fails safe."""
+        try:
+            return self.memory_retrieval.retrieve(db=db, user_id=user_id, question=question)
+        except Exception as exc:
+            logger.error("AIMentorService: memory retrieval failed: %s", str(exc))
+            return []
 
 
     @staticmethod

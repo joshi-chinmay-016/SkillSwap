@@ -51,3 +51,9 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    mentor_memories = relationship(
+        "MentorMemory",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

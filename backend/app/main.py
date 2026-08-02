@@ -8,6 +8,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+from app.models.base import Base
+from app.core.database import engine
+import app.models.mentor_memory as _mentor_memory  # Ensures MentorMemory model is registered
+
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).warning(f"Auto table creation error: {e}")
+
+
+
 origins = [
 
     "http://localhost:5173",
@@ -117,6 +129,11 @@ from app.api.ai_context_router import (
     router as ai_context_router
 )
 
+from app.api.mentor_memory_router import (
+    router as mentor_memory_router
+)
+
+
 from app.api.learning_sessions import (
     journey_sessions_router as learning_sessions_journey_router,
     sessions_router as learning_sessions_router
@@ -168,6 +185,8 @@ app.include_router(activities_router)
 app.include_router(journeys_router)
 app.include_router(achievements_router)
 app.include_router(ai_context_router)
+app.include_router(mentor_memory_router)
+
 # Include optional AI routers only if they were successfully imported
 if ai_router:
     app.include_router(ai_router)
