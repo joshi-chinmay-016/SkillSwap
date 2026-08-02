@@ -19,3 +19,11 @@ from app.models.session_summary import SessionSummary
 from app.models.ai_context import AIContext
 from app.models.mentor_conversation import MentorConversation, ConversationStatus
 from app.models.mentor_message import MentorMessage, MessageRole
+from app.models.mentor_memory import (
+    MentorMemory,
+    MemoryCategory,
+    MemoryImportance,
+    MemoryStatus,
+    MemorySource,
+)
+

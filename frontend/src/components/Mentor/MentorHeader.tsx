@@ -1,8 +1,10 @@
 // src/components/Mentor/MentorHeader.tsx
 
 import React from "react";
-import { Bot, Sparkles, Layers, Menu, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bot, Sparkles, Layers, Menu, Lock, Brain } from "lucide-react";
 import type { MentorConversation } from "../../types/mentor";
+
 
 interface MentorHeaderProps {
   conversation?: MentorConversation | null;
@@ -68,6 +70,15 @@ export default function MentorHeader({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        <Link
+          to="/mentor/memory"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-bg-alt text-text-secondary hover:text-text hover:bg-bg text-xs font-semibold transition-all cursor-pointer"
+          title="AI Memory Management"
+        >
+          <Brain className="w-3.5 h-3.5 text-accent" />
+          <span className="hidden sm:inline">AI Memory</span>
+        </Link>
+
         {onToggleProfileSidebar && (
           <button
             type="button"
@@ -84,6 +95,7 @@ export default function MentorHeader({
           </button>
         )}
       </div>
+
     </div>
   );
 }

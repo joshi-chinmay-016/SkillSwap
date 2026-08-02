@@ -28,6 +28,7 @@ import LearningJourney from "../pages/LearningJourney";
 import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
 import AIMentorPage from "../pages/AIMentorPage";
+import MentorMemoryPage from "../pages/MentorMemoryPage";
 
 export default function AppRoutes() {
   return (
@@ -50,7 +51,9 @@ export default function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/mentor" element={<AIMentorPage />} />
+          <Route path="/mentor/memory" element={<MentorMemoryPage />} />
           <Route path="/mentor/:conversationId" element={<AIMentorPage />} />
+
 
           <Route path="/mentors" element={<MentorList />} />
           <Route path="/mentors/:id" element={<MentorDetail />} />

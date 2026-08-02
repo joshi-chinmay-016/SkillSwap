@@ -116,3 +116,84 @@ export async function retryMentorMessage(
   );
   return response.data;
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Day 65 Long-Term AI Memory API Functions
+// ──────────────────────────────────────────────────────────────────────────────
+import type {
+  MentorMemory,
+  MentorMemoryCreatePayload,
+  MentorMemoryUpdatePayload,
+  MentorMemoryListResponse,
+  MentorMemoryStats,
+  MentorMemorySettings,
+  MentorMemorySettingsUpdatePayload,
+  MemoryFilterParams,
+} from "../types/mentorMemory";
+
+export async function createMemory(data: MentorMemoryCreatePayload): Promise<MentorMemory> {
+  const response = await api.post<MentorMemory>("/mentor/memory", data);
+  return response.data;
+}
+
+export async function getMemories(
+  filters: MemoryFilterParams = {}
+): Promise<MentorMemoryListResponse> {
+  const params: Record<string, any> = {};
+  if (filters.category && filters.category !== "ALL") params.category = filters.category;
+  if (filters.importance) params.importance = filters.importance;
+  if (filters.status) params.status = filters.status;
+  if (filters.search) params.search = filters.search;
+  if (filters.page) params.page = filters.page;
+  if (filters.pageSize) params.page_size = filters.pageSize;
+
+  const response = await api.get<MentorMemoryListResponse>("/mentor/memory", { params });
+  return response.data;
+}
+
+export async function getMemoryStats(): Promise<MentorMemoryStats> {
+  const response = await api.get<MentorMemoryStats>("/mentor/memory/stats");
+  return response.data;
+}
+
+export async function getMemorySettings(): Promise<MentorMemorySettings> {
+  const response = await api.get<MentorMemorySettings>("/mentor/memory/settings");
+  return response.data;
+}
+
+export async function updateMemorySettings(
+  data: MentorMemorySettingsUpdatePayload
+): Promise<MentorMemorySettings> {
+  const response = await api.patch<MentorMemorySettings>("/mentor/memory/settings", data);
+  return response.data;
+}
+
+export async function getMemory(id: number): Promise<MentorMemory> {
+  const response = await api.get<MentorMemory>(`/mentor/memory/${id}`);
+  return response.data;
+}
+
+export async function updateMemory(
+  id: number,
+  data: MentorMemoryUpdatePayload
+): Promise<MentorMemory> {
+  const response = await api.patch<MentorMemory>(`/mentor/memory/${id}`, data);
+  return response.data;
+}
+
+export async function archiveMemory(id: number): Promise<MentorMemory> {
+  const response = await api.patch<MentorMemory>(`/mentor/memory/${id}/archive`);
+  return response.data;
+}
+
+export async function pinMemory(id: number, isPinned?: boolean): Promise<MentorMemory> {
+  const response = await api.patch<MentorMemory>(`/mentor/memory/${id}/pin`, null, {
+    params: isPinned !== undefined ? { is_pinned: isPinned } : {},
+  });
+  return response.data;
+}
+
+export async function deleteMemory(id: number): Promise<void> {
+  await api.delete(`/mentor/memory/${id}`);
+}
+

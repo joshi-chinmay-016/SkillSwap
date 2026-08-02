@@ -41,10 +41,19 @@ class MentorPromptBuilder:
         context: Optional["AIContext"],
         meta: "PersonalizationMeta",
         tool_results: Optional[list] = None,
+        memories: Optional[list] = None,
     ) -> str:
         """
         Compose the full user-turn prompt that is sent to the LLM.
         The system prompt is passed separately via LLMService.generate().
+
+        Prompt order:
+            1. Mode header
+            2. Long-Term Memory (if any)
+            3. Learner profile (AIContext)
+            4. Personalization metadata
+            5. Platform data (tool results)
+            6. Current question
         """
         sections: list[str] = []
 
@@ -54,18 +63,23 @@ class MentorPromptBuilder:
         )
         sections.append(f"[Mentor Mode: {meta.mode.title()}]\n{mode_description}")
 
-        # ── 2. Learner profile ───────────────────────────────────────────────
+        # ── 2. Long-Term Memory ──────────────────────────────────────────────
+        memory_block = self._build_memory_block(memories)
+        if memory_block:
+            sections.append(memory_block)
+
+        # ── 3. Learner profile ───────────────────────────────────────────────
         sections.append(self._build_learner_profile(context))
 
-        # ── 3. Personalization guidance ──────────────────────────────────────
+        # ── 4. Personalization guidance ──────────────────────────────────────
         sections.append(self._build_personalization_block(meta))
 
-        # ── 4. Platform Data (if tools executed) ─────────────────────────────
+        # ── 5. Platform Data (if tools executed) ─────────────────────────────
         platform_data = self._build_platform_data_block(tool_results)
         if platform_data:
             sections.append(platform_data)
 
-        # ── 5. User question ─────────────────────────────────────────────────
+        # ── 6. User question ─────────────────────────────────────────────────
         sections.append(f"[Learner Question]\n{question.strip()}")
 
         return "\n\n".join(sections)
@@ -77,17 +91,19 @@ class MentorPromptBuilder:
         context: Optional["AIContext"],
         meta: "PersonalizationMeta",
         tool_results: Optional[list] = None,
+        memories: Optional[list] = None,
     ) -> str:
         """
         Compose a user-turn prompt that includes recent conversation history.
 
         Prompt order:
             1. Mode header
-            2. Learner profile
-            3. Personalization metadata
-            4. Platform data (if available)
-            5. Recent conversation history
-            6. Current user question
+            2. Long-Term Memory (if any)
+            3. Learner profile (AIContext)
+            4. Personalization metadata
+            5. Platform data (if available)
+            6. Recent conversation history
+            7. Current user question
         """
         sections: list[str] = []
 
@@ -97,18 +113,23 @@ class MentorPromptBuilder:
         )
         sections.append(f"[Mentor Mode: {meta.mode.title()}]\n{mode_description}")
 
-        # ── 2. Learner profile ───────────────────────────────────────────────
+        # ── 2. Long-Term Memory ──────────────────────────────────────────────
+        memory_block = self._build_memory_block(memories)
+        if memory_block:
+            sections.append(memory_block)
+
+        # ── 3. Learner profile ───────────────────────────────────────────────
         sections.append(self._build_learner_profile(context))
 
-        # ── 3. Personalization guidance ──────────────────────────────────────
+        # ── 4. Personalization guidance ──────────────────────────────────────
         sections.append(self._build_personalization_block(meta))
 
-        # ── 4. Platform Data (if tools executed) ─────────────────────────────
+        # ── 5. Platform Data (if tools executed) ─────────────────────────────
         platform_data = self._build_platform_data_block(tool_results)
         if platform_data:
             sections.append(platform_data)
 
-        # ── 5. Conversation History ──────────────────────────────────────────
+        # ── 6. Conversation History ──────────────────────────────────────────
         if history:
             history_lines = ["[Recent Conversation History]"]
             for msg in history:
@@ -116,7 +137,7 @@ class MentorPromptBuilder:
                 history_lines.append(f"{role_label}: {msg.content}")
             sections.append("\n\n".join(history_lines))
 
-        # ── 6. Current User question ──────────────────────────────────────────
+        # ── 7. Current User question ──────────────────────────────────────────
         sections.append(f"[Current Learner Question]\n{question.strip()}")
 
         return "\n\n".join(sections)
@@ -241,3 +262,24 @@ class MentorPromptBuilder:
             lines.append("")
 
         return "\n".join(lines).strip()
+
+    @staticmethod
+    def _build_memory_block(memories: Optional[list]) -> str:
+        """
+        Convert retrieved MentorMemory objects into a natural-language prompt section.
+
+        Does NOT dump raw DB rows — uses the memory content field which already
+        contains human-readable text.
+        Only injects active, relevant memories that were pre-selected by MemoryRetrievalService.
+        """
+        if not memories:
+            return ""
+
+        lines = ["[Long-Term Memory — Persistent Facts About This Learner]"]
+        lines.append(
+            "Use the following remembered facts to personalise your response. "
+            "Do not repeat these facts verbatim — weave them naturally."
+        )
+        for memory in memories:
+            lines.append(f"- {memory.content}")
+        return "\n".join(lines)
