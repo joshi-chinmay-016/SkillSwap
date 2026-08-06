@@ -55,6 +55,28 @@ class Settings(BaseSettings):
     # Extra priority added for pinned memories (added to raw score)
     MEMORY_PINNED_PRIORITY_BONUS: float = 0.5
 
+    # ----------------------------
+    # Document Storage (Day 66)
+    # ----------------------------
+
+    # Storage backend: LOCAL | S3 | AZURE | GCS | MINIO
+    STORAGE_PROVIDER: str = "LOCAL"
+
+    # Root directory for uploaded files (LocalStorageProvider)
+    UPLOAD_DIRECTORY: str = "uploads"
+
+    # Maximum upload size in bytes (default: 25 MB)
+    MAX_FILE_SIZE: int = 26_214_400
+
+    # Duplicate upload policy: REJECT | REUSE | ALLOW
+    # REJECT: same user, same file → 409 Conflict
+    # REUSE: return existing metadata without re-storing
+    # ALLOW: store independently (creates multiple records)
+    DUPLICATE_UPLOAD_POLICY: str = "REJECT"
+
+    # Temporary directory for in-progress uploads (future use)
+    TEMP_DIRECTORY: str = "uploads/tmp"
+
     class Config:
         env_file = ".env"
 

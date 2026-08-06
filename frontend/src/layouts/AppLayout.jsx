@@ -25,8 +25,10 @@ import {
   MessageSquare,
   Activity,
   Bot,
-  Brain
+  Brain,
+  FolderOpen
 } from "lucide-react";
+
 
 
 export default function AppLayout() {
@@ -121,7 +123,9 @@ export default function AppLayout() {
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
     { name: "AI Mentor", to: "/mentor", icon: Bot },
     { name: "AI Memory", to: "/mentor/memory", icon: Brain },
+    { name: "AI Library", to: "/documents", icon: FolderOpen },
     { name: "Learning Journey", to: "/journey/roadmap", icon: Compass },
+
 
     { name: "Skill Gap", to: "/journey/skill-gap", icon: Target },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
