@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../components/common/Toast";
 import {
@@ -9,6 +9,7 @@ import {
   useDownloadDocument,
   useStorageHealth,
   useDocumentMetrics,
+  useRetryParsing,
 } from "../hooks/useDocuments";
 
 import Hero from "../components/documents/Hero";
@@ -18,30 +19,33 @@ import FloatingToolbar from "../components/documents/FloatingToolbar";
 import DocumentGrid from "../components/documents/DocumentGrid";
 import EmptyLibrary from "../components/documents/EmptyLibrary";
 import { SkeletonGrid } from "../components/documents/SkeletonCard";
-import DocumentPreview from "../components/documents/DocumentPreview";
+import MetadataDrawer from "../components/documents/MetadataDrawer";
 import RenameModal from "../components/documents/RenameModal";
 import DeleteDialog from "../components/documents/DeleteDialog";
+import RetryDialog from "../components/documents/RetryDialog";
 
 import { ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function DocumentLibraryPage() {
   const toast = useToast();
 
-  // Toolbar & State
+  // Toolbar & Filtering State
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
-  const [selectedSort, setSelectedSort] = useState("newest");
+  const [selectedFilter, setSelectedFilter] = useState("all"); // extension: all | pdf | txt | md
+  const [selectedStatus, setSelectedStatus] = useState("all"); // status: all | READY | PROCESSING | UPLOADED | FAILED
+  const [selectedSort, setSelectedSort] = useState("newest"); // sort: newest | oldest | ready_first | parsing_first | name
   const [viewMode, setViewMode] = useState("grid");
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
-  // Queue state for multi-file uploads
+  // Multi-file Upload Queue
   const [uploadQueue, setUploadQueue] = useState([]);
 
-  // Modal States
-  const [previewDoc, setPreviewDoc] = useState(null);
+  // Modal / Drawer States
+  const [activeDrawerDoc, setActiveDrawerDoc] = useState(null);
   const [renameDoc, setRenameDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
+  const [retryDoc, setRetryDoc] = useState(null);
 
   // Queries
   const {
@@ -59,8 +63,9 @@ export default function DocumentLibraryPage() {
   const renameMutation = useRenameDocument();
   const deleteMutation = useDeleteDocument();
   const downloadMutation = useDownloadDocument();
+  const retryMutation = useRetryParsing();
 
-  // Process files selected for upload (single or multiple)
+  // Process files selected for upload
   const handleFilesSelected = async (files) => {
     if (!files || files.length === 0) return;
 
@@ -75,7 +80,6 @@ export default function DocumentLibraryPage() {
 
     setUploadQueue((prev) => [...newQueueItems, ...prev]);
 
-    // Process each file in the queue
     for (const item of newQueueItems) {
       try {
         await uploadMutation.mutateAsync({
@@ -95,14 +99,14 @@ export default function DocumentLibraryPage() {
         );
 
         toast.success(
-          `'${item.filename}' uploaded successfully to your AI Library.`,
-          "Upload Complete"
+          `'${item.filename}' uploaded! Text parsing enqueued in AI Pipeline.`,
+          "Processing Started"
         );
 
-        // Auto remove success items after 3 seconds
+        // Auto remove queue item after 3.5s
         setTimeout(() => {
           setUploadQueue((prev) => prev.filter((q) => q.id !== item.id));
-        }, 3000);
+        }, 3500);
       } catch (err) {
         const errorMsg =
           err.response?.data?.detail || "Upload failed. Please check file type and size.";
@@ -134,26 +138,62 @@ export default function DocumentLibraryPage() {
   const filteredDocuments = useMemo(() => {
     if (!documentsData?.documents) return [];
 
-    return documentsData.documents.filter((doc) => {
-      // 1. Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+    let docs = [...documentsData.documents];
+
+    // 1. Search Query (matches display_name, original_filename, file_extension, status)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      docs = docs.filter((doc) => {
         const matchesName = (doc.display_name || "").toLowerCase().includes(q);
         const matchesFile = (doc.original_filename || "").toLowerCase().includes(q);
-        if (!matchesName && !matchesFile) return false;
-      }
+        const matchesExt = (doc.file_extension || "").toLowerCase().includes(q);
+        const matchesStatus = (doc.status || "").toLowerCase().includes(q);
+        return matchesName || matchesFile || matchesExt || matchesStatus;
+      });
+    }
 
-      // 2. Filter Pills (All / PDF / TXT / Markdown)
-      if (selectedFilter !== "all") {
+    // 2. Extension Filter Pills (All / PDF / TXT / Markdown)
+    if (selectedFilter !== "all") {
+      docs = docs.filter((doc) => {
         const ext = (doc.file_extension || "").toLowerCase();
         if (selectedFilter === "pdf" && ext !== "pdf") return false;
         if (selectedFilter === "txt" && ext !== "txt") return false;
-        if (selectedFilter === "md" && ext !== "md") return false;
-      }
+        if (selectedFilter === "md" && (ext !== "md" && ext !== "markdown")) return false;
+        return true;
+      });
+    }
 
-      return true;
-    });
-  }, [documentsData?.documents, searchQuery, selectedFilter]);
+    // 3. Status Filter Chips (All / READY / PROCESSING / UPLOADED / FAILED)
+    if (selectedStatus !== "all") {
+      docs = docs.filter((doc) => (doc.status || "").toUpperCase() === selectedStatus.toUpperCase());
+    }
+
+    // 4. Custom Sorting
+    if (selectedSort === "ready_first") {
+      docs.sort((a, b) => {
+        if (a.status === "READY" && b.status !== "READY") return -1;
+        if (a.status !== "READY" && b.status === "READY") return 1;
+        return new Date(b.uploaded_at) - new Date(a.uploaded_at);
+      });
+    } else if (selectedSort === "parsing_first") {
+      docs.sort((a, b) => {
+        const aProc = a.status === "PROCESSING" || a.status === "UPLOADED";
+        const bProc = b.status === "PROCESSING" || b.status === "UPLOADED";
+        if (aProc && !bProc) return -1;
+        if (!aProc && bProc) return 1;
+        return new Date(b.uploaded_at) - new Date(a.uploaded_at);
+      });
+    } else if (selectedSort === "name") {
+      docs.sort((a, b) => a.display_name.localeCompare(b.display_name));
+    } else if (selectedSort === "oldest") {
+      docs.sort((a, b) => new Date(a.uploaded_at) - new Date(b.uploaded_at));
+    } else {
+      // newest default
+      docs.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
+    }
+
+    return docs;
+  }, [documentsData?.documents, searchQuery, selectedFilter, selectedStatus, selectedSort]);
 
   // Rename Action Handler
   const handleConfirmRename = async (documentId, newDisplayName) => {
@@ -181,6 +221,19 @@ export default function DocumentLibraryPage() {
     }
   };
 
+  // Retry Parsing Handler
+  const handleConfirmRetry = async (documentId) => {
+    try {
+      await retryMutation.mutateAsync(documentId);
+      toast.info("Re-enqueued document for parsing.", "Retry Started");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.detail || "Failed to trigger parsing retry.",
+        "Retry Error"
+      );
+    }
+  };
+
   // Download Action Handler
   const handleDownload = async (doc) => {
     try {
@@ -197,7 +250,7 @@ export default function DocumentLibraryPage() {
     }
   };
 
-  // Smooth Page Scroll to Top on Pagination
+  // Smooth Page Scroll
   const handlePageChange = (newPage) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -241,6 +294,8 @@ export default function DocumentLibraryPage() {
         onSearchChange={setSearchQuery}
         selectedFilter={selectedFilter}
         onFilterChange={setSelectedFilter}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
         selectedSort={selectedSort}
         onSortChange={setSelectedSort}
         viewMode={viewMode}
@@ -277,10 +332,11 @@ export default function DocumentLibraryPage() {
         <DocumentGrid
           documents={filteredDocuments}
           viewMode={viewMode}
-          onPreview={(doc) => setPreviewDoc(doc)}
+          onPreview={(doc) => setActiveDrawerDoc(doc)}
           onRename={(doc) => setRenameDoc(doc)}
           onDownload={handleDownload}
           onDelete={(doc) => setDeleteDoc(doc)}
+          onRetry={(doc) => setRetryDoc(doc)}
         />
       )}
 
@@ -299,7 +355,7 @@ export default function DocumentLibraryPage() {
               type="button"
               disabled={!documentsData.has_previous}
               onClick={() => handlePageChange(page - 1)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-bg-alt text-text font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-surface hover:bg-bg-alt text-text font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <ChevronLeft size={14} />
               <span>Previous</span>
@@ -309,7 +365,7 @@ export default function DocumentLibraryPage() {
               type="button"
               disabled={!documentsData.has_next}
               onClick={() => handlePageChange(page + 1)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-bg-alt text-text font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-surface hover:bg-bg-alt text-text font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <span>Next</span>
               <ChevronRight size={14} />
@@ -318,14 +374,11 @@ export default function DocumentLibraryPage() {
         </div>
       )}
 
-      {/* Modals & Dialogs */}
-      <DocumentPreview
-        document={previewDoc}
-        isOpen={Boolean(previewDoc)}
-        onClose={() => setPreviewDoc(null)}
-        onRename={(doc) => setRenameDoc(doc)}
-        onDownload={handleDownload}
-        onDelete={(doc) => setDeleteDoc(doc)}
+      {/* Slide-over Metadata & Pipeline Drawer */}
+      <MetadataDrawer
+        document={activeDrawerDoc}
+        isOpen={Boolean(activeDrawerDoc)}
+        onClose={() => setActiveDrawerDoc(null)}
       />
 
       <RenameModal
@@ -340,6 +393,13 @@ export default function DocumentLibraryPage() {
         isOpen={Boolean(deleteDoc)}
         onClose={() => setDeleteDoc(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      <RetryDialog
+        document={retryDoc}
+        isOpen={Boolean(retryDoc)}
+        onClose={() => setRetryDoc(null)}
+        onConfirm={handleConfirmRetry}
       />
     </motion.div>
   );

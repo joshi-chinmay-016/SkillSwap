@@ -193,6 +193,13 @@ class Document(Base):
         back_populates="documents",
     )
 
+    # Relationship to the parsed document (one-to-one)
+    parsed_document = relationship(
+        "ParsedDocument",
+        uselist=False,
+        back_populates="document",
+    )
+
     # ── Indexes ───────────────────────────────────────────────────────────────
 
     __table_args__ = (

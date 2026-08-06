@@ -184,3 +184,25 @@ class StorageHealthResponse(BaseModel):
     disk_free_bytes: Optional[int] = None
     disk_usage_percent: Optional[float] = None
     errors: List[str] = []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Parsed document (Day 67)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ParsedDocumentResponse(BaseModel):
+    """
+    Extracted text from a document (GET /documents/{id}/parsed).
+
+    ``text_content`` may be empty if parsing is still in progress or failed.
+    """
+
+    document_id: str
+    status: str
+    text_content: str = ""
+    char_count: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+

@@ -1,6 +1,5 @@
 .antigravity/*
 
-
 docs/*
 .venv/*
 venv/*
@@ -30,7 +29,6 @@ pip-wheel-metadata/
 .pytest_cache/
 backend/.env
 backend/.env*
-
 
 # Node
 node_modules/
@@ -62,7 +60,16 @@ logs/
 # Docker
 docker-compose.override.yml
 
-
-
 fix_venv.py
 powershell.bat
+
+# User uploaded files & document storage (PRIVATE & UNTRACKED)
+uploads/
+uploads/*
+**/uploads/
+**/uploads/**
+backend/uploads
+backend/uploads/*
+backend/uploads/**
+*.pdf
+*.txt

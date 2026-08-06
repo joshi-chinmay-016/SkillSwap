@@ -8,21 +8,31 @@ import {
   Edit2,
   Trash2,
   Eye,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
+import ProcessingBadge from "./ProcessingBadge";
+import ProcessingTimeline from "./ProcessingTimeline";
+import ProgressRing from "./ProgressRing";
+import { useParsingStatus } from "../../hooks/useDocuments";
 
 export default function DocumentCard({
   document: doc,
+  isHovered = false,
   onPreview,
   onRename,
   onDownload,
   onDelete,
+  onRetry,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const menuRef = useRef(null);
+
+  // Fetch parsed text status if ready
+  const { data: parsedData } = useParsingStatus(doc.id, doc.status === "READY");
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -52,35 +62,34 @@ export default function DocumentCard({
     });
   };
 
-  // Icon & Theme based on file extension
   const ext = (doc.file_extension || "").toLowerCase();
 
   const getFormatDetails = () => {
     if (ext === "pdf") {
       return {
         icon: FileText,
-        color: "text-rose-500",
-        bg: "bg-rose-500/10",
-        border: "border-rose-500/20",
-        gradient: "from-rose-500/20 to-pink-500/5",
+        color: "text-rose-600 dark:text-rose-400",
+        bg: "bg-rose-50 dark:bg-rose-950/40",
+        border: "border-rose-200 dark:border-rose-800/60",
+        gradient: "from-rose-500 to-pink-500",
         label: "PDF Document",
       };
-    } else if (ext === "md") {
+    } else if (ext === "md" || ext === "markdown") {
       return {
         icon: FileText,
-        color: "text-purple-500",
-        bg: "bg-purple-500/10",
-        border: "border-purple-500/20",
-        gradient: "from-purple-500/20 to-indigo-500/5",
+        color: "text-purple-600 dark:text-purple-400",
+        bg: "bg-purple-50 dark:bg-purple-950/40",
+        border: "border-purple-200 dark:border-purple-800/60",
+        gradient: "from-purple-500 to-indigo-500",
         label: "Markdown",
       };
     } else {
       return {
         icon: File,
-        color: "text-blue-500",
-        bg: "bg-blue-500/10",
-        border: "border-blue-500/20",
-        gradient: "from-blue-500/20 to-cyan-500/5",
+        color: "text-blue-600 dark:text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-950/40",
+        border: "border-blue-200 dark:border-blue-800/60",
+        gradient: "from-blue-500 to-cyan-500",
         label: "Text File",
       };
     }
@@ -89,76 +98,44 @@ export default function DocumentCard({
   const fmt = getFormatDetails();
   const IconComponent = fmt.icon;
 
-  // Status Badge details
-  const getStatusBadge = () => {
-    const status = (doc.status || "UPLOADED").toUpperCase();
-    if (status === "READY") {
-      return {
-        label: "Ready for AI",
-        icon: CheckCircle2,
-        style: "bg-success/10 text-success border-success/20",
-      };
-    } else if (status === "PROCESSING") {
-      return {
-        label: "Processing",
-        icon: Clock,
-        style: "bg-purple-500/10 text-purple-500 border-purple-500/20 animate-pulse",
-      };
-    } else if (status === "FAILED") {
-      return {
-        label: "Failed",
-        icon: AlertCircle,
-        style: "bg-danger/10 text-danger border-danger/20",
-      };
-    } else {
-      return {
-        label: "Uploaded",
-        icon: Clock,
-        style: "bg-accent/10 text-accent border-accent/20",
-      };
-    }
-  };
-
-  const statusBadge = getStatusBadge();
-  const StatusIcon = statusBadge.icon;
-
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 15, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -4, scale: 1.015 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-bg/90 backdrop-blur-xs p-5 shadow-sm hover:shadow-xl hover:border-accent/30 transition-all duration-200"
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={`group relative flex flex-col justify-between rounded-2xl border p-5 transition-all duration-200 ${
+        isHovered
+          ? "border-indigo-500 dark:border-indigo-400 shadow-2xl bg-white dark:bg-slate-900 z-30"
+          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm"
+      }`}
     >
-      {/* Subtle Top Gradient Accent on Hover */}
+      {/* Top Gradient Accent */}
       <div
-        className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${fmt.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+        className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r ${fmt.gradient} opacity-80 group-hover:opacity-100 transition-opacity duration-200`}
       />
 
       <div>
         {/* Top Header Row */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          {/* Layered Icon with Hover Micro-rotation */}
-          <motion.div
-            whileHover={{ rotate: 3, scale: 1.05 }}
-            transition={{ duration: 0.15 }}
-            className={`w-12 h-12 rounded-xl ${fmt.bg} ${fmt.border} border flex items-center justify-center ${fmt.color} shadow-xs shrink-0`}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          {/* Layered Icon */}
+          <div
+            className={`w-11 h-11 rounded-xl ${fmt.bg} ${fmt.border} border flex items-center justify-center ${fmt.color} shadow-xs shrink-0`}
           >
-            <IconComponent size={24} />
-          </motion.div>
+            {doc.status === "PROCESSING" ? (
+              <ProgressRing progress={65} size={36} strokeWidth={3} status="PROCESSING" />
+            ) : (
+              <IconComponent size={22} />
+            )}
+          </div>
 
           {/* Status Badge & 3-Dot Menu */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusBadge.style}`}
-            >
-              <StatusIcon size={11} />
-              {statusBadge.label}
-            </span>
+          <div className="flex items-center gap-1.5 relative z-20">
+            <ProcessingBadge status={doc.status} />
 
-            {/* Context Menu Dropdown */}
+            {/* Context Menu Dropdown Container */}
             <div ref={menuRef} className="relative">
               <button
                 type="button"
@@ -166,70 +143,87 @@ export default function DocumentCard({
                   e.stopPropagation();
                   setIsMenuOpen(!isMenuOpen);
                 }}
-                className="p-1.5 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer transition-colors"
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors shadow-xs"
                 title="Options"
               >
                 <MoreVertical size={16} />
               </button>
 
+              {/* Opaque 3-Dot Menu Dropdown (Prevents text bleeding) */}
               <AnimatePresence>
                 {isMenuOpen && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 4 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.12 }}
-                    className="absolute right-0 mt-1 w-40 rounded-xl border border-border bg-bg/95 backdrop-blur-md shadow-xl py-1 z-40 text-xs"
+                    exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-1 w-48 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl py-1.5 z-50 text-xs divide-y divide-slate-100 dark:divide-slate-800"
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onPreview(doc);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-bg-alt text-text font-medium transition-colors cursor-pointer"
-                    >
-                      <Eye size={14} className="text-text-secondary" />
-                      <span>Quick Preview</span>
-                    </button>
+                    <div className="py-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onPreview(doc);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                      >
+                        <Eye size={14} className="text-indigo-500" />
+                        <span>Details & Pipeline</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onRename(doc);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-bg-alt text-text font-medium transition-colors cursor-pointer"
-                    >
-                      <Edit2 size={14} className="text-text-secondary" />
-                      <span>Rename</span>
-                    </button>
+                      {doc.status === "FAILED" && onRetry && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            onRetry(doc);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-semibold transition-colors cursor-pointer"
+                        >
+                          <RefreshCw size={14} />
+                          <span>Retry Parsing</span>
+                        </button>
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onDownload(doc);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-bg-alt text-text font-medium transition-colors cursor-pointer"
-                    >
-                      <Download size={14} className="text-text-secondary" />
-                      <span>Download</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onRename(doc);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                      >
+                        <Edit2 size={14} className="text-slate-500" />
+                        <span>Rename</span>
+                      </button>
 
-                    <div className="h-px bg-border my-1" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onDownload(doc);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                      >
+                        <Download size={14} className="text-slate-500" />
+                        <span>Download</span>
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onDelete(doc);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-danger/10 text-danger font-medium transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                      <span>Delete</span>
-                    </button>
+                    <div className="py-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onDelete(doc);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-bold transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -240,23 +234,52 @@ export default function DocumentCard({
         {/* Title */}
         <h3
           onClick={() => onPreview(doc)}
-          className="text-sm font-bold text-text line-clamp-2 hover:text-accent cursor-pointer transition-colors leading-snug mb-2"
+          className="text-sm font-extrabold text-slate-900 dark:text-slate-100 line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors leading-snug mb-1"
           title={doc.display_name}
         >
           {doc.display_name}
         </h3>
+
+        {/* File Format details */}
+        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          {fmt.label} • {formatSize(doc.file_size)}
+        </p>
+      </div>
+
+      {/* Expandable Pipeline Timeline */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setIsTimelineExpanded(!isTimelineExpanded)}
+          className="w-full flex items-center justify-between py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider transition-colors cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5">
+            <Sparkles size={11} className="text-indigo-500" />
+            <span>AI Pipeline</span>
+          </span>
+          {isTimelineExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+
+        <AnimatePresence>
+          {isTimelineExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden pt-2"
+            >
+              <ProcessingTimeline documentStatus={doc.status} compact={true} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Footer Info */}
-      <div className="pt-3 mt-2 border-t border-border/50 flex items-center justify-between text-[11px] text-text-secondary">
-        <div className="flex items-center gap-2 font-medium">
-          <span className="uppercase font-bold tracking-wider text-text-secondary/80">
-            {ext}
-          </span>
-          <span>•</span>
-          <span>{formatSize(doc.file_size)}</span>
-        </div>
-
+      <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+        <span className="font-mono text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">
+          .{ext}
+        </span>
         <span className="font-medium">{formatDate(doc.uploaded_at)}</span>
       </div>
     </motion.div>

@@ -12,6 +12,8 @@ from app.models.base import Base
 from app.core.database import engine
 import app.models.mentor_memory as _mentor_memory  # Ensures MentorMemory model is registered
 import app.models.document as _document  # Ensures Document model is registered
+import app.models.parsed_document as _parsed_document  # Ensures ParsedDocument model is registered
+
 
 try:
     Base.metadata.create_all(bind=engine)

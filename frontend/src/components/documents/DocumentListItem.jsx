@@ -8,10 +8,9 @@ import {
   Edit2,
   Trash2,
   Eye,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+import ProcessingBadge from "./ProcessingBadge";
 
 export default function DocumentListItem({
   document: doc,
@@ -19,6 +18,7 @@ export default function DocumentListItem({
   onRename,
   onDownload,
   onDelete,
+  onRetry,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -56,7 +56,7 @@ export default function DocumentListItem({
   const getFormatDetails = () => {
     if (ext === "pdf") {
       return { icon: FileText, color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" };
-    } else if (ext === "md") {
+    } else if (ext === "md" || ext === "markdown") {
       return { icon: FileText, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" };
     } else {
       return { icon: File, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" };
@@ -66,22 +66,6 @@ export default function DocumentListItem({
   const fmt = getFormatDetails();
   const IconComponent = fmt.icon;
 
-  const getStatusBadge = () => {
-    const status = (doc.status || "UPLOADED").toUpperCase();
-    if (status === "READY") {
-      return { label: "Ready", icon: CheckCircle2, style: "bg-success/10 text-success border-success/20" };
-    } else if (status === "PROCESSING") {
-      return { label: "Processing", icon: Clock, style: "bg-purple-500/10 text-purple-500 border-purple-500/20" };
-    } else if (status === "FAILED") {
-      return { label: "Failed", icon: AlertCircle, style: "bg-danger/10 text-danger border-danger/20" };
-    } else {
-      return { label: "Uploaded", icon: Clock, style: "bg-accent/10 text-accent border-accent/20" };
-    }
-  };
-
-  const statusBadge = getStatusBadge();
-  const StatusIcon = statusBadge.icon;
-
   return (
     <motion.div
       layout
@@ -90,7 +74,7 @@ export default function DocumentListItem({
       exit={{ opacity: 0, scale: 0.98 }}
       whileHover={{ x: 2 }}
       transition={{ duration: 0.2 }}
-      className="group relative flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-bg/90 p-3.5 shadow-2xs hover:shadow-md hover:border-accent/30 transition-all duration-150"
+      className="group relative flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs hover:shadow-md hover:border-primary/30 transition-all duration-150"
     >
       {/* Left: Icon & Title */}
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -101,7 +85,7 @@ export default function DocumentListItem({
         <div className="min-w-0 flex-1">
           <h4
             onClick={() => onPreview(doc)}
-            className="text-xs sm:text-sm font-bold text-text truncate hover:text-accent cursor-pointer transition-colors"
+            className="text-xs sm:text-sm font-bold text-text truncate hover:text-primary cursor-pointer transition-colors"
             title={doc.display_name}
           >
             {doc.display_name}
@@ -123,16 +107,15 @@ export default function DocumentListItem({
 
       {/* Right: Status & Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusBadge.style}`}>
-          <StatusIcon size={11} />
-          {statusBadge.label}
-        </span>
+        <div className="hidden sm:block">
+          <ProcessingBadge status={doc.status} />
+        </div>
 
         <button
           type="button"
           onClick={() => onPreview(doc)}
           className="p-1.5 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text transition-colors cursor-pointer"
-          title="Quick Preview"
+          title="Quick Details"
         >
           <Eye size={16} />
         </button>
@@ -164,8 +147,34 @@ export default function DocumentListItem({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.12 }}
-                className="absolute right-0 mt-1 w-40 rounded-xl border border-border bg-bg/95 backdrop-blur-md shadow-xl py-1 z-40 text-xs"
+                className="absolute right-0 mt-1 w-44 rounded-xl border border-border bg-surface/95 backdrop-blur-xl shadow-xl py-1 z-40 text-xs"
               >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onPreview(doc);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-bg-alt text-text font-medium transition-colors cursor-pointer"
+                >
+                  <Eye size={14} className="text-text-secondary" />
+                  <span>Details & Pipeline</span>
+                </button>
+
+                {doc.status === "FAILED" && onRetry && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onRetry(doc);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-primary/10 text-primary font-medium transition-colors cursor-pointer"
+                  >
+                    <RefreshCw size={14} />
+                    <span>Retry Parsing</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
