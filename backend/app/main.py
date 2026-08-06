@@ -11,6 +11,7 @@ app = FastAPI(
 from app.models.base import Base
 from app.core.database import engine
 import app.models.mentor_memory as _mentor_memory  # Ensures MentorMemory model is registered
+import app.models.document as _document  # Ensures Document model is registered
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -133,6 +134,9 @@ from app.api.mentor_memory_router import (
     router as mentor_memory_router
 )
 
+from app.api.document_router import (
+    router as document_router
+)
 
 from app.api.learning_sessions import (
     journey_sessions_router as learning_sessions_journey_router,
@@ -186,6 +190,7 @@ app.include_router(journeys_router)
 app.include_router(achievements_router)
 app.include_router(ai_context_router)
 app.include_router(mentor_memory_router)
+app.include_router(document_router)
 
 # Include optional AI routers only if they were successfully imported
 if ai_router:

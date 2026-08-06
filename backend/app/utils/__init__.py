@@ -1,0 +1,3 @@
+"""
+Utils package — SkillSwap Arena.
+"""

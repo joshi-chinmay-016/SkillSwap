@@ -26,4 +26,5 @@ from app.models.mentor_memory import (
     MemoryStatus,
     MemorySource,
 )
+from app.models.document import Document, DocumentStatus
 
