@@ -23,7 +23,7 @@ Security:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -39,6 +39,7 @@ from app.schemas.document import (
     DocumentRenameRequest,
     DocumentUploadResponse,
     DocumentFilterParams,
+    ParsedDocumentResponse,
     StorageHealthResponse,
 )
 from app.services import document_service as service
@@ -72,6 +73,7 @@ async def upload_document(
         ...,
         description="Document file (PDF, TXT, or .md). Max 25 MB.",
     ),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DocumentUploadResponse:
@@ -84,6 +86,7 @@ async def upload_document(
         db=db,
         user_id=current_user.id,
         file=file,
+        background_tasks=background_tasks,
     )
 
 
@@ -297,3 +300,97 @@ async def download_document(
             "X-Document-ID": document_id,
         },
     )
+
+
+# ── Parsed Text ────────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/{document_id}/parsed",
+    response_model=ParsedDocumentResponse,
+    summary="Get parsed document text",
+    description=(
+        "Returns the extracted text content from a parsed document. "
+        "Returns 404 if parsing has not completed yet. "
+        "Only the owning user may access their documents."
+    ),
+    responses={
+        200: {"description": "Parsed text with metadata"},
+        403: {"description": "Access denied — document belongs to another user"},
+        404: {"description": "Document not found or not yet parsed"},
+        410: {"description": "Document has been deleted"},
+    },
+)
+def get_parsed_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ParsedDocumentResponse:
+    from app.repositories.parsed_document_repository import (
+        get_parsed_document as get_parsed,
+    )
+    from fastapi import HTTPException
+
+    # Verify ownership via existing service helper
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    parsed = get_parsed(db, document_id)
+    if not parsed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document has not been parsed yet. Please try again shortly.",
+        )
+
+    return ParsedDocumentResponse(
+        document_id=parsed.document_id,
+        status=parsed.status,
+        text_content=parsed.text_content or "",
+        char_count=len(parsed.text_content or ""),
+        created_at=parsed.created_at,
+        updated_at=parsed.updated_at,
+    )
+
+
+# ── Retry Parsing ─────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{document_id}/retry",
+    response_model=DocumentDetailResponse,
+    summary="Retry parsing a failed document",
+    description=(
+        "Re-enqueues text extraction for a document whose parsing failed. "
+        "Only the owning user may trigger a retry."
+    ),
+)
+def retry_document_parsing(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DocumentDetailResponse:
+    from app.repositories.parsed_document_repository import get_parsed_document as get_parsed
+    from app.services.document_parsing_service import DocumentParsingService
+    from app.core.database import SessionLocal
+
+    doc = service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    # Delete existing parsed_document record if present so process_document can re-run
+    parsed = get_parsed(db, document_id)
+    if parsed:
+        db.delete(parsed)
+        db.commit()
+
+    def _run_retry() -> None:
+        retry_db = SessionLocal()
+        try:
+            DocumentParsingService.process_document(retry_db, document_id)
+        except Exception as exc:
+            logger.error("Retry parsing failed for document %s: %s", document_id, exc)
+        finally:
+            retry_db.close()
+
+    background_tasks.add_task(_run_retry)
+    logger.info("POST /documents/%s/retry — enqueued by user_id=%d", document_id, current_user.id)
+
+    # Return refreshed detail
+    return service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+

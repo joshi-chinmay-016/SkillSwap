@@ -147,6 +147,35 @@ class StorageService:
         )
         return metadata
 
+    # ── Get (full read) ──────────────────────────────────────────────────────
+
+    def get_file(self, storage_path: str) -> bytes:
+        """
+        Read and return the entire file content as bytes.
+
+        Args:
+            storage_path: Provider-relative path (from document metadata).
+
+        Returns:
+            Raw file bytes.
+
+        Raises:
+            HTTPException 404: File not found in storage.
+            HTTPException 500: Read error.
+        """
+        logger.info("StorageService.get_file — path=%s", storage_path)
+        _metrics["downloads_total"] += 1
+
+        try:
+            return self._provider.get_file(storage_path)
+        except StorageReadError as exc:
+            _metrics["downloads_failed"] += 1
+            logger.error("Storage read error during get_file: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document file not found in storage.",
+            )
+
     # ── Stream ───────────────────────────────────────────────────────────────
 
     async def stream_file(

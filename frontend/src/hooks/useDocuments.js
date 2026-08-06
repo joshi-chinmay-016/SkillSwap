@@ -3,6 +3,7 @@ import api from "../services/api";
 
 /**
  * Fetch paginated list of documents with optional status filter and sort order.
+ * Automatically polls every 2 seconds if any document is in UPLOADED or PROCESSING state.
  */
 export function useDocuments({ status = null, page = 1, page_size = 20, sort = "newest" } = {}) {
   return useQuery({
@@ -17,7 +18,14 @@ export function useDocuments({ status = null, page = 1, page_size = 20, sort = "
       const res = await api.get(`/documents?${params.toString()}`);
       return res.data;
     },
-    staleTime: 10000,
+    staleTime: 5000,
+    refetchInterval: (query) => {
+      const docs = query.state.data?.documents || [];
+      const hasActiveProcessing = docs.some(
+        (doc) => doc.status === "PROCESSING" || doc.status === "UPLOADED"
+      );
+      return hasActiveProcessing ? 2000 : false;
+    },
   });
 }
 
@@ -33,6 +41,68 @@ export function useDocument(documentId) {
       return res.data;
     },
     enabled: Boolean(documentId),
+    refetchInterval: (query) => {
+      const doc = query.state.data;
+      if (doc && (doc.status === "PROCESSING" || doc.status === "UPLOADED")) {
+        return 2000;
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Alias hook for document metadata.
+ */
+export function useDocumentMetadata(documentId) {
+  return useDocument(documentId);
+}
+
+/**
+ * Fetch parsed text status and content for a document.
+ */
+export function useParsingStatus(documentId, enabled = true) {
+  return useQuery({
+    queryKey: ["parsedDocument", documentId],
+    queryFn: async () => {
+      if (!documentId) return null;
+      try {
+        const res = await api.get(`/documents/${documentId}/parsed`);
+        return res.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          return { document_id: documentId, status: "PENDING", text_content: "", char_count: 0 };
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(documentId) && enabled,
+    refetchInterval: (query) => {
+      const parsed = query.state.data;
+      if (parsed && (parsed.status === "PENDING" || parsed.status === "PROCESSING")) {
+        return 2000;
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Retry parsing a document.
+ */
+export function useRetryParsing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/retry`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["parsedDocument", documentId] });
+    },
   });
 }
 
@@ -115,7 +185,6 @@ export function useDownloadDocument() {
         responseType: "blob",
       });
 
-      // Create download link and click it
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;

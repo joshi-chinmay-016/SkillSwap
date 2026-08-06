@@ -29,7 +29,7 @@ import logging
 import uuid
 from typing import AsyncGenerator
 
-from fastapi import HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -139,6 +139,7 @@ async def upload_document(
     db: Session,
     user_id: int,
     file: UploadFile,
+    background_tasks: BackgroundTasks | None = None,
     _storage: StorageService | None = None,
 ) -> DocumentUploadResponse:
     """
@@ -321,6 +322,32 @@ async def upload_document(
         display_name,
         storage_meta.size,
     )
+
+    # ── Trigger async parsing (Day 67) ────────────────────────────────────
+    if background_tasks is not None:
+        from app.services.document_parsing_service import DocumentParsingService
+
+        def _run_parsing() -> None:
+            """Execute parsing in a background thread with a fresh DB session."""
+            from app.core.database import SessionLocal
+
+            parsing_db = SessionLocal()
+            try:
+                DocumentParsingService.process_document(parsing_db, document_id)
+            except Exception as parse_exc:  # noqa: BLE001
+                logger.error(
+                    "Background parsing failed for document %s: %s",
+                    document_id,
+                    parse_exc,
+                )
+            finally:
+                parsing_db.close()
+
+        background_tasks.add_task(_run_parsing)
+        logger.info(
+            "upload_document — parsing enqueued for document_id=%s",
+            document_id,
+        )
 
     return DocumentUploadResponse.model_validate(doc)
 
