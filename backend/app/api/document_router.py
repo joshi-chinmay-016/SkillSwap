@@ -394,3 +394,75 @@ def retry_document_parsing(
     # Return refreshed detail
     return service.get_document(db=db, document_id=document_id, user_id=current_user.id)
 
+
+# ── Chunk Management Endpoints (Day 68) ──────────────────────────────────────────
+
+@router.get(
+    "/{document_id}/chunks",
+    summary="Get document chunks",
+    description="Returns a paginated list of intelligent text chunks generated for a document.",
+)
+def get_document_chunks(
+    document_id: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=500),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.chunk_service import ChunkService
+
+    return ChunkService.get_chunks(
+        db,
+        document_id=document_id,
+        user_id=current_user.id,
+        page=page,
+        page_size=page_size,
+        status_filter=status_filter,
+    )
+
+
+@router.get(
+    "/{document_id}/chunks/metadata",
+    summary="Get chunk metadata",
+    description="Returns aggregate chunk statistics (totals, average tokens, strategy) for a document.",
+)
+def get_chunk_metadata(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.chunk_service import ChunkService
+
+    return ChunkService.get_chunk_metadata(
+        db,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+
+
+@router.post(
+    "/{document_id}/rechunk",
+    summary="Re-chunk a document",
+    description="Archives existing chunks and re-enqueues intelligent chunk generation.",
+)
+def rechunk_document(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.jobs.chunk_generation_job import run_rechunk_job
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    background_tasks.add_task(
+        run_rechunk_job,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+    logger.info("POST /documents/%s/rechunk — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Rechunking job enqueued successfully.", "document_id": document_id}
+
+

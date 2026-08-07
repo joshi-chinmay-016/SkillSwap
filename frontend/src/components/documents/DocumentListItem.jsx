@@ -9,6 +9,7 @@ import {
   Trash2,
   Eye,
   RefreshCw,
+  Layers,
 } from "lucide-react";
 import ProcessingBadge from "./ProcessingBadge";
 
@@ -19,6 +20,7 @@ export default function DocumentListItem({
   onDownload,
   onDelete,
   onRetry,
+  onExploreChunks,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -106,7 +108,17 @@ export default function DocumentListItem({
       </div>
 
       {/* Right: Status & Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2">
+        {onExploreChunks && (doc.status === "READY" || doc.status === "PROCESSING") && (
+          <button
+            type="button"
+            onClick={() => onExploreChunks(doc)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-xs font-bold transition-colors cursor-pointer"
+          >
+            <Layers size={13} />
+            <span>Chunks</span>
+          </button>
+        )}
         <div className="hidden sm:block">
           <ProcessingBadge status={doc.status} />
         </div>

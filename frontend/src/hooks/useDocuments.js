@@ -223,3 +223,102 @@ export function useDocumentMetrics() {
     },
   });
 }
+
+/**
+ * Fetch paginated chunks for a document.
+ * Automatically polls while status is PENDING.
+ */
+export function useChunks({ documentId, page = 1, page_size = 100, status = null, enabled = true } = {}) {
+  return useQuery({
+    queryKey: ["chunks", documentId, { page, page_size, status }],
+    queryFn: async () => {
+      if (!documentId) return { chunks: [], total: 0, page: 1, page_size: 100 };
+      const params = new URLSearchParams();
+      if (page) params.append("page", page.toString());
+      if (page_size) params.append("page_size", page_size.toString());
+      if (status) params.append("status", status);
+
+      const res = await api.get(`/documents/${documentId}/chunks?${params.toString()}`);
+      return res.data;
+    },
+    enabled: Boolean(documentId) && enabled,
+    refetchInterval: (query) => {
+      const chunks = query.state.data?.chunks || [];
+      const isProcessing = chunks.some((c) => c.status === "PENDING");
+      return isProcessing ? 2000 : false;
+    },
+  });
+}
+
+/**
+ * Fetch aggregate chunk metadata / statistics for a document.
+ */
+export function useChunkMetadata(documentId, enabled = true) {
+  return useQuery({
+    queryKey: ["chunkMetadata", documentId],
+    queryFn: async () => {
+      if (!documentId) return null;
+      try {
+        const res = await api.get(`/documents/${documentId}/chunks/metadata`);
+        return res.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(documentId) && enabled,
+    refetchInterval: (query) => {
+      const meta = query.state.data;
+      if (!meta || meta.total_chunks === 0) {
+        return 3000;
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Alias hook for chunk statistics.
+ */
+export function useChunkStatistics(documentId, enabled = true) {
+  return useChunkMetadata(documentId, enabled);
+}
+
+/**
+ * Hook to check if chunking is ready for a document.
+ */
+export function useChunkStatus(documentId, enabled = true) {
+  const { data: metadata, isLoading, isError } = useChunkMetadata(documentId, enabled);
+  const isReady = Boolean(metadata && metadata.total_chunks > 0);
+  return { metadata, isReady, isLoading, isError };
+}
+
+/**
+ * Re-chunk a document (archive old chunks & regenerate).
+ */
+export function useRechunkDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/rechunk`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["chunks", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["chunkMetadata", documentId] });
+    },
+  });
+}
+
+/**
+ * Alias for rechunk / retry chunking.
+ */
+export function useRetryChunking() {
+  return useRechunkDocument();
+}
+

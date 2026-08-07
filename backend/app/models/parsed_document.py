@@ -55,6 +55,14 @@ class ParsedDocument(Base):
 
     document = relationship("Document", back_populates="parsed_document")
 
+    # Back-reference to chunks (added Day 68 — read-only relationship)
+    chunks = relationship(
+        "Chunk",
+        back_populates="parsed_document",
+        cascade="all, delete-orphan",
+        order_by="Chunk.chunk_index",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<ParsedDocument id={self.id!r} document_id={self.document_id!r} "

@@ -14,7 +14,7 @@
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=python&logoColor=white)](https://www.sqlalchemy.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Tests-87%2F87%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
+[![Build Status](https://img.shields.io/badge/Tests-196%2F196%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
 
 <br />
 
@@ -25,20 +25,20 @@
 ---
 
 > [!IMPORTANT]
-> **SkillSwap Arena** is an enterprise-grade SaaS application engineered for scalable peer-to-peer mentorship and AI-augmented education. Built with a decoupled **Repository → Service → Router** backend pattern and a reactive, glassmorphic React frontend, it features real-time WebSocket notifications, a multi-format Document Parsing & RAG Engine, and persistent AI Mentor memory.
+> **SkillSwap Arena** is an enterprise-grade SaaS application engineered for scalable peer-to-peer mentorship and AI-augmented education. Built with a decoupled **Repository → Service → Router** backend pattern and a reactive, glassmorphic React frontend, it features real-time WebSocket notifications, a multi-format Document Parsing & Intelligent Text Chunking RAG Engine, and persistent AI Mentor memory.
 
 ---
 
 ## 📌 Executive Summary
 
-SkillSwap Arena bridges the gap between traditional peer learning and modern generative AI. While learners exchange real-world skills through structured sessions and reputation-backed feedback, an integrated **AI Mentor** actively processes their uploaded learning materials (PDFs, Markdown notes, TXT files) into searchable vector knowledge using a 6-stage RAG pipeline.
+SkillSwap Arena bridges the gap between traditional peer learning and modern generative AI. While learners exchange real-world skills through structured sessions and reputation-backed feedback, an integrated **AI Mentor** actively processes their uploaded learning materials (PDFs, Markdown notes, TXT files) into searchable vector knowledge using a multi-stage RAG pipeline.
 
 ### Why SkillSwap Arena?
 
-* **Decoupled Business Logic**: Strict separation between data access, business orchestration, and HTTP presentation layers ensures high maintainability and 100% unit-testability.
-* **Asynchronous Document Pipeline**: Document uploads are stored instantly via a unified `StorageService` abstraction, while text extraction runs non-blockingly via background task workers.
-* **State-of-the-Art AI Integration**: Combines short-term conversation context, persistent categorical memory (`MentorMemory`), and multi-format document RAG to deliver personalized mentorship.
-* **Production Reliability**: Backed by a full PyTest suite (87/87 tests passing), SHA-256 duplicate file detection, path traversal security, and Alembic schema versioning.
+* **Decoupled Business Logic**: Strict separation between data access, business orchestration, strategy abstraction, and HTTP presentation layers ensures high maintainability and 100% unit-testability.
+* **Asynchronous Document Pipeline**: Document uploads are stored instantly via a unified `StorageService` abstraction, while text extraction and intelligent chunking execute non-blockingly via background task workers.
+* **Intelligent Text Chunking Engine**: Context-preserving recursive chunking with sentence/paragraph boundary protection, heading awareness, and configurable overlap halos.
+* **Production Reliability**: Backed by a full PyTest suite (196/196 tests passing), SHA-256 duplicate file detection, path traversal security, and Alembic schema versioning.
 
 ---
 
@@ -47,7 +47,7 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 ### 🔐 1. Authentication & Identity Management
 * **OAuth2 Password Flow & JWT Security**: Stateless authentication with encrypted JWT bearer tokens.
 * **User Profiles & Role Management**: Personal portfolios showcasing skills to teach, skills to learn, reputation score, and completed sessions.
-* **Strict Ownership Boundaries**: Hard security authorization layer preventing cross-user data leaks across documents, requests, and session logs.
+* **Strict Ownership Boundaries**: Hard security authorization layer preventing cross-user data leaks across documents, requests, session logs, and knowledge chunks.
 
 ### 🔄 2. Peer Skill Matching & Session Management
 * **Teach & Learn Skill Mapping**: Bidirectional skill categorization enabling precise peer discovery.
@@ -64,15 +64,21 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 * **Skill Trends & Metrics**: Visual analytics for top teaching skills, learning demand, and mentor performance.
 * **Competitive Leaderboards**: Dynamic rankings for top-rated mentors and active contributors.
 
-### 📄 5. Document Management Engine (Day 66)
+### 📄 5. Document Management Engine
 * **Storage Provider Abstraction**: Modular `StorageProvider` interface supporting local filesystem and seamless cloud (AWS S3 / Azure Blob) migration.
 * **Security & Integrity**: Automatic SHA-256 checksum duplicate rejection, path traversal protection, and UUID file isolation.
-* **Management APIs**: 8 production REST endpoints for file upload, paginated listing, streaming download, soft-delete archiving, and storage health diagnostics.
+* **Management APIs**: Production REST endpoints for file upload, paginated listing, streaming download, soft-delete archiving, and storage health diagnostics.
 
-### 🧠 6. AI Document Parsing & RAG Engine (Day 67)
+### 🧠 6. AI Document Parsing Engine
 * **Multi-Format Text Extraction**: Isolated parser engine supporting PDF (PyMuPDF `fitz`), Plain Text (`chardet` auto-encoding), and Markdown (`markdown` syntax stripping).
 * **Asynchronous Pipeline**: Upload returns instantly while text extraction executes in background task workers, transitioning status from `UPLOADED` → `PROCESSING` → `READY`.
-* **Parsed Content Persistence**: Dedicated `ParsedDocument` database store enabling immediate chunking, embedding, and vector index generation over Days 68–74.
+* **Parsed Content Persistence**: Dedicated `ParsedDocument` database store enabling immediate chunking, embedding, and vector index generation.
+
+### 🧩 7. Intelligent Text Chunking & Knowledge Studio
+* **Recursive Chunking Strategy**: Paragraph-aware, sentence-aware, heading-aware, and code-block-aware text segmenter preventing mid-sentence breaks.
+* **Context Preservation via Overlap**: Configurable character overlap halos (default 150 chars) ensuring continuous context between adjacent chunks.
+* **Pluggable Strategy Architecture**: Strategy pattern interface (`ChunkStrategy` / `ChunkFactory`) supporting recursive, paragraph, code-aware, and semantic strategies without modifying business logic.
+* **Visual AI Knowledge Workspace**: Interactive React UI featuring a 6-stage AI pipeline visualizer, animated node graph (`ChunkGraph`), aggregate chunk statistics, and a slide-over `ChunkDrawer`.
 
 ---
 
@@ -104,6 +110,7 @@ graph TD
         
         Service --> StorageSvc[StorageService Facade]
         Service --> ParseSvc[DocumentParsingService]
+        Service --> ChunkingSvc[ChunkingService & ChunkService]
     end
     
     subgraph Storage & Pipeline
@@ -112,11 +119,14 @@ graph TD
         ParserMgr --> PDFP[PDFParser]
         ParserMgr --> TXTP[TxtParser]
         ParserMgr --> MDP[MarkdownParser]
+        ChunkingSvc --> ChunkFactory[ChunkFactory & Strategies]
+        ChunkFactory --> RecursiveStrat[RecursiveChunkStrategy]
     end
     
     subgraph Database
         Repo --> DB[(PostgreSQL Database)]
         ParseSvc --> DB
+        ChunkingSvc --> DB
     end
 ```
 
@@ -124,8 +134,8 @@ graph TD
 
 1. **Why Repository Pattern?**
    Separating database queries (`repositories/`) from FastAPI HTTP logic (`routers/`) ensures database technology can be swapped or unit-tested using an in-memory SQLite database without modifying business logic.
-2. **Why Asynchronous Parsing?**
-   File parsing (especially large multi-page PDFs) can be CPU-intensive. By delegating text extraction to background task workers after committing metadata, API response latency stays under 50ms regardless of document size.
+2. **Why Asynchronous Parsing & Chunking?**
+   File parsing and text chunking can be CPU-intensive. By delegating text extraction and chunk generation to background task workers after committing metadata, API response latency stays under 50ms regardless of document size.
 3. **Why Storage Service Facade?**
    The application code interacts exclusively with `StorageService`. Physical storage providers (local disk, AWS S3, Google Cloud Storage) implement a standard `StorageProvider` interface, eliminating hardcoded filesystem dependencies.
 
@@ -133,7 +143,9 @@ graph TD
 
 ## 🤖 AI Mentor & RAG Architecture
 
-The AI subsystem transforms uploaded documents into a persistent knowledge base for personalized mentorship.
+The AI subsystem transforms uploaded documents into structured semantic knowledge for retrieval-augmented generation.
+
+### Complete AI Knowledge Processing Pipeline
 
 ```mermaid
 %%{init: {
@@ -149,26 +161,100 @@ The AI subsystem transforms uploaded documents into a persistent knowledge base 
 }
 }}%%
 flowchart LR
-    Upload[Uploaded File] -->|Day 66| Store[Storage Provider]
-    Store -->|Day 67| Parse[Parser Engine]
-    Parse -->|Text Content| DB[(ParsedDocument Store)]
-    DB -.->|Day 68| Chunk[Chunk Generator]
-    Chunk -.->|Day 69| Embed[Embedding Pipeline]
-    Embed -.->|Day 70| Vector[(Vector Index)]
-    Vector -.->|Day 72| RAG[RAG Retriever]
-    RAG -->|Context Injection| AIMentor[AI Mentor Engine]
+    Upload[Document Upload] --> Store[Storage Provider]
+    Store --> Parse[Parser Engine]
+    Parse --> Chunk[Intelligent Chunking Engine]
+    Chunk --> Embed[Embedding Generator]
+    Embed --> Vector[(Vector Database)]
+    Vector --> Retrieve[Semantic Retriever]
+    Retrieve --> Prompt[Prompt Builder]
+    Prompt --> LLM[LLM / AI Mentor]
+```
+
+### 🧩 Intelligent Chunking Architecture
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+graph TD
+    ParsedDoc[Parsed Document Text] --> Normalizer[Text Normalizer]
+    Normalizer --> Splitter[Recursive Cascade Splitter]
+    
+    subgraph Cascade Priority
+        Splitter -->|1. Double Newline| Paragraphs[Paragraph Boundaries]
+        Paragraphs -->|2. Single Newline| Lines[Line Boundaries]
+        Lines -->|3. Punctuation| Sentences[Sentence Boundaries . ! ?]
+        Sentences -->|4. Clauses| Clauses[Clause Boundaries , ; :]
+        Clauses -->|5. Whitespace| Words[Word Boundaries]
+    end
+    
+    Words --> Overlap[Apply Overlap Halos 150 chars]
+    Overlap --> Validator[Chunk Validator]
+    Validator --> ChunkSet[Validated Chunk Set]
+```
+
+#### Why Intelligent Chunking Matters
+
+- **Preserving Semantic Continuity**: Naive character splitters break sentences and paragraphs mid-thought, destroying semantic meaning. Intelligent chunking respects natural document boundaries.
+- **Context Preservation via Overlap**: Overlap halos ensure that concepts spanning chunk boundaries are not lost during vector similarity search.
+- **Improving Retrieval Quality**: Well-bounded chunks produce sharper embedding representations, leading to higher precision retrieval in RAG pipelines.
+- **Decoupled Architecture**: Keeping chunking independent from document parsing ensures documents can be re-chunked under updated strategies or target window sizes without re-parsing raw files.
+
+### 🔄 Chunk Lifecycle
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+sequenceDiagram
+    autonumber
+    participant Parsed as ParsedDocument
+    participant Svc as ChunkingService
+    participant Strat as ChunkStrategy
+    participant Val as ChunkValidator
+    participant Repo as ChunkRepository
+    participant DB as Database
+
+    Parsed->>Svc: generate_chunks(document_id)
+    Svc->>Strat: Select strategy (Recursive) & chunk(text)
+    Strat->>Strat: Normalize → Split → Apply Overlap
+    Strat-->>Svc: Return list of ChunkData
+    Svc->>Val: validate_chunks(chunk_list)
+    Val-->>Svc: Validation Clean (0 errors)
+    Svc->>Repo: bulk_create_chunks(parsed_document_id, chunks)
+    Repo->>DB: INSERT INTO chunks (status="READY")
+    DB-->>Svc: Commit & Return persisted Chunks
 ```
 
 ### The 6-Stage Knowledge Pipeline
 
 | Stage | Name | Description | Status |
 | :--- | :--- | :--- | :--- |
-| **Stage 1** | **Upload** | Secure Multipart upload, SHA-256 duplicate check, storage persistence | `COMPLETE` (Day 66) |
-| **Stage 2** | **Parsing** | Multi-format text extraction (PDF, TXT, MD) into `ParsedDocument` | `COMPLETE` (Day 67) |
-| **Stage 3** | **Chunking** | Semantic token windowing and recursive text splitting | `PLANNED` (Day 68) |
-| **Stage 4** | **Embeddings** | Dense vector representation generation via embedding models | `PLANNED` (Day 69) |
-| **Stage 5** | **Vector Index** | HNSW / PGVector indexing for fast cosine similarity retrieval | `PLANNED` (Day 70) |
-| **Stage 6** | **Ready for AI** | Deep integration with AI Mentor for retrieval-augmented responses | `PLANNED` (Day 72) |
+| **Stage 1** | **Upload** | Secure Multipart upload, SHA-256 duplicate check, storage persistence | `COMPLETE` |
+| **Stage 2** | **Parsing** | Multi-format text extraction (PDF, TXT, MD) into `ParsedDocument` | `COMPLETE` |
+| **Stage 3** | **Chunking** | Recursive text splitting, sentence preservation & overlap halos | `COMPLETE` |
+| **Stage 4** | **Embeddings** | Dense vector representation generation via embedding models | `NEXT` |
+| **Stage 5** | **Vector Index** | HNSW / PGVector indexing for fast cosine similarity retrieval | `PLANNED` |
+| **Stage 6** | **Ready for AI** | Deep integration with AI Mentor for retrieval-augmented responses | `PLANNED` |
 
 ---
 
@@ -195,14 +281,13 @@ erDiagram
     USERS ||--o{ NOTIFICATIONS : "receives"
     USERS ||--o{ MENTOR_MEMORIES : "accumulates"
     DOCUMENTS ||--|| PARSED_DOCUMENTS : "has"
+    PARSED_DOCUMENTS ||--o{ CHUNKS : "contains"
     SESSIONS ||--o| FEEDBACK : "generates"
 
     USERS {
         int id PK
         string email UK
-        string name
-        string password_hash
-        datetime created_at
+        string username UK
     }
 
     DOCUMENTS {
@@ -210,15 +295,9 @@ erDiagram
         int user_id FK
         string original_filename
         string stored_filename
-        string display_name
         string file_extension
-        string mime_type
-        bigint file_size
-        string storage_path
         string checksum
         string status
-        datetime uploaded_at
-        datetime deleted_at
     }
 
     PARSED_DOCUMENTS {
@@ -226,8 +305,6 @@ erDiagram
         string document_id FK,UK
         text text_content
         string status
-        datetime created_at
-        datetime updated_at
     }
 
     MENTOR_MEMORIES {
@@ -258,6 +335,30 @@ erDiagram
         datetime created_at
     }
 ```
+
+---
+
+## 🏛️ Architecture Decision Records (ADRs)
+
+### ADR-001: Decoupling Upload, Parsing, Chunking, and Embeddings into Independent Layers
+
+#### Context & Problem
+In traditional RAG implementations, document processing is often coupled into a monolithic script: `Upload -> Parse -> Chunk -> Embed`. This approach causes major operational issues in production:
+1. **Re-embedding Cost**: Upgrading embedding models requires re-downloading and re-parsing raw files.
+2. **Re-chunking Bottlenecks**: Modifying chunk sizes or strategies forces expensive re-parsing of large PDFs.
+3. **Failure Isolation**: A failure in vector indexing ruins the entire upload pipeline.
+
+#### Decision
+We enforce strict separation into four independent, stateless layers:
+1. **Upload Layer (`Document`)**: Manages physical file storage, security checks, and raw byte isolation.
+2. **Parsing Layer (`ParsedDocument`)**: Extracts and normalizes raw text content without chunking or embedding awareness.
+3. **Chunking Layer (`Chunk`)**: Generates and persists semantic text chunks independently, allowing strategy updates (`Recursive`, `CodeAware`, `Semantic`) and re-chunking without re-parsing raw files.
+4. **Embedding Layer (`Embedding`)**: Consumes persisted `Chunk` entities directly for vector indexing.
+
+#### Consequences
+- **Scalability**: Large documents generate thousands of independent chunks that can be processed concurrently.
+- **Maintainability**: New chunking strategies (`ChunkStrategy`) can be registered without modifying parser or storage code.
+- **Auditability**: Historical chunk versions (`ARCHIVED`) remain stored for performance auditing and comparison.
 
 ---
 
@@ -336,40 +437,51 @@ sequenceDiagram
 SkillSwap/
 ├── backend/
 │   ├── alembic/                  # Database migration scripts
-│   │   └── versions/             # Migration files (d90a1_add_documents...)
+│   │   └── versions/             # Migration files (d90a1_add_documents, e10a1_add_chunks...)
 │   ├── app/
 │   │   ├── api/                  # FastAPI REST Routers
 │   │   │   ├── auth.py           # Authentication endpoints
-│   │   │   ├── document_router.py# Document & Parsing management endpoints
+│   │   │   ├── document_router.py# Document, Parsing & Chunking endpoints
 │   │   │   └── sessions.py       # Session management endpoints
 │   │   ├── core/                 # App configuration & DB session factories
-│   │   ├── models/               # SQLAlchemy Models (Document, ParsedDocument...)
-│   │   ├── repositories/         # Repository Data Access Layer
-│   │   ├── schemas/              # Pydantic Request/Response contracts
-│   │   ├── services/             # Business Logic & Parsing Orchestration
-│   │   └── storage/              # Unified Storage Provider & Facade Layer
+│   │   ├── jobs/                 # Background task workers (chunk_generation_job.py)
+│   │   ├── models/               # SQLAlchemy Models (Document, ParsedDocument, Chunk...)
+│   │   ├── repositories/         # Repository Data Access Layer (chunk_repository.py...)
+│   │   ├── schemas/              # Pydantic Request/Response contracts (chunk.py...)
+│   │   ├── services/             # Business Logic & Chunking Orchestration (chunk_service.py...)
+│   │   ├── storage/              # Unified Storage Provider & Facade Layer
+│   │   └── utils/                # Text Splitter, Token Estimator & Validators
 │   ├── parsers/                  # Isolated Multi-Format Document Parsing Engine
+│   │   ├── chunking/             # Intelligent Text Chunking Strategy Sub-Package
+│   │   │   ├── chunk_strategy.py # Abstract ChunkStrategy Interface & ChunkData
+│   │   │   ├── recursive_chunk_strategy.py # Production Recursive Strategy
+│   │   │   └── chunk_factory.py  # Pluggable Strategy Factory Registry
 │   │   ├── document_parser.py    # Abstract DocumentParser Base Interface
 │   │   ├── pdf_parser.py         # PyMuPDF PDF Text Parser
-│   │   ├── txt_parser.py         # Chardet Plain Text Parser
+      ├── txt_parser.py         # Chardet Plain Text Parser
 │   │   ├── markdown_parser.py    # HTML-stripping Markdown Parser
 │   │   ├── parser_factory.py     # Extension-based Parser Factory
 │   │   └── parser_manager.py     # Unified ParserManager Facade
-│   ├── tests/                    # PyTest Unit & Integration Test Suite
+│   ├── tests/                    # PyTest Unit & Integration Test Suite (test_chunking.py...)
 │   └── requirements.txt          # Python dependency specification
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   └── documents/        # AI Document Library UI Components
+│   │   │       ├── ChunkCard.jsx          # Interactive Chunk Card with hover elevation
+│   │   │       ├── ChunkDrawer.jsx        # Slide-over Chunk Detail Inspector
+│   │   │       ├── ChunkExplorer.jsx      # AI Knowledge Chunk Explorer Modal
+│   │   │       ├── ChunkGraph.jsx         # Animated Node Graph Flow Visualizer
+│   │   │       ├── ChunkProgressRing.jsx  # Circular SVG progress ring
+│   │   │       ├── ChunkStatistics.jsx    # Aggregate Chunk Statistics Cards
 │   │   │       ├── DocumentCard.jsx       # 3D perspective document card
 │   │   │       ├── MetadataDrawer.jsx     # Slide-over AI Pipeline Drawer
 │   │   │       ├── ProcessingBadge.jsx    # Status morphing badge
-│   │   │       ├── ProcessingTimeline.jsx # 6-stage AI Pipeline Visualizer
-│   │   │       └── ProgressRing.jsx       # Circular SVG progress ring
+│   │   │       └── ProcessingTimeline.jsx # 6-stage AI Pipeline Visualizer
 │   │   ├── hooks/
-│   │   │   └── useDocuments.js   # React Query document & polling hooks
+│   │   │   └── useDocuments.js   # React Query document, chunking & polling hooks
 │   │   ├── pages/
-│   │   │   └── DocumentLibraryPage.jsx # AI Knowledge Library Page
+│   │   │   └── DocumentLibraryPage.jsx # AI Knowledge Library Studio Page
 │   │   └── services/
 │   │       └── api.js            # Axios HTTP client instance
 │   └── package.json              # Node.js dependencies

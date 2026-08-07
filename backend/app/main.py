@@ -13,6 +13,7 @@ from app.core.database import engine
 import app.models.mentor_memory as _mentor_memory  # Ensures MentorMemory model is registered
 import app.models.document as _document  # Ensures Document model is registered
 import app.models.parsed_document as _parsed_document  # Ensures ParsedDocument model is registered
+import app.models.chunk as _chunk  # Ensures Chunk model is registered (Day 68)
 
 
 try:

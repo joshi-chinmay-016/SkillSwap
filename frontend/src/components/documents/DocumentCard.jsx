@@ -12,6 +12,7 @@ import {
   ChevronUp,
   RefreshCw,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import ProcessingBadge from "./ProcessingBadge";
 import ProcessingTimeline from "./ProcessingTimeline";
@@ -26,6 +27,7 @@ export default function DocumentCard({
   onDownload,
   onDelete,
   onRetry,
+  onExploreChunks,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
@@ -172,6 +174,20 @@ export default function DocumentCard({
                         <span>Details & Pipeline</span>
                       </button>
 
+                      {onExploreChunks && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            onExploreChunks(doc);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold transition-colors cursor-pointer"
+                        >
+                          <Layers size={14} />
+                          <span>AI Chunk Explorer</span>
+                        </button>
+                      )}
+
                       {doc.status === "FAILED" && onRetry && (
                         <button
                           type="button"
@@ -275,12 +291,23 @@ export default function DocumentCard({
         </AnimatePresence>
       </div>
 
-      {/* Footer Info */}
+      {/* Footer Info & Action */}
       <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
         <span className="font-mono text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">
           .{ext}
         </span>
-        <span className="font-medium">{formatDate(doc.uploaded_at)}</span>
+        {onExploreChunks && (doc.status === "READY" || doc.status === "PROCESSING") ? (
+          <button
+            type="button"
+            onClick={() => onExploreChunks(doc)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+          >
+            <Layers size={12} />
+            <span>Explore Chunks</span>
+          </button>
+        ) : (
+          <span className="font-medium">{formatDate(doc.uploaded_at)}</span>
+        )}
       </div>
     </motion.div>
   );

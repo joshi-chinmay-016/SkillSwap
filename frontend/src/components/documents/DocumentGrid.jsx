@@ -11,6 +11,7 @@ export default function DocumentGrid({
   onDownload,
   onDelete,
   onRetry,
+  onExploreChunks,
 }) {
   const [hoveredDocId, setHoveredDocId] = useState(null);
 
@@ -38,6 +39,7 @@ export default function DocumentGrid({
                   onDownload={onDownload}
                   onDelete={onDelete}
                   onRetry={onRetry}
+                  onExploreChunks={onExploreChunks}
                 />
               </div>
             );
@@ -69,6 +71,7 @@ export default function DocumentGrid({
                 onDownload={onDownload}
                 onDelete={onDelete}
                 onRetry={onRetry}
+                onExploreChunks={onExploreChunks}
               />
             </div>
           );

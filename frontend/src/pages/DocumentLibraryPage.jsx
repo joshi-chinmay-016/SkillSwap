@@ -23,6 +23,7 @@ import MetadataDrawer from "../components/documents/MetadataDrawer";
 import RenameModal from "../components/documents/RenameModal";
 import DeleteDialog from "../components/documents/DeleteDialog";
 import RetryDialog from "../components/documents/RetryDialog";
+import ChunkExplorer from "../components/documents/ChunkExplorer";
 
 import { ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 
@@ -46,6 +47,7 @@ export default function DocumentLibraryPage() {
   const [renameDoc, setRenameDoc] = useState(null);
   const [deleteDoc, setDeleteDoc] = useState(null);
   const [retryDoc, setRetryDoc] = useState(null);
+  const [exploreChunksDoc, setExploreChunksDoc] = useState(null);
 
   // Queries
   const {
@@ -337,6 +339,7 @@ export default function DocumentLibraryPage() {
           onDownload={handleDownload}
           onDelete={(doc) => setDeleteDoc(doc)}
           onRetry={(doc) => setRetryDoc(doc)}
+          onExploreChunks={(doc) => setExploreChunksDoc(doc)}
         />
       )}
 
@@ -401,6 +404,14 @@ export default function DocumentLibraryPage() {
         onClose={() => setRetryDoc(null)}
         onConfirm={handleConfirmRetry}
       />
+
+      {/* AI Knowledge Chunk Explorer Modal */}
+      {exploreChunksDoc && (
+        <ChunkExplorer
+          document={exploreChunksDoc}
+          onClose={() => setExploreChunksDoc(null)}
+        />
+      )}
     </motion.div>
   );
 }

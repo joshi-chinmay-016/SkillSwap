@@ -27,9 +27,9 @@ export default function ProcessingTimeline({ documentStatus = "UPLOADED", compac
 
   if (documentStatus === "FAILED") {
     isFailed = true;
-    activeIndex = 1; // Failed during parsing
+    activeIndex = 2; // Failed during chunking/parsing
   } else if (documentStatus === "READY") {
-    activeIndex = 1; // Completed parsing (Day 67)
+    activeIndex = 2; // Completed Upload, Parsing, and Chunking (Day 68)
   } else if (documentStatus === "PROCESSING") {
     activeIndex = 1; // In parsing phase
   } else {
@@ -56,7 +56,7 @@ export default function ProcessingTimeline({ documentStatus = "UPLOADED", compac
 
         {/* Stage Nodes */}
         {PIPELINE_STAGES.map((stage, idx) => {
-          const isCompleted = idx < activeIndex || (idx === activeIndex && documentStatus === "READY" && idx === 1);
+          const isCompleted = idx < activeIndex || (idx === activeIndex && documentStatus === "READY");
           const isCurrent = idx === activeIndex && documentStatus !== "READY" && !isFailed;
           const isFailedStep = isFailed && idx === activeIndex;
 
