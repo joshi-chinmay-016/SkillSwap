@@ -28,5 +28,6 @@ from app.models.mentor_memory import (
 )
 from app.models.document import Document, DocumentStatus
 from app.models.parsed_document import ParsedDocument, ParsedDocumentStatus
+from app.models.chunk import Chunk, ChunkStatus
 
 

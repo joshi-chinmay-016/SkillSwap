@@ -77,6 +77,25 @@ class Settings(BaseSettings):
     # Temporary directory for in-progress uploads (future use)
     TEMP_DIRECTORY: str = "uploads/tmp"
 
+    # ----------------------------
+    # Chunking Engine (Day 68)
+    # ----------------------------
+
+    # Default maximum character count per chunk
+    CHUNK_SIZE: int = 800
+
+    # Default character overlap between adjacent chunks (context preservation)
+    CHUNK_OVERLAP: int = 150
+
+    # Default strategy name — must match a registered ChunkStrategy.name
+    CHUNK_STRATEGY: str = "recursive"
+
+    # Semantic version of the default strategy (stored with every chunk)
+    CHUNK_STRATEGY_VERSION: str = "1.0.0"
+
+    # Approximate maximum tokens per chunk (used for future embedding model gating)
+    CHUNK_MAX_TOKENS: int = 1024
+
     class Config:
         env_file = ".env"
 
