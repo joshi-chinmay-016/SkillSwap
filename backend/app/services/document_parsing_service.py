@@ -84,7 +84,22 @@ class DocumentParsingService:
                 status=ParsedDocumentStatus.READY.value,
             )
 
-            # Step 6: mark document as ready
+            # Step 6: generate chunks (Day 68 Part B)
+            try:
+                from app.services.chunk_service import ChunkService
+                ChunkService.save_chunks(db, document_id=document.id, user_id=document.user_id)
+                logger.info(
+                    "DocumentParsingService — chunk generation completed for %s",
+                    document_id,
+                )
+            except Exception as chunk_exc:
+                logger.warning(
+                    "DocumentParsingService — chunk generation failed for %s: %s",
+                    document_id,
+                    chunk_exc,
+                )
+
+            # Step 7: mark document as ready
             cls._set_document_status(db, document, DocumentStatus.READY.value)
             db.commit()
             logger.info(

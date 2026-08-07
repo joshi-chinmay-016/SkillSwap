@@ -91,9 +91,9 @@ export default function Hero({ totalDocuments = 0, totalBytes = 0, isHealthy = t
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.1 }}
-            className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed"
+            className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl"
           >
-            Upload notes, books, and PDFs. Every document is transformed into searchable, structured knowledge for your AI Mentor.
+            Your learning resources are transformed into intelligent knowledge blocks that power your personal AI Mentor.
           </motion.p>
 
           {/* Stats Bar */}
