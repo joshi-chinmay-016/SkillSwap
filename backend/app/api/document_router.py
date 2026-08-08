@@ -466,3 +466,102 @@ def rechunk_document(
     return {"message": "Rechunking job enqueued successfully.", "document_id": document_id}
 
 
+# ── Embedding Management Endpoints (Day 69) ──────────────────────────────────────
+
+@router.get(
+    "/{document_id}/embeddings/status",
+    summary="Get embedding status",
+    description="Returns aggregate embedding status, model metadata, and progress counts for a document.",
+)
+def get_embedding_status(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.embedding_service import EmbeddingService
+
+    emb_service = EmbeddingService.create()
+    return emb_service.get_embedding_status(
+        db,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+
+
+@router.post(
+    "/{document_id}/embed",
+    summary="Generate embeddings for a document",
+    description="Enqueues background embedding vector generation for all READY chunks of a document.",
+)
+def generate_embeddings(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.jobs.embedding_generation_job import run_embedding_generation_job
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    background_tasks.add_task(
+        run_embedding_generation_job,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+    logger.info("POST /documents/%s/embed — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Embedding generation job enqueued successfully.", "document_id": document_id}
+
+
+@router.post(
+    "/{document_id}/reembed",
+    summary="Re-embed a document",
+    description="Archives existing embeddings and re-enqueues embedding vector generation.",
+)
+def reembed_document(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.jobs.embedding_generation_job import run_embedding_generation_job
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    background_tasks.add_task(
+        run_embedding_generation_job,
+        document_id=document_id,
+        user_id=current_user.id,
+        force_reembed=True,
+    )
+    logger.info("POST /documents/%s/reembed — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Re-embedding job enqueued successfully.", "document_id": document_id}
+
+
+@router.post(
+    "/{document_id}/embeddings/retry",
+    summary="Retry failed embeddings",
+    description="Enqueues background retry for any chunks whose embedding generation failed.",
+)
+def retry_failed_embeddings(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.jobs.embedding_generation_job import run_embedding_retry_job
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    background_tasks.add_task(
+        run_embedding_retry_job,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+    logger.info("POST /documents/%s/embeddings/retry — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Embedding retry job enqueued successfully.", "document_id": document_id}
+
+
+

@@ -79,6 +79,9 @@ def run_chunk_generation_job(
             result.strategy_version,
             document_id,
         )
+        if result.chunk_count > 0:
+            from app.jobs.embedding_generation_job import run_embedding_generation_job
+            run_embedding_generation_job(document_id=document_id, user_id=user_id)
     except Exception as exc:
         logger.exception(
             "chunk_generation_job — failed for document_id=%s: %s",
@@ -138,6 +141,9 @@ def run_rechunk_job(
             document_id,
             result.message,
         )
+        if result.chunk_count > 0:
+            from app.jobs.embedding_generation_job import run_embedding_generation_job
+            run_embedding_generation_job(document_id=document_id, user_id=user_id, force_reembed=True)
     except Exception as exc:
         logger.exception(
             "rechunk_job — failed for document_id=%s: %s",

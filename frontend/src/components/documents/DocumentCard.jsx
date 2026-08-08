@@ -17,7 +17,7 @@ import {
 import ProcessingBadge from "./ProcessingBadge";
 import ProcessingTimeline from "./ProcessingTimeline";
 import ProgressRing from "./ProgressRing";
-import { useParsingStatus } from "../../hooks/useDocuments";
+import { useParsingStatus, useEmbeddingStatus } from "../../hooks/useDocuments";
 
 export default function DocumentCard({
   document: doc,
@@ -35,6 +35,9 @@ export default function DocumentCard({
 
   // Fetch parsed text status if ready
   const { data: parsedData } = useParsingStatus(doc.id, doc.status === "READY");
+
+  // Fetch embedding status to update the pipeline timeline
+  const { data: embeddingStatus } = useEmbeddingStatus(doc.id, doc.status === "READY");
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -285,7 +288,7 @@ export default function DocumentCard({
               transition={{ duration: 0.2 }}
               className="overflow-hidden pt-2"
             >
-              <ProcessingTimeline documentStatus={doc.status} compact={true} />
+              <ProcessingTimeline documentStatus={doc.status} embeddingStatus={embeddingStatus} compact={true} />
             </motion.div>
           )}
         </AnimatePresence>

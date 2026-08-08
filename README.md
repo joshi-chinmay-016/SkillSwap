@@ -14,7 +14,7 @@
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=python&logoColor=white)](https://www.sqlalchemy.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Tests-196%2F196%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
+[![Build Status](https://img.shields.io/badge/Tests-207%2F207%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
 
 <br />
 
@@ -38,7 +38,7 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 * **Decoupled Business Logic**: Strict separation between data access, business orchestration, strategy abstraction, and HTTP presentation layers ensures high maintainability and 100% unit-testability.
 * **Asynchronous Document Pipeline**: Document uploads are stored instantly via a unified `StorageService` abstraction, while text extraction and intelligent chunking execute non-blockingly via background task workers.
 * **Intelligent Text Chunking Engine**: Context-preserving recursive chunking with sentence/paragraph boundary protection, heading awareness, and configurable overlap halos.
-* **Production Reliability**: Backed by a full PyTest suite (196/196 tests passing), SHA-256 duplicate file detection, path traversal security, and Alembic schema versioning.
+* **Production Reliability**: Backed by a full PyTest suite (207/207 tests passing), SHA-256 duplicate file detection, path traversal security, and Alembic schema versioning.
 
 ---
 
@@ -80,6 +80,15 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 * **Pluggable Strategy Architecture**: Strategy pattern interface (`ChunkStrategy` / `ChunkFactory`) supporting recursive, paragraph, code-aware, and semantic strategies without modifying business logic.
 * **Visual AI Knowledge Workspace**: Interactive React UI featuring a 6-stage AI pipeline visualizer, animated node graph (`ChunkGraph`), aggregate chunk statistics, and a slide-over `ChunkDrawer`.
 
+### 🔢 8. AI Embedding Generation Engine
+* **Provider Abstraction Layer**: `EmbeddingProvider` abstract interface allowing seamless swap between embedding backends without modifying orchestration logic.
+* **Gemini Embedding Provider**: Production Gemini `text-embedding-004` provider (768 dimensions) with SDK + REST fallback, exponential-backoff retries, and rate-limit handling.
+* **Batch Processing**: Configurable batch sizes with async-safe chunked processing and thread-safe metrics aggregation.
+* **Idempotent Versioning**: Unique constraint on `(chunk_id, provider, model_name, model_version, embedding_version)` prevents duplicate embeddings across re-embedding runs.
+* **EmbeddingStatus Lifecycle**: State machine with `PENDING → PROCESSING → READY | FAILED | ARCHIVED` transitions persisted to PostgreSQL.
+* **Vector Security Boundary**: Raw embedding vectors are stored in PostgreSQL only. They are never serialized into API responses or frontend-facing schemas.
+* **Observability**: Per-document embedding status API (`GET /documents/{id}/embeddings/status`) returns real-time progress counts (total, embedded, remaining, failed) without exposing raw vectors.
+
 ---
 
 ## 🛠️ System Architecture
@@ -111,6 +120,7 @@ graph TD
         Service --> StorageSvc[StorageService Facade]
         Service --> ParseSvc[DocumentParsingService]
         Service --> ChunkingSvc[ChunkingService & ChunkService]
+        Service --> EmbedSvc[EmbeddingService]
     end
     
     subgraph Storage & Pipeline
@@ -121,6 +131,8 @@ graph TD
         ParserMgr --> MDP[MarkdownParser]
         ChunkingSvc --> ChunkFactory[ChunkFactory & Strategies]
         ChunkFactory --> RecursiveStrat[RecursiveChunkStrategy]
+        EmbedSvc --> EmbedProvider[EmbeddingProvider Interface]
+        EmbedProvider --> GeminiEmbed[GeminiEmbeddingProvider]
     end
     
     subgraph Database
@@ -252,9 +264,116 @@ sequenceDiagram
 | **Stage 1** | **Upload** | Secure Multipart upload, SHA-256 duplicate check, storage persistence | `COMPLETE` |
 | **Stage 2** | **Parsing** | Multi-format text extraction (PDF, TXT, MD) into `ParsedDocument` | `COMPLETE` |
 | **Stage 3** | **Chunking** | Recursive text splitting, sentence preservation & overlap halos | `COMPLETE` |
-| **Stage 4** | **Embeddings** | Dense vector representation generation via embedding models | `NEXT` |
+| **Stage 4** | **Embeddings** | Dense vector representation via Gemini `text-embedding-004` (768-dim) | `COMPLETE` |
 | **Stage 5** | **Vector Index** | HNSW / PGVector indexing for fast cosine similarity retrieval | `PLANNED` |
 | **Stage 6** | **Ready for AI** | Deep integration with AI Mentor for retrieval-augmented responses | `PLANNED` |
+
+---
+
+### 🔢 Embedding Architecture
+
+The embedding engine transforms each persisted `Chunk` into a dense numerical vector representation suitable for future semantic retrieval.
+
+#### Provider Abstraction
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+graph LR
+    Chunk[Chunk Entity] --> EmbSvc[EmbeddingService]
+    EmbSvc --> Provider[EmbeddingProvider Interface]
+    Provider --> Gemini[GeminiEmbeddingProvider]
+    Provider --> Future[Future Providers...]
+    Gemini --> Validate[VectorValidator]
+    Validate --> DB[(Embedding Table)]
+    DB --> API[Status API Only]
+    API --> Frontend[React Frontend]
+    DB -.-|Vector data NEVER sent to API| Frontend
+```
+
+#### Embedding Lifecycle
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B"
+}
+}}%%
+stateDiagram-v2
+    [*] --> PENDING : Chunk persisted
+    PENDING --> PROCESSING : Batch job starts
+    PROCESSING --> READY : Embedding validated & stored
+    PROCESSING --> FAILED : Provider error / timeout
+    FAILED --> PROCESSING : Retry job
+    READY --> ARCHIVED : Re-embedding triggered
+    ARCHIVED --> [*]
+```
+
+#### Chunk-to-Embedding Sequence
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+sequenceDiagram
+    autonumber
+    participant Job as EmbeddingJob
+    participant Svc as EmbeddingService
+    participant Prov as GeminiEmbeddingProvider
+    participant Val as VectorValidator
+    participant Repo as EmbeddingRepository
+    participant DB as PostgreSQL
+
+    Job->>Svc: embed_document_chunks(document_id)
+    Svc->>Repo: get_chunks_without_ready_embedding()
+    Repo-->>Svc: List of pending Chunks
+    loop Batch processing
+        Svc->>Prov: embed_batch(texts)
+        Prov-->>Svc: BatchEmbeddingResult
+        Svc->>Val: validate_vectors(vectors, expected_dim=768)
+        Val-->>Svc: Validation OK
+        Svc->>Repo: upsert(chunk_id, vector, status=READY)
+        Repo->>DB: INSERT / UPDATE embeddings
+    end
+    Svc-->>Job: EmbeddingJobResult (ready_count, failed_count)
+```
+
+#### Provider Configuration
+
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `EMBEDDING_PROVIDER` | `gemini` | Active embedding backend |
+| `EMBEDDING_MODEL` | `text-embedding-004` | Model identifier |
+| `EMBEDDING_BATCH_SIZE` | `100` | Chunks processed per API call |
+| `EMBEDDING_MAX_RETRIES` | `3` | Max retry attempts on transient failure |
+| `EMBEDDING_TIMEOUT` | `30` | Per-request timeout in seconds |
+| `EMBEDDING_VERSION` | `1` | Embedding schema version for idempotency |
+
+#### Vector Security Boundary
+
+> [!CAUTION]
+> Raw embedding vectors (768-dimensional float arrays) are stored **exclusively in PostgreSQL** and are **never serialized into any API response or frontend payload**. The `EmbeddingResult` object implements a `safe_repr()` method that redacts vector content from logs. Frontend components receive only metadata: `status`, `model_name`, `dimension`, `provider`, and `embedding_version`.
 
 ---
 
@@ -282,6 +401,7 @@ erDiagram
     USERS ||--o{ MENTOR_MEMORIES : "accumulates"
     DOCUMENTS ||--|| PARSED_DOCUMENTS : "has"
     PARSED_DOCUMENTS ||--o{ CHUNKS : "contains"
+    CHUNKS ||--o{ EMBEDDINGS : "has"
     SESSIONS ||--o| FEEDBACK : "generates"
 
     USERS {
@@ -333,6 +453,26 @@ erDiagram
         int rating
         text review
         datetime created_at
+    }
+    CHUNKS {
+        string id PK
+        string parsed_document_id FK
+        int chunk_index
+        text chunk_text
+        string status
+        int estimated_tokens
+        string strategy
+    }
+
+    EMBEDDINGS {
+        string id PK
+        string chunk_id FK
+        string provider
+        string model_name
+        string model_version
+        string status
+        int dimension
+        int embedding_version
     }
 ```
 
