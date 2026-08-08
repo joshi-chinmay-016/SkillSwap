@@ -96,6 +96,34 @@ class Settings(BaseSettings):
     # Approximate maximum tokens per chunk (used for future embedding model gating)
     CHUNK_MAX_TOKENS: int = 1024
 
+    # ----------------------------
+    # Embedding Engine (Day 69)
+    # ----------------------------
+
+    # Provider choice (e.g., gemini)
+    EMBEDDING_PROVIDER: str = "gemini"
+
+    # Default embedding model name
+    EMBEDDING_MODEL: str = "text-embedding-004"
+
+    # Optional specific API key override for embeddings (defaults to None / empty, falls back to GEMINI_API_KEY)
+    EMBEDDING_API_KEY: str = ""
+
+    # Configurable batch size for embedding generation
+    EMBEDDING_BATCH_SIZE: int = 32
+
+    # Maximum retry attempts for recoverable provider errors
+    EMBEDDING_MAX_RETRIES: int = 3
+
+    # Timeout in seconds for embedding API requests
+    EMBEDDING_TIMEOUT: int = 30
+
+    # Max concurrency limit for background tasks/batches
+    EMBEDDING_CONCURRENCY: int = 5
+
+    # Application-level embedding version
+    EMBEDDING_VERSION: int = 1
+
     class Config:
         env_file = ".env"
 
