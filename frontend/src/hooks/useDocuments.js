@@ -322,3 +322,105 @@ export function useRetryChunking() {
   return useRechunkDocument();
 }
 
+/**
+ * Fetch embedding status summary and progress for a document.
+ * Polls every 2 seconds while processing or pending.
+ */
+export function useEmbeddingStatus(documentId, enabled = true) {
+  return useQuery({
+    queryKey: ["embeddingStatus", documentId],
+    queryFn: async () => {
+      if (!documentId) return null;
+      try {
+        const res = await api.get(`/documents/${documentId}/embeddings/status`);
+        return res.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(documentId) && enabled,
+    refetchInterval: (query) => {
+      const status = query.state.data;
+      if (status && (status.processing > 0 || status.pending > 0)) {
+        return 2000;
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Alias for embedding statistics.
+ */
+export function useEmbeddingStatistics(documentId, enabled = true) {
+  return useEmbeddingStatus(documentId, enabled);
+}
+
+/**
+ * Alias for embedding metadata.
+ */
+export function useEmbeddingMetadata(documentId, enabled = true) {
+  return useEmbeddingStatus(documentId, enabled);
+}
+
+/**
+ * Trigger background embedding generation for a document.
+ */
+export function useGenerateEmbeddings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/embed`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["embeddingStatus", documentId] });
+    },
+  });
+}
+
+/**
+ * Re-embed a document (archive old embeddings & regenerate).
+ */
+export function useReembedDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/reembed`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["embeddingStatus", documentId] });
+    },
+  });
+}
+
+/**
+ * Retry failed embeddings for a document.
+ */
+export function useRetryEmbeddings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/embeddings/retry`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["embeddingStatus", documentId] });
+    },
+  });
+}
+
+

@@ -20,8 +20,8 @@ const PIPELINE_STAGES = [
   { id: "ready", label: "Ready for AI", icon: Sparkles },
 ];
 
-export default function ProcessingTimeline({ documentStatus = "UPLOADED", compact = false }) {
-  // Determine current active step index based on backend Document.status
+export default function ProcessingTimeline({ documentStatus = "UPLOADED", embeddingStatus = null, compact = false }) {
+  // Determine current active step index based on backend Document.status & embeddingStatus
   let activeIndex = 0;
   let isFailed = false;
 
@@ -29,7 +29,20 @@ export default function ProcessingTimeline({ documentStatus = "UPLOADED", compac
     isFailed = true;
     activeIndex = 2; // Failed during chunking/parsing
   } else if (documentStatus === "READY") {
-    activeIndex = 2; // Completed Upload, Parsing, and Chunking (Day 68)
+    if (embeddingStatus && embeddingStatus.ready > 0) {
+      if (embeddingStatus.ready === embeddingStatus.total_active) {
+        activeIndex = 3; // Embeddings stage completed (stage index 3)
+      } else {
+        activeIndex = 3; // Embeddings active/partial
+      }
+    } else if (embeddingStatus && embeddingStatus.failed > 0 && embeddingStatus.ready === 0) {
+      isFailed = true;
+      activeIndex = 3; // Embeddings stage failed
+    } else if (embeddingStatus && (embeddingStatus.processing > 0 || embeddingStatus.pending > 0)) {
+      activeIndex = 3; // Embeddings processing
+    } else {
+      activeIndex = 2; // Completed Upload, Parsing, Chunking; Embeddings pending
+    }
   } else if (documentStatus === "PROCESSING") {
     activeIndex = 1; // In parsing phase
   } else {
@@ -56,8 +69,8 @@ export default function ProcessingTimeline({ documentStatus = "UPLOADED", compac
 
         {/* Stage Nodes */}
         {PIPELINE_STAGES.map((stage, idx) => {
-          const isCompleted = idx < activeIndex || (idx === activeIndex && documentStatus === "READY");
-          const isCurrent = idx === activeIndex && documentStatus !== "READY" && !isFailed;
+          const isCompleted = idx < activeIndex || (idx === activeIndex && activeIndex === 3 && embeddingStatus && embeddingStatus.ready > 0 && embeddingStatus.ready === embeddingStatus.total_active);
+          const isCurrent = idx === activeIndex && !isCompleted && !isFailed;
           const isFailedStep = isFailed && idx === activeIndex;
 
           const IconComponent = stage.icon;

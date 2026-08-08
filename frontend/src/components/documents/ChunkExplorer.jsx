@@ -6,17 +6,20 @@ import {
   Layers,
   Sparkles,
   RefreshCw,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   Database,
   CheckCircle2,
+  Cpu,
 } from "lucide-react";
-import { useChunks, useChunkMetadata, useRechunkDocument } from "../../hooks/useDocuments";
+import { useChunks, useChunkMetadata, useRechunkDocument, useEmbeddingStatus } from "../../hooks/useDocuments";
 import ChunkStatistics from "./ChunkStatistics";
 import ChunkGraph from "./ChunkGraph";
 import ChunkCard from "./ChunkCard";
 import ChunkDrawer from "./ChunkDrawer";
+import EmbeddingStatus from "./EmbeddingStatus";
+import EmbeddingVisualization from "./EmbeddingVisualization";
+import EmbeddingDetailsDrawer from "./EmbeddingDetailsDrawer";
 
 export default function ChunkExplorer({ document, onClose }) {
   if (!document) return null;
@@ -24,6 +27,8 @@ export default function ChunkExplorer({ document, onClose }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSection, setSelectedSection] = useState("all");
   const [selectedChunk, setSelectedChunk] = useState(null);
+  const [embeddingDrawerChunk, setEmbeddingDrawerChunk] = useState(null);
+  const [showEmbeddingPanel, setShowEmbeddingPanel] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
@@ -35,6 +40,7 @@ export default function ChunkExplorer({ document, onClose }) {
   });
 
   const { data: metadata, isLoading: isMetadataLoading } = useChunkMetadata(document.id);
+  const { data: embeddingStatus } = useEmbeddingStatus(document.id);
   const rechunkMutation = useRechunkDocument();
 
   const chunks = chunksData?.chunks || [];
@@ -107,6 +113,19 @@ export default function ChunkExplorer({ document, onClose }) {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Embedding Panel Toggle */}
+              <button
+                onClick={() => setShowEmbeddingPanel((v) => !v)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  showEmbeddingPanel
+                    ? "bg-indigo-600 text-white"
+                    : "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900"
+                }`}
+              >
+                <Cpu size={13} />
+                <span>Embeddings</span>
+              </button>
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -131,6 +150,25 @@ export default function ChunkExplorer({ document, onClose }) {
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Statistics Row */}
             <ChunkStatistics metadata={metadata} isLoading={isMetadataLoading} />
+
+            {/* Embedding Status Panel (toggled) */}
+            <AnimatePresence>
+              {showEmbeddingPanel && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden space-y-3"
+                >
+                  <EmbeddingStatus documentId={document.id} documentStatus={document.status} />
+                  <EmbeddingVisualization
+                    modelName={embeddingStatus?.model || "text-embedding-004"}
+                    dimension={embeddingStatus?.dimension || 768}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Node Flow Diagram */}
             <ChunkGraph
@@ -195,7 +233,15 @@ export default function ChunkExplorer({ document, onClose }) {
                     key={chunk.id || chunk.chunk_index}
                     chunk={chunk}
                     isSelected={selectedChunk?.chunk_index === chunk.chunk_index}
-                    onClick={() => setSelectedChunk(chunk)}
+                    onClick={() => {
+                      setSelectedChunk(chunk);
+                      setEmbeddingDrawerChunk(null);
+                    }}
+                    onViewEmbedding={(e) => {
+                      e.stopPropagation();
+                      setEmbeddingDrawerChunk(chunk);
+                      setSelectedChunk(null);
+                    }}
                   />
                 ))}
               </div>
@@ -233,6 +279,13 @@ export default function ChunkExplorer({ document, onClose }) {
 
           {/* Single Chunk Detail Drawer overlay */}
           <ChunkDrawer chunk={selectedChunk} onClose={() => setSelectedChunk(null)} />
+
+          {/* Embedding Details Drawer overlay */}
+          <EmbeddingDetailsDrawer
+            chunk={embeddingDrawerChunk}
+            embeddingMeta={embeddingStatus}
+            onClose={() => setEmbeddingDrawerChunk(null)}
+          />
         </motion.div>
       </div>
     </AnimatePresence>

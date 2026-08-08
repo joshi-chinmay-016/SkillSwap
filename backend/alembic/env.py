@@ -14,6 +14,10 @@ from app.models.learning_activity import LearningActivity
 from app.models.learning_session import LearningSession
 from app.models.mentor_conversation import MentorConversation
 from app.models.mentor_message import MentorMessage
+from app.models.document import Document
+from app.models.parsed_document import ParsedDocument
+from app.models.chunk import Chunk
+from app.models.embedding import Embedding
 
 import app.market.models
 
