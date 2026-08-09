@@ -564,4 +564,109 @@ def retry_failed_embeddings(
     return {"message": "Embedding retry job enqueued successfully.", "document_id": document_id}
 
 
+# ── Vector Indexing Endpoints (Day 70) ──────────────────────────────────────────
+
+@router.get(
+    "/{document_id}/vector-index/status",
+    summary="Get document vector index status",
+    description="Returns aggregate FAISS vector indexing status, progress, and global index metadata for a document.",
+)
+def get_vector_index_status(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.vector_indexing_service import VectorIndexingService
+
+    vidx_service = VectorIndexingService.create()
+    return vidx_service.get_document_vector_status(
+        db,
+        document_id=document_id,
+        user_id=current_user.id,
+    )
+
+
+@router.post(
+    "/{document_id}/vector-index/index",
+    summary="Index document vectors in FAISS",
+    description="Enqueues background FAISS vector indexing for all READY embeddings of a document.",
+)
+def index_document_vectors(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.repositories.parsed_document_repository import get_parsed_document
+    from app.jobs.vector_indexing_job import run_vector_indexing_job
+    from fastapi import HTTPException
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    parsed = get_parsed_document(db, document_id)
+    if not parsed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document has not been parsed yet. Parsed document required before indexing.",
+        )
+
+    background_tasks.add_task(
+        run_vector_indexing_job,
+        parsed_document_id=parsed.id,
+        user_id=current_user.id,
+    )
+    logger.info("POST /documents/%s/vector-index/index — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Vector indexing job enqueued successfully.", "document_id": document_id}
+
+
+@router.post(
+    "/{document_id}/vector-index/retry",
+    summary="Retry failed vector indexing",
+    description="Re-enqueues background FAISS indexing for a document.",
+)
+def retry_vector_indexing(
+    document_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.repositories.parsed_document_repository import get_parsed_document
+    from app.jobs.vector_indexing_job import run_vector_indexing_job
+    from fastapi import HTTPException
+
+    # Verify ownership
+    service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    parsed = get_parsed_document(db, document_id)
+    if not parsed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document has not been parsed yet.",
+        )
+
+    background_tasks.add_task(
+        run_vector_indexing_job,
+        parsed_document_id=parsed.id,
+        user_id=current_user.id,
+    )
+    logger.info("POST /documents/%s/vector-index/retry — enqueued by user_id=%d", document_id, current_user.id)
+    return {"message": "Vector indexing retry job enqueued successfully.", "document_id": document_id}
+
+
+@router.get(
+    "/vector-index/health",
+    summary="Get FAISS Vector Store health",
+    description="Returns global FAISS vector store health metrics, dimension, and index size.",
+)
+def get_vector_store_health(
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.vector_indexing_service import VectorIndexingService
+
+    vidx_service = VectorIndexingService.create()
+    return vidx_service.get_health()
+
+
+
 

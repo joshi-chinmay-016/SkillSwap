@@ -20,6 +20,8 @@ import ChunkDrawer from "./ChunkDrawer";
 import EmbeddingStatus from "./EmbeddingStatus";
 import EmbeddingVisualization from "./EmbeddingVisualization";
 import EmbeddingDetailsDrawer from "./EmbeddingDetailsDrawer";
+import VectorIndexStatus from "./VectorIndexStatus";
+import VectorIndexVisualization from "./VectorIndexVisualization";
 
 export default function ChunkExplorer({ document, onClose }) {
   if (!document) return null;
@@ -151,7 +153,7 @@ export default function ChunkExplorer({ document, onClose }) {
             {/* Statistics Row */}
             <ChunkStatistics metadata={metadata} isLoading={isMetadataLoading} />
 
-            {/* Embedding Status Panel (toggled) */}
+            {/* Embedding & Vector Index Panel (toggled) */}
             <AnimatePresence>
               {showEmbeddingPanel && (
                 <motion.div
@@ -159,12 +161,13 @@ export default function ChunkExplorer({ document, onClose }) {
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="overflow-hidden space-y-3"
+                  className="overflow-hidden space-y-4"
                 >
                   <EmbeddingStatus documentId={document.id} documentStatus={document.status} />
-                  <EmbeddingVisualization
-                    modelName={embeddingStatus?.model || "text-embedding-004"}
-                    dimension={embeddingStatus?.dimension || 768}
+                  <VectorIndexStatus documentId={document.id} />
+                  <VectorIndexVisualization
+                    vectorCount={embeddingStatus?.ready || 0}
+                    dimension={768}
                   />
                 </motion.div>
               )}

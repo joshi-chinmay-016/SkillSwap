@@ -702,6 +702,90 @@ class VectorIndexingService:
 
         return result
 
+    # ── Document status ──────────────────────────────────────────────────────
+
+    def get_document_vector_status(
+        self,
+        db: Session,
+        *,
+        document_id: str,
+        user_id: int,
+    ) -> dict:
+        """
+        Return aggregate FAISS vector indexing status and progress for a document.
+
+        Args:
+            db          : Active SQLAlchemy session.
+            document_id : UUID of parent Document.
+            user_id     : Authenticated owner user ID.
+
+        Returns:
+            Dict containing document metrics and global FAISS index metadata.
+        """
+        from app.services.document_service import get_document
+        from app.repositories.parsed_document_repository import get_parsed_document
+
+        # Enforce user ownership
+        doc = get_document(db, document_id, user_id)
+        parsed = get_parsed_document(db, document_id)
+
+        if not parsed:
+            return {
+                "document_id": document_id,
+                "parsed_document_id": None,
+                "status": "NO_EMBEDDINGS",
+                "total_embeddings": 0,
+                "indexed": 0,
+                "failed": 0,
+                "remaining": 0,
+                "index_size": self._store.get_index_size(),
+                "dimension": self._store.get_dimension(),
+                "index_type": "FAISS CPU (IndexIDMap2 + IndexFlatIP)",
+                "last_indexed_at": None,
+            }
+
+        # Fetch all READY embeddings for this document
+        ready_embeddings = emb_repo.list_ready_embeddings(db, parsed.id)
+        total_ready = len(ready_embeddings)
+
+        # Fetch index entries for this document
+        entries = vidx_repo.get_indexed_entries_for_document(db, parsed.id)
+        indexed_count = sum(1 for e in entries if e.status == VectorIndexStatus.INDEXED.value)
+        failed_count = sum(1 for e in entries if e.status == VectorIndexStatus.INDEX_FAILED.value)
+
+        remaining = max(0, total_ready - indexed_count - failed_count)
+
+        last_indexed_at = None
+        if entries:
+            last_indexed_at = max(e.updated_at for e in entries).isoformat()
+
+        if total_ready == 0:
+            status_str = "NO_EMBEDDINGS"
+        elif indexed_count == total_ready:
+            status_str = "INDEXED"
+        elif failed_count > 0 and indexed_count == 0:
+            status_str = "INDEX_FAILED"
+        elif failed_count > 0 and indexed_count > 0:
+            status_str = "PARTIAL"
+        elif indexed_count > 0:
+            status_str = "INDEXING"
+        else:
+            status_str = "PENDING"
+
+        return {
+            "document_id": document_id,
+            "parsed_document_id": parsed.id,
+            "status": status_str,
+            "total_embeddings": total_ready,
+            "indexed": indexed_count,
+            "failed": failed_count,
+            "remaining": remaining,
+            "index_size": self._store.get_index_size(),
+            "dimension": self._store.get_dimension(),
+            "index_type": "FAISS CPU (IndexIDMap2 + IndexFlatIP)",
+            "last_indexed_at": last_indexed_at,
+        }
+
     # ── Health check ──────────────────────────────────────────────────────────
 
     def get_health(self) -> dict:
