@@ -423,4 +423,93 @@ export function useRetryEmbeddings() {
   });
 }
 
+/**
+ * Fetch FAISS vector index status and progress for a document.
+ * Polls every 2 seconds while status is INDEXING or PENDING.
+ */
+export function useVectorIndexStatus(documentId, enabled = true) {
+  return useQuery({
+    queryKey: ["vectorIndexStatus", documentId],
+    queryFn: async () => {
+      if (!documentId) return null;
+      try {
+        const res = await api.get(`/documents/${documentId}/vector-index/status`);
+        return res.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          return null;
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(documentId) && enabled,
+    refetchInterval: (query) => {
+      const status = query.state.data;
+      if (status && (status.status === "INDEXING" || status.remaining > 0)) {
+        return 2000;
+      }
+      return false;
+    },
+  });
+}
+
+/**
+ * Alias hook for vector index statistics.
+ */
+export function useVectorIndexStatistics(documentId, enabled = true) {
+  return useVectorIndexStatus(documentId, enabled);
+}
+
+/**
+ * Trigger background FAISS vector indexing for a document.
+ */
+export function useIndexVectors() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/vector-index/index`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["vectorIndexStatus", documentId] });
+    },
+  });
+}
+
+/**
+ * Retry failed FAISS vector indexing for a document.
+ */
+export function useRetryVectorIndexing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId) => {
+      const res = await api.post(`/documents/${documentId}/vector-index/retry`);
+      return res.data;
+    },
+    onSuccess: (data, documentId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", documentId] });
+      queryClient.invalidateQueries({ queryKey: ["vectorIndexStatus", documentId] });
+    },
+  });
+}
+
+/**
+ * Fetch global FAISS Vector Store health and stats.
+ */
+export function useVectorIndexHealth() {
+  return useQuery({
+    queryKey: ["vectorIndexHealth"],
+    queryFn: async () => {
+      const res = await api.get("/documents/vector-index/health");
+      return res.data;
+    },
+    refetchInterval: 30000,
+  });
+}
+
 

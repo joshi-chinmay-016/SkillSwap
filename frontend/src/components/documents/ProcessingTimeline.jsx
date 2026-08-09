@@ -20,8 +20,13 @@ const PIPELINE_STAGES = [
   { id: "ready", label: "Ready for AI", icon: Sparkles },
 ];
 
-export default function ProcessingTimeline({ documentStatus = "UPLOADED", embeddingStatus = null, compact = false }) {
-  // Determine current active step index based on backend Document.status & embeddingStatus
+export default function ProcessingTimeline({
+  documentStatus = "UPLOADED",
+  embeddingStatus = null,
+  vectorStatus = null,
+  compact = false,
+}) {
+  // Determine current active step index based on backend Document.status, embeddingStatus & vectorStatus
   let activeIndex = 0;
   let isFailed = false;
 
@@ -29,19 +34,36 @@ export default function ProcessingTimeline({ documentStatus = "UPLOADED", embedd
     isFailed = true;
     activeIndex = 2; // Failed during chunking/parsing
   } else if (documentStatus === "READY") {
-    if (embeddingStatus && embeddingStatus.ready > 0) {
-      if (embeddingStatus.ready === embeddingStatus.total_active) {
-        activeIndex = 3; // Embeddings stage completed (stage index 3)
-      } else {
-        activeIndex = 3; // Embeddings active/partial
-      }
+    const embeddingsDone =
+      embeddingStatus &&
+      embeddingStatus.ready > 0 &&
+      embeddingStatus.ready === embeddingStatus.total_active;
+
+    const vectorIndexed =
+      vectorStatus &&
+      (vectorStatus.status === "INDEXED" ||
+        (vectorStatus.total_embeddings > 0 && vectorStatus.indexed === vectorStatus.total_embeddings));
+
+    const vectorFailed = vectorStatus && vectorStatus.status === "INDEX_FAILED";
+
+    if (vectorIndexed) {
+      activeIndex = 5; // Ready for AI (stage index 5)
+    } else if (vectorFailed) {
+      isFailed = true;
+      activeIndex = 4; // Vector Index failed (stage index 4)
+    } else if (vectorStatus && (vectorStatus.status === "INDEXING" || vectorStatus.indexed > 0)) {
+      activeIndex = 4; // Vector Index in progress/partial (stage index 4)
+    } else if (embeddingsDone) {
+      activeIndex = 4; // Embeddings completed -> Vector Index stage pending/active (stage index 4)
+    } else if (embeddingStatus && embeddingStatus.ready > 0) {
+      activeIndex = 3; // Embeddings stage active
     } else if (embeddingStatus && embeddingStatus.failed > 0 && embeddingStatus.ready === 0) {
       isFailed = true;
       activeIndex = 3; // Embeddings stage failed
     } else if (embeddingStatus && (embeddingStatus.processing > 0 || embeddingStatus.pending > 0)) {
       activeIndex = 3; // Embeddings processing
     } else {
-      activeIndex = 2; // Completed Upload, Parsing, Chunking; Embeddings pending
+      activeIndex = 2; // Chunking ready, Embeddings pending
     }
   } else if (documentStatus === "PROCESSING") {
     activeIndex = 1; // In parsing phase

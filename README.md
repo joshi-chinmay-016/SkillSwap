@@ -14,7 +14,7 @@
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=for-the-badge&logo=python&logoColor=white)](https://www.sqlalchemy.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Tests-207%2F207%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
+[![Build Status](https://img.shields.io/badge/Tests-220%2F220%20Passing-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#testing--quality-assurance)
 
 <br />
 
@@ -88,6 +88,16 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 * **EmbeddingStatus Lifecycle**: State machine with `PENDING → PROCESSING → READY | FAILED | ARCHIVED` transitions persisted to PostgreSQL.
 * **Vector Security Boundary**: Raw embedding vectors are stored in PostgreSQL only. They are never serialized into API responses or frontend-facing schemas.
 * **Observability**: Per-document embedding status API (`GET /documents/{id}/embeddings/status`) returns real-time progress counts (total, embedded, remaining, failed) without exposing raw vectors.
+
+### 🗄️ 9. FAISS Vector Storage & Persistence Engine
+* **VectorStore Abstraction Layer**: Decoupled `VectorStore` interface isolating the application code from FAISS internals, enabling seamless backend swapping.
+* **FAISS CPU Vector Store**: `faiss.IndexIDMap2(faiss.IndexFlatIP(dim))` index for exact inner-product (cosine) similarity with explicit vector ID mapping and deletion (`remove_ids()`) support.
+* **Deterministic Vector IDs**: SHA-256 hash truncation derived `int64` IDs mapping PostgreSQL `embedding_id` to FAISS vector IDs without database sequence round-trips.
+* **Atomic Persistence**: Atomic binary `.index` and JSON ID mapping writes via temp files + `os.replace()` to guarantee zero partial-write corruption.
+* **PostgreSQL ↔ FAISS Boundary**: PostgreSQL serves as the source of truth for metadata, ownership, chunks, and `vector_index_entries`; FAISS serves as the high-speed searchable vector index.
+* **Reconciliation & Safe Rebuild**: Non-destructive index rebuild (old index preserved on failure) and consistency reconciliation.
+* **User Ownership & Security**: User authorization enforced at service level; raw vectors stored server-side and never exposed to client APIs.
+* **Premium UI & Visualization**: React UI featuring FAISS status ring, real backend progress, partial/failed retry handling, vector statistics card, technical specs drawer, and a conceptual 3D vector space canvas visualizer.
 
 ---
 
@@ -265,7 +275,7 @@ sequenceDiagram
 | **Stage 2** | **Parsing** | Multi-format text extraction (PDF, TXT, MD) into `ParsedDocument` | `COMPLETE` |
 | **Stage 3** | **Chunking** | Recursive text splitting, sentence preservation & overlap halos | `COMPLETE` |
 | **Stage 4** | **Embeddings** | Dense vector representation via Gemini `text-embedding-004` (768-dim) | `COMPLETE` |
-| **Stage 5** | **Vector Index** | HNSW / PGVector indexing for fast cosine similarity retrieval | `PLANNED` |
+| **Stage 5** | **Vector Index** | FAISS CPU IndexIDMap2(IndexFlatIP) persistent vector index & mapping | `COMPLETE` |
 | **Stage 6** | **Ready for AI** | Deep integration with AI Mentor for retrieval-augmented responses | `PLANNED` |
 
 ---
@@ -374,6 +384,198 @@ sequenceDiagram
 
 > [!CAUTION]
 > Raw embedding vectors (768-dimensional float arrays) are stored **exclusively in PostgreSQL** and are **never serialized into any API response or frontend payload**. The `EmbeddingResult` object implements a `safe_repr()` method that redacts vector content from logs. Frontend components receive only metadata: `status`, `model_name`, `dimension`, `provider`, and `embedding_version`.
+
+---
+
+### ⚡ 9. FAISS Vector Storage & Persistence Architecture
+
+Day 70 introduces the persistent FAISS Vector Storage layer, connecting `READY` PostgreSQL embeddings to high-speed, searchable vector storage.
+
+#### PostgreSQL ↔ FAISS System Boundary
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart TD
+    subgraph PostgreSQL [PostgreSQL - Source of Truth]
+        User[Users] --> Doc[Documents]
+        Doc --> Parsed[Parsed Documents]
+        Parsed --> Chunk[Chunks]
+        Chunk --> Emb[Embeddings - READY Status]
+        Emb --> VIdx[Vector Index Entries Table]
+    end
+
+    subgraph ServiceLayer [Vector Indexing Service]
+        VIdxSvc[VectorIndexingService]
+        Val[Pre-Vector Validator]
+    end
+
+    subgraph FAISSStore [FAISS Vector Storage Layer]
+        VStore[VectorStore Interface] --> FAISSImpl[FAISSVectorStore]
+        FAISSImpl --> Index[FAISS IndexIDMap2 IndexFlatIP]
+        FAISSImpl --> Mapping[JSON ID Mapping File]
+    end
+
+    Emb -->|1. Fetch READY vectors| VIdxSvc
+    VIdxSvc -->|2. Validate numeric/finite/dim| Val
+    Val -->|3. Add vectors with IDs| VStore
+    VIdxSvc -->|4. Record INDEXED status| VIdx
+    FAISSImpl -->|5. Atomic persist| Index
+    FAISSImpl -->|5. Atomic persist| Mapping
+```
+
+#### Vector ID Mapping Strategy
+
+FAISS uses 63-bit positive integers (`int64`) for vector IDs. A deterministic mapping bridges PostgreSQL string UUIDs to FAISS integer IDs without database sequences:
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart LR
+    EmbUUID["Embedding UUID\n(e.g., 123e4567-e89b-...)"] --> SHA256["SHA-256 Hash Digest\n(256 bits)"]
+    SHA256 --> Truncate["Truncate to 16 Hex Chars\nMask to 63 bits"]
+    Truncate --> FAISSID["FAISS int64 Vector ID\n(e.g., 13072849182390)"]
+    FAISSID -. Bidirectional Mapping .-> MappingJSON["skillswap_mapping.json & vector_index_entries"]
+```
+
+#### Indexing Lifecycle State Machine
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B"
+}
+}}%%
+stateDiagram-v2
+    [*] --> PENDING : Embedding created
+    PENDING --> INDEXING : Batch indexing starts
+    INDEXING --> INDEXED : Vector added & index saved
+    INDEXING --> INDEX_FAILED : Dimension mismatch / NaN / IO error
+    INDEX_FAILED --> INDEXING : Retry indexing job
+    INDEXED --> REMOVED : Document / Embedding deleted/archived
+    REMOVED --> [*]
+```
+
+#### Vector Indexing Sequence & Transaction Boundaries
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+sequenceDiagram
+    autonumber
+    participant DB as PostgreSQL
+    participant Svc as VectorIndexingService
+    participant Store as FAISSVectorStore
+    participant FS as Disk Storage
+
+    Svc->>DB: list_unindexed_ready_embeddings(batch_size=100)
+    DB-->>Svc: List of READY Embeddings
+    Svc->>Svc: Pre-validate vectors (NaN, Inf, Dimension)
+    Svc->>Store: add_vectors(vectors, embedding_ids)
+    Store->>Store: faiss.add_with_ids(float32_matrix, int64_ids)
+    Svc->>Store: save_index()
+    Store->>FS: Atomic save index file (.tmp -> skillswap.index)
+    Store->>FS: Atomic save mapping file (.tmp -> skillswap_mapping.json)
+    Svc->>DB: upsert_index_entry(embedding_id, faiss_id, status="INDEXED")
+    Svc->>DB: db.commit()
+    Svc-->>DB: Processing complete (Result stats)
+```
+
+#### Non-Destructive Safe Index Rebuild
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart TD
+    Start[Rebuild Triggered] --> Fetch[Fetch All READY Embeddings from PostgreSQL]
+    Fetch --> BuildNew[Build New In-Memory FAISS Index & Mapping]
+    BuildNew --> WriteTmp[Write New Index & Mapping to .rebuild.tmp Files]
+    WriteTmp --> ValidateCount{Validate Vector Count & Dimension}
+    ValidateCount -->|Pass| Replace[Atomic os.replace to Active Index Files]
+    ValidateCount -->|Fail| Abort[Abort Rebuild & Clean Temp Files]
+    Replace --> UpdateDB[Update PostgreSQL Index Entries & Commit]
+    Abort --> KeepOld[Active FAISS Index Remains Untouched & Active]
+    UpdateDB --> Finish[Rebuild Complete]
+```
+
+#### Vector Storage Configuration
+
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `FAISS_INDEX_DIR` | `vector_store` | Directory for persistent FAISS index & mapping files |
+| `FAISS_INDEX_FILENAME` | `skillswap.index` | Binary FAISS index file |
+| `FAISS_MAPPING_FILENAME` | `skillswap_mapping.json` | JSON bidirectional ID mapping file |
+| `FAISS_EMBEDDING_DIMENSION` | `768` | Target embedding dimension (`text-embedding-004`) |
+| `FAISS_INDEXING_BATCH_SIZE` | `100` | Batch size for vector indexing operations |
+
+#### Future RAG Architecture Roadmap
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart LR
+    subgraph Implemented [Implemented Core Pipeline]
+        Doc[Document Upload] --> Parse[Text Parsing]
+        Parse --> Chunk[Intelligent Chunking]
+        Chunk --> Embed[Embedding Generation]
+        Embed --> FAISS[(FAISS Vector Store)]
+    end
+
+    subgraph FutureRAG [Future Stages - Day 71+]
+        FAISS -. Vector Search .-> Retriever[Semantic Retriever]
+        UserQuery[User Mentor Query] -. Query Embedding .-> Retriever
+        Retriever -. Top-K Chunks .-> PromptBuilder[Context Builder]
+        PromptBuilder -. Contextual Prompt .-> LLM[AI Mentor LLM]
+    end
+```
 
 ---
 
@@ -564,6 +766,7 @@ sequenceDiagram
 | **Text Extraction** | [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | High-speed PDF parsing and text chunk generation |
 | **Encoding Detection**| [chardet](https://chardet.readthedocs.io/) | Universal character encoding detector for plain text |
 | **Markdown Parser** | [Python-Markdown](https://python-markdown.github.io/) | Markdown syntax compiler and HTML text stripper |
+| **Vector Storage Engine**| [FAISS CPU](https://github.com/facebookresearch/faiss) | Persistent exact-search vector index (`IndexIDMap2` + `IndexFlatIP`) |
 | **Frontend Core** | [React 18](https://react.dev/) + [Vite](https://vitejs.dev/) | Ultra-fast client SPA framework and build system |
 | **Data Fetching** | [React Query v5](https://tanstack.com/query/latest) | Server-state management, caching, and auto-polling |
 | **Animations** | [Framer Motion / Motion](https://motion.dev/) | 60fps glassmorphic micro-interactions and layout transitions |
@@ -579,18 +782,21 @@ SkillSwap/
 │   ├── alembic/                  # Database migration scripts
 │   │   └── versions/             # Migration files (d90a1_add_documents, e10a1_add_chunks...)
 │   ├── app/
-│   │   ├── api/                  # FastAPI REST Routers
-│   │   │   ├── auth.py           # Authentication endpoints
-│   │   │   ├── document_router.py# Document, Parsing & Chunking endpoints
+│   │   │   ├── document_router.py# Document, Chunking, Embedding & FAISS endpoints
 │   │   │   └── sessions.py       # Session management endpoints
 │   │   ├── core/                 # App configuration & DB session factories
-│   │   ├── jobs/                 # Background task workers (chunk_generation_job.py)
-│   │   ├── models/               # SQLAlchemy Models (Document, ParsedDocument, Chunk...)
-│   │   ├── repositories/         # Repository Data Access Layer (chunk_repository.py...)
-│   │   ├── schemas/              # Pydantic Request/Response contracts (chunk.py...)
-│   │   ├── services/             # Business Logic & Chunking Orchestration (chunk_service.py...)
+│   │   ├── jobs/                 # Background task workers (chunk_generation_job.py, vector_indexing_job.py...)
+│   │   ├── models/               # SQLAlchemy Models (Document, ParsedDocument, Chunk, Embedding, VectorIndexEntry...)
+│   │   ├── repositories/         # Repository Data Access Layer (chunk_repository.py, vector_index_repository.py...)
+│   │   ├── schemas/              # Pydantic Request/Response contracts (chunk.py, embedding.py...)
+│   │   ├── services/             # Business Logic & Orchestration (chunk_service.py, vector_indexing_service.py...)
 │   │   ├── storage/              # Unified Storage Provider & Facade Layer
-│   │   └── utils/                # Text Splitter, Token Estimator & Validators
+│   │   ├── utils/                # Text Splitter, Token Estimator & Validators
+│   │   └── vector_store/         # FAISS Vector Storage Foundation & Indexing Layer (Day 70)
+│   │       ├── base.py           # Abstract VectorStore interface & VectorStoreHealth
+│   │       ├── exceptions.py     # Vector store exception hierarchy
+│   │       ├── faiss_store.py    # FAISS CPU IndexIDMap2(IndexFlatIP) implementation
+│   │       └── __init__.py       # Vector store public module exports
 │   ├── parsers/                  # Isolated Multi-Format Document Parsing Engine
 │   │   ├── chunking/             # Intelligent Text Chunking Strategy Sub-Package
 │   │   │   ├── chunk_strategy.py # Abstract ChunkStrategy Interface & ChunkData
@@ -598,31 +804,33 @@ SkillSwap/
 │   │   │   └── chunk_factory.py  # Pluggable Strategy Factory Registry
 │   │   ├── document_parser.py    # Abstract DocumentParser Base Interface
 │   │   ├── pdf_parser.py         # PyMuPDF PDF Text Parser
-      ├── txt_parser.py         # Chardet Plain Text Parser
+│   │   ├── txt_parser.py         # Chardet Plain Text Parser
 │   │   ├── markdown_parser.py    # HTML-stripping Markdown Parser
 │   │   ├── parser_factory.py     # Extension-based Parser Factory
 │   │   └── parser_manager.py     # Unified ParserManager Facade
-│   ├── tests/                    # PyTest Unit & Integration Test Suite (test_chunking.py...)
-│   └── requirements.txt          # Python dependency specification
+│   ├── tests/                    # PyTest Unit & Integration Test Suite (test_vector_store.py...)
+│   └── requirements.txt          # Python dependency specification (faiss-cpu==1.9.0...)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   └── documents/        # AI Document Library UI Components
-│   │   │       ├── ChunkCard.jsx          # Interactive Chunk Card with hover elevation
-│   │   │       ├── ChunkDrawer.jsx        # Slide-over Chunk Detail Inspector
-│   │   │       ├── ChunkExplorer.jsx      # AI Knowledge Chunk Explorer Modal
-│   │   │       ├── ChunkGraph.jsx         # Animated Node Graph Flow Visualizer
-│   │   │       ├── ChunkProgressRing.jsx  # Circular SVG progress ring
-│   │   │       ├── ChunkStatistics.jsx    # Aggregate Chunk Statistics Cards
-│   │   │       ├── DocumentCard.jsx       # 3D perspective document card
-│   │   │       ├── MetadataDrawer.jsx     # Slide-over AI Pipeline Drawer
-│   │   │       ├── ProcessingBadge.jsx    # Status morphing badge
-│   │   │       └── ProcessingTimeline.jsx # 6-stage AI Pipeline Visualizer
+│   │   │       ├── ChunkCard.jsx                 # Interactive Chunk Card with hover elevation
+│   │   │       ├── ChunkDrawer.jsx               # Slide-over Chunk Detail Inspector
+│   │   │       ├── ChunkExplorer.jsx             # AI Knowledge Chunk Explorer Modal
+│   │   │       ├── ChunkGraph.jsx                # Animated Node Graph Flow Visualizer
+│   │   │       ├── DocumentCard.jsx              # 3D perspective document card
+│   │   │       ├── EmbeddingStatus.jsx           # AI Embedding Status Card
+│   │   │       ├── MetadataDrawer.jsx            # Slide-over AI Pipeline Drawer
+│   │   │       ├── ProcessingBadge.jsx           # Status morphing badge
+│   │   │       ├── ProcessingTimeline.jsx        # 6-stage AI Pipeline Visualizer
+│   │   │       ├── VectorIndexDetailsDrawer.jsx  # Slide-over FAISS Specs Drawer (Day 70)
+│   │   │       ├── VectorIndexProgressRing.jsx   # SVG FAISS progress ring (Day 70)
+│   │   │       ├── VectorIndexStatistics.jsx     # FAISS vector statistics card (Day 70)
+│   │   │       ├── VectorIndexStatus.jsx         # FAISS Vector Index Status Card (Day 70)
 │   │   ├── hooks/
-│   │   │   └── useDocuments.js   # React Query document, chunking & polling hooks
+│   │   │   └── useDocuments.js   # React Query document, chunking, embedding & vector-indexing hooks
 │   │   ├── pages/
 │   │   │   └── DocumentLibraryPage.jsx # AI Knowledge Library Studio Page
-│   │   └── services/
 │   │       └── api.js            # Axios HTTP client instance
 │   └── package.json              # Node.js dependencies
 └── README.md

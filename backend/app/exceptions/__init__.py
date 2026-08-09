@@ -17,6 +17,17 @@ from app.exceptions.embedding_exceptions import (
     EmbeddingConfigurationError,
     EmbeddingIdempotencyError,
 )
+from app.vector_store.exceptions import (
+    VectorStoreError,
+    VectorStoreInitializationError,
+    FAISSIndexError,
+    VectorDimensionMismatchError,
+    VectorStorePersistenceError,
+    VectorMappingError,
+    VectorIndexingError,
+    VectorRebuildError,
+    VectorConsistencyError,
+)
 
 __all__ = [
     # Storage
@@ -33,4 +44,14 @@ __all__ = [
     "EmbeddingValidationError",
     "EmbeddingConfigurationError",
     "EmbeddingIdempotencyError",
+    # Vector Store
+    "VectorStoreError",
+    "VectorStoreInitializationError",
+    "FAISSIndexError",
+    "VectorDimensionMismatchError",
+    "VectorStorePersistenceError",
+    "VectorMappingError",
+    "VectorIndexingError",
+    "VectorRebuildError",
+    "VectorConsistencyError",
 ]
