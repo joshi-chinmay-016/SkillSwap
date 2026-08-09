@@ -124,6 +124,29 @@ class Settings(BaseSettings):
     # Application-level embedding version
     EMBEDDING_VERSION: int = 1
 
+    # ----------------------------
+    # FAISS Vector Store (Day 70)
+    # ----------------------------
+
+    # Directory for FAISS index files (relative to working directory or absolute)
+    # Must NOT be a developer-machine-specific path.
+    FAISS_INDEX_DIR: str = "vector_store"
+
+    # Filename for the FAISS binary index inside FAISS_INDEX_DIR
+    FAISS_INDEX_FILENAME: str = "skillswap.index"
+
+    # Filename for the JSON ID-mapping file alongside the FAISS index
+    FAISS_MAPPING_FILENAME: str = "skillswap_mapping.json"
+
+    # Expected embedding vector dimension.
+    # Must match the output dimension of the configured EMBEDDING_MODEL.
+    # text-embedding-004 (Gemini) produces 768-dimensional vectors.
+    FAISS_EMBEDDING_DIMENSION: int = 768
+
+    # Number of embeddings to process per indexing batch.
+    # Bounds peak memory usage during large indexing runs.
+    FAISS_INDEXING_BATCH_SIZE: int = 100
+
     class Config:
         env_file = ".env"
 
