@@ -24,6 +24,7 @@ import RenameModal from "../components/documents/RenameModal";
 import DeleteDialog from "../components/documents/DeleteDialog";
 import RetryDialog from "../components/documents/RetryDialog";
 import ChunkExplorer from "../components/documents/ChunkExplorer";
+import RetrievalStudio from "../components/documents/RetrievalStudio";
 
 import { ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
 
@@ -38,6 +39,9 @@ export default function DocumentLibraryPage() {
   const [viewMode, setViewMode] = useState("grid");
   const [page, setPage] = useState(1);
   const pageSize = 12;
+
+  // Semantic Retrieval Studio State
+  const [showRetrievalStudio, setShowRetrievalStudio] = useState(false);
 
   // Multi-file Upload Queue
   const [uploadQueue, setUploadQueue] = useState([]);
@@ -278,7 +282,24 @@ export default function DocumentLibraryPage() {
           const el = document.getElementById("document-file-input");
           if (el) el.click();
         }}
+        onOpenRetrieval={() => setShowRetrievalStudio((prev) => !prev)}
       />
+
+      {/* Semantic Retrieval Studio */}
+      <AnimatePresence>
+        {showRetrievalStudio && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <RetrievalStudio
+              documents={documentsData?.documents || []}
+              onClose={() => setShowRetrievalStudio(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Drag & Drop Upload Zone */}
       <UploadZone onFilesSelected={handleFilesSelected} />

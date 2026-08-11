@@ -143,6 +143,10 @@ from app.api.document_router import (
     router as document_router
 )
 
+from app.api.retrieval_router import (
+    router as retrieval_router
+)
+
 from app.api.learning_sessions import (
     journey_sessions_router as learning_sessions_journey_router,
     sessions_router as learning_sessions_router
@@ -196,6 +200,7 @@ app.include_router(achievements_router)
 app.include_router(ai_context_router)
 app.include_router(mentor_memory_router)
 app.include_router(document_router)
+app.include_router(retrieval_router)
 
 # Include optional AI routers only if they were successfully imported
 if ai_router:

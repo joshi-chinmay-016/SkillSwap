@@ -154,6 +154,29 @@ class Settings(BaseSettings):
     # Bounds peak memory usage during large indexing runs.
     FAISS_INDEXING_BATCH_SIZE: int = 100
 
+    # ----------------------------
+    # Retrieval Engine (Day 71)
+    # ----------------------------
+
+    # Default number of results to return from a retrieval search.
+    RETRIEVAL_DEFAULT_TOP_K: int = 5
+
+    # Hard upper bound on top_k. Requests above this are rejected.
+    RETRIEVAL_MAX_TOP_K: int = 20
+
+    # Overfetch multiplier: FAISS candidate count = top_k * multiplier.
+    # Extra candidates compensate for post-filtering (auth, lifecycle, dedup).
+    # Example: top_k=5, multiplier=4 → fetch 20 candidates from FAISS.
+    RETRIEVAL_CANDIDATE_MULTIPLIER: int = 4
+
+    # Minimum inner-product score required to include a result.
+    # IndexFlatIP with L2-normalised vectors: 0.0 = no threshold, 1.0 = exact match only.
+    # Set to 0.0 to disable threshold filtering.
+    RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.0
+
+    # Maximum allowed query string length in characters.
+    RETRIEVAL_MAX_QUERY_LENGTH: int = 2000
+
     class Config:
         env_file = ".env"
 
