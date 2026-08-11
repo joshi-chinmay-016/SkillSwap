@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "gemini"
 
     # Default embedding model name
-    EMBEDDING_MODEL: str = "text-embedding-004"
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
 
     # Optional specific API key override for embeddings (defaults to None / empty, falls back to GEMINI_API_KEY)
     EMBEDDING_API_KEY: str = ""
@@ -124,6 +124,13 @@ class Settings(BaseSettings):
     # Application-level embedding version
     EMBEDDING_VERSION: int = 1
 
+    # Automatically retry FAILED embeddings after the main embedding job.
+    # When True, a single retry pass fires after EMBEDDING_AUTO_RETRY_DELAY_SECONDS.
+    EMBEDDING_AUTO_RETRY: bool = True
+
+    # Seconds to wait before the automatic retry (gives rate-limits time to clear).
+    EMBEDDING_AUTO_RETRY_DELAY_SECONDS: int = 30
+
     # ----------------------------
     # FAISS Vector Store (Day 70)
     # ----------------------------
@@ -140,8 +147,8 @@ class Settings(BaseSettings):
 
     # Expected embedding vector dimension.
     # Must match the output dimension of the configured EMBEDDING_MODEL.
-    # text-embedding-004 (Gemini) produces 768-dimensional vectors.
-    FAISS_EMBEDDING_DIMENSION: int = 768
+    # gemini-embedding-001 (Gemini) produces 3072-dimensional vectors.
+    FAISS_EMBEDDING_DIMENSION: int = 3072
 
     # Number of embeddings to process per indexing batch.
     # Bounds peak memory usage during large indexing runs.

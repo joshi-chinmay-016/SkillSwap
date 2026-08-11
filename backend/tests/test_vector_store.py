@@ -82,14 +82,45 @@ TestingSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=_test_engine
 )
 
+# Tables required by vector store tests — listed explicitly so that
+# PostgreSQL-specific tables (e.g. market_events with JSONB columns)
+# that are incompatible with SQLite do not break the test session.
+_REQUIRED_TABLES = {
+    "users",
+    "documents",
+    "parsed_documents",
+    "chunks",
+    "embeddings",
+    "vector_index_entries",
+}
+
+
+def _create_sqlite_safe_tables(engine) -> None:
+    """Create only the subset of tables that are SQLite-compatible."""
+    from sqlalchemy import MetaData
+    safe_meta = MetaData()
+    for table_name, table in Base.metadata.tables.items():
+        if table_name in _REQUIRED_TABLES:
+            table.to_metadata(safe_meta)
+    safe_meta.create_all(bind=engine)
+
+
+def _drop_sqlite_safe_tables(engine) -> None:
+    from sqlalchemy import MetaData
+    safe_meta = MetaData()
+    for table_name, table in Base.metadata.tables.items():
+        if table_name in _REQUIRED_TABLES:
+            table.to_metadata(safe_meta)
+    safe_meta.drop_all(bind=engine)
+
 
 @pytest.fixture(autouse=True)
 def setup_test_db():
-    Base.metadata.create_all(bind=_test_engine)
+    _create_sqlite_safe_tables(_test_engine)
     db = TestingSessionLocal()
     yield db
     db.close()
-    Base.metadata.drop_all(bind=_test_engine)
+    _drop_sqlite_safe_tables(_test_engine)
 
 
 @pytest.fixture

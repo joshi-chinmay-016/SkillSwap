@@ -87,6 +87,10 @@ def bulk_create_embeddings(
     """
     Persist multiple embedding records in a single flush.
 
+    If an embedding record already exists for a (chunk_id, provider, model_name,
+    model_version, embedding_version) tuple, its status and metadata are updated
+    rather than attempting a duplicate insert.
+
     Args:
         db      : Active SQLAlchemy session.
         records : List of dicts with keys matching Embedding constructor args.
@@ -100,28 +104,57 @@ def bulk_create_embeddings(
     if not records:
         return []
 
+    # Query existing records matching the unique constraint criteria
+    chunk_ids = [rec["chunk_id"] for rec in records]
+    provider = records[0]["provider"]
+    model_name = records[0]["model_name"]
+    model_version = records[0]["model_version"]
+    embedding_version = records[0]["embedding_version"]
+
+    existing_rows = (
+        db.query(Embedding)
+        .filter(
+            Embedding.chunk_id.in_(chunk_ids),
+            Embedding.provider == provider,
+            Embedding.model_name == model_name,
+            Embedding.model_version == model_version,
+            Embedding.embedding_version == embedding_version,
+        )
+        .all()
+    )
+    existing_map = {emb.chunk_id: emb for emb in existing_rows}
+
     embeddings: list[Embedding] = []
     for rec in records:
-        emb = Embedding(
-            chunk_id=rec["chunk_id"],
-            parsed_document_id=rec["parsed_document_id"],
-            user_id=rec["user_id"],
-            provider=rec["provider"],
-            model_name=rec["model_name"],
-            model_version=rec["model_version"],
-            embedding_version=rec["embedding_version"],
-            dimension=rec["dimension"],
-            status=rec.get("status", EmbeddingStatus.PENDING.value),
-        )
-        if rec.get("vector") is not None:
-            emb.set_vector(rec["vector"])
+        chunk_id = rec["chunk_id"]
+        if chunk_id in existing_map:
+            emb = existing_map[chunk_id]
+            emb.status = rec.get("status", EmbeddingStatus.PENDING.value)
+            emb.failure_count = 0
+            emb.error_category = None
+            if rec.get("vector") is not None:
+                emb.set_vector(rec["vector"])
+        else:
+            emb = Embedding(
+                chunk_id=rec["chunk_id"],
+                parsed_document_id=rec["parsed_document_id"],
+                user_id=rec["user_id"],
+                provider=rec["provider"],
+                model_name=rec["model_name"],
+                model_version=rec["model_version"],
+                embedding_version=rec["embedding_version"],
+                dimension=rec["dimension"],
+                status=rec.get("status", EmbeddingStatus.PENDING.value),
+            )
+            if rec.get("vector") is not None:
+                emb.set_vector(rec["vector"])
+            db.add(emb)
         embeddings.append(emb)
 
-    db.add_all(embeddings)
     db.flush()
 
     logger.debug(
-        "bulk_create_embeddings — inserted %d records for parsed_document_id=%s",
+        "bulk_create_embeddings — upserted %d records for parsed_document_id=%s",
         len(embeddings),
         records[0].get("parsed_document_id", "?") if records else "?",
     )

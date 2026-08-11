@@ -46,6 +46,7 @@ Coverage:
 from __future__ import annotations
 
 import math
+import threading
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -718,15 +719,66 @@ def test_run_embedding_generation_job(setup_db):
     doc, parsed, chunks = _seed_document_parsed_and_chunks(db, user, chunk_count=2)
     parsed_id = parsed.id
 
-    mock_provider = MockEmbeddingProvider(dimension=768)
+    mock_provider = MockEmbeddingProvider(dimension=3072)
 
     with patch("app.jobs.embedding_generation_job.SessionLocal", TestingSessionLocal), \
-         patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(mock_provider)):
+         patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(mock_provider)), \
+         patch("app.jobs.embedding_generation_job._schedule_auto_retry") as mock_retry, \
+         patch("app.services.vector_indexing_service.VectorIndexingService.create") as mock_vidx_create:
+        mock_vidx_svc = MagicMock()
+        mock_vidx_create.return_value = mock_vidx_svc
         run_embedding_generation_job(document_id=doc.id, user_id=user.id)
 
-    # Verify background job processed and saved to DB
+    # All chunks succeeded → no auto-retry scheduled
+    mock_retry.assert_not_called()
     ready_embs = emb_repo.list_ready_embeddings(db, parsed_id)
     assert len(ready_embs) == 2
+    mock_vidx_svc.index_document.assert_called_once()
+
+
+def test_run_embedding_generation_job_auto_retry_scheduled_on_failure(setup_db):
+    """When chunks fail, auto-retry daemon thread must be scheduled."""
+    db = setup_db
+    user = _seed_user(db)
+    doc, parsed, chunks = _seed_document_parsed_and_chunks(db, user, chunk_count=2)
+
+    failing_provider = MockEmbeddingProvider(dimension=3072, failure_trigger="rate_limit")
+
+    with patch("app.jobs.embedding_generation_job.SessionLocal", TestingSessionLocal), \
+         patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(failing_provider)), \
+         patch("app.jobs.embedding_generation_job._schedule_auto_retry") as mock_retry, \
+         patch("time.sleep"):
+        run_embedding_generation_job(document_id=doc.id, user_id=user.id)
+
+    # Auto-retry must have been scheduled because chunks failed
+    mock_retry.assert_called_once()
+    call_kwargs = mock_retry.call_args.kwargs
+    assert call_kwargs["document_id"] == doc.id
+    assert call_kwargs["user_id"] == user.id
+    assert "delay_seconds" in call_kwargs
+    assert "parent_job_id" in call_kwargs
+
+
+def test_run_embedding_generation_job_no_auto_retry_when_disabled(setup_db):
+    """When EMBEDDING_AUTO_RETRY=False, no retry thread must be scheduled."""
+    db = setup_db
+    user = _seed_user(db)
+    doc, parsed, chunks = _seed_document_parsed_and_chunks(db, user, chunk_count=2)
+
+    failing_provider = MockEmbeddingProvider(dimension=3072, failure_trigger="rate_limit")
+
+    with patch("app.jobs.embedding_generation_job.SessionLocal", TestingSessionLocal), \
+         patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(failing_provider)), \
+         patch("app.jobs.embedding_generation_job._schedule_auto_retry") as mock_retry, \
+         patch("app.core.config.settings") as mock_settings, \
+         patch("time.sleep"):
+        mock_settings.EMBEDDING_AUTO_RETRY = False
+        mock_settings.EMBEDDING_BATCH_SIZE = 32
+        mock_settings.EMBEDDING_MAX_RETRIES = 3
+        mock_settings.EMBEDDING_VERSION = 1
+        run_embedding_generation_job(document_id=doc.id, user_id=user.id)
+
+    mock_retry.assert_not_called()
 
 
 def test_run_embedding_retry_job(setup_db):
@@ -736,20 +788,54 @@ def test_run_embedding_retry_job(setup_db):
     parsed_id = parsed.id
 
     # First run fails
-    failing_provider = MockEmbeddingProvider(dimension=768, failure_trigger="rate_limit")
+    failing_provider = MockEmbeddingProvider(dimension=3072, failure_trigger="rate_limit")
     with patch("app.jobs.embedding_generation_job.SessionLocal", TestingSessionLocal), \
          patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(failing_provider)), \
+         patch("app.jobs.embedding_generation_job._schedule_auto_retry"), \
          patch("time.sleep"):
         run_embedding_generation_job(document_id=doc.id, user_id=user.id)
 
     failed_embs = emb_repo.list_failed_embeddings(db, parsed_id)
     assert len(failed_embs) == 2
 
-    # Second run retries with working provider
-    working_provider = MockEmbeddingProvider(dimension=768)
+    # Manual retry with working provider
+    working_provider = MockEmbeddingProvider(dimension=3072)
     with patch("app.jobs.embedding_generation_job.SessionLocal", TestingSessionLocal), \
          patch("app.services.embedding_service.EmbeddingService.create", return_value=EmbeddingService(working_provider)):
         run_embedding_retry_job(document_id=doc.id, user_id=user.id)
 
     ready_embs = emb_repo.list_ready_embeddings(db, parsed_id)
     assert len(ready_embs) == 2
+
+
+def test_schedule_auto_retry_spawns_daemon_thread():
+    """_schedule_auto_retry must start a daemon thread that calls run_embedding_retry_job."""
+    from app.jobs.embedding_generation_job import _schedule_auto_retry
+
+    calls = []
+    with patch("app.jobs.embedding_generation_job.run_embedding_retry_job", side_effect=lambda **kw: calls.append(kw)), \
+         patch("time.sleep"):  # skip real delay
+        thread_holder = []
+
+        original_thread = threading.Thread
+
+        def capture_thread(*args, **kwargs):
+            t = original_thread(*args, **kwargs)
+            thread_holder.append(t)
+            return t
+
+        with patch("app.jobs.embedding_generation_job.threading.Thread", side_effect=capture_thread):
+            _schedule_auto_retry(
+                document_id="doc-abc",
+                user_id=42,
+                delay_seconds=0,
+                parent_job_id="job-xyz",
+            )
+
+        # Give the thread a moment to run
+        if thread_holder:
+            thread_holder[0].join(timeout=3)
+
+    assert len(calls) == 1
+    assert calls[0]["document_id"] == "doc-abc"
+    assert calls[0]["user_id"] == 42
