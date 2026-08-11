@@ -82,22 +82,28 @@ SkillSwap Arena bridges the gap between traditional peer learning and modern gen
 
 ### 🔢 8. AI Embedding Generation Engine
 * **Provider Abstraction Layer**: `EmbeddingProvider` abstract interface allowing seamless swap between embedding backends without modifying orchestration logic.
-* **Gemini Embedding Provider**: Production Gemini `text-embedding-004` provider (768 dimensions) with SDK + REST fallback, exponential-backoff retries, and rate-limit handling.
+* **Gemini Embedding Provider**: Production Gemini `gemini-embedding-001` provider (3072 dimensions) with SDK + REST fallback, automatic background retries, and rate-limit handling.
+* **Automatic Recovery**: Non-blocking daemon-thread worker schedules a single 30-second delayed retry pass (`EMBEDDING_AUTO_RETRY=true`) for transient failures, preserving failed state for inspection without infinite loops.
 * **Batch Processing**: Configurable batch sizes with async-safe chunked processing and thread-safe metrics aggregation.
 * **Idempotent Versioning**: Unique constraint on `(chunk_id, provider, model_name, model_version, embedding_version)` prevents duplicate embeddings across re-embedding runs.
 * **EmbeddingStatus Lifecycle**: State machine with `PENDING → PROCESSING → READY | FAILED | ARCHIVED` transitions persisted to PostgreSQL.
 * **Vector Security Boundary**: Raw embedding vectors are stored in PostgreSQL only. They are never serialized into API responses or frontend-facing schemas.
-* **Observability**: Per-document embedding status API (`GET /documents/{id}/embeddings/status`) returns real-time progress counts (total, embedded, remaining, failed) without exposing raw vectors.
+* **Observability**: Per-document embedding status API (`GET /documents/{id}/embeddings/status`) returns real-time progress counts without exposing raw vectors.
 
 ### 🗄️ 9. FAISS Vector Storage & Persistence Engine
 * **VectorStore Abstraction Layer**: Decoupled `VectorStore` interface isolating the application code from FAISS internals, enabling seamless backend swapping.
-* **FAISS CPU Vector Store**: `faiss.IndexIDMap2(faiss.IndexFlatIP(dim))` index for exact inner-product (cosine) similarity with explicit vector ID mapping and deletion (`remove_ids()`) support.
+* **FAISS CPU Vector Store**: `faiss.IndexIDMap2(faiss.IndexFlatIP(3072))` index for exact inner-product (cosine) similarity with explicit vector ID mapping and deletion (`remove_ids()`) support.
 * **Deterministic Vector IDs**: SHA-256 hash truncation derived `int64` IDs mapping PostgreSQL `embedding_id` to FAISS vector IDs without database sequence round-trips.
 * **Atomic Persistence**: Atomic binary `.index` and JSON ID mapping writes via temp files + `os.replace()` to guarantee zero partial-write corruption.
 * **PostgreSQL ↔ FAISS Boundary**: PostgreSQL serves as the source of truth for metadata, ownership, chunks, and `vector_index_entries`; FAISS serves as the high-speed searchable vector index.
 * **Reconciliation & Safe Rebuild**: Non-destructive index rebuild (old index preserved on failure) and consistency reconciliation.
-* **User Ownership & Security**: User authorization enforced at service level; raw vectors stored server-side and never exposed to client APIs.
-* **Premium UI & Visualization**: React UI featuring FAISS status ring, real backend progress, partial/failed retry handling, vector statistics card, technical specs drawer, and a conceptual 3D vector space canvas visualizer.
+
+### 🔍 10. Semantic Retrieval Engine (Day 71)
+* **Retriever Abstraction Layer**: Decoupled `Retriever` interface separating search orchestration from `VectorStore` index operations.
+* **Production Pipeline**: Candidate overfetching (`top_k × 4`), FAISS vector search, SHA-256 ID resolution, single-query 4-table PostgreSQL JOIN metadata resolution, user ownership authorization, document scoping, similarity thresholding, deduplication, and deterministic ranking.
+* **Retrieval Observability**: Per-stage timing metrics (`query_duration_ms`, `embedding_ms`, `faiss_ms`, `db_ms`) included in every response payload.
+* **Semantic Knowledge Studio**: Interactive React UI featuring live query search, top_k selection, similarity threshold slider, scope filter, rank badges, expandable text preview, and timing diagnostics.
+
 
 ---
 
@@ -267,22 +273,23 @@ sequenceDiagram
     DB-->>Svc: Commit & Return persisted Chunks
 ```
 
-### The 6-Stage Knowledge Pipeline
+### The Knowledge & Retrieval Pipeline
 
 | Stage | Name | Description | Status |
 | :--- | :--- | :--- | :--- |
 | **Stage 1** | **Upload** | Secure Multipart upload, SHA-256 duplicate check, storage persistence | `COMPLETE` |
 | **Stage 2** | **Parsing** | Multi-format text extraction (PDF, TXT, MD) into `ParsedDocument` | `COMPLETE` |
 | **Stage 3** | **Chunking** | Recursive text splitting, sentence preservation & overlap halos | `COMPLETE` |
-| **Stage 4** | **Embeddings** | Dense vector representation via Gemini `text-embedding-004` (768-dim) | `COMPLETE` |
-| **Stage 5** | **Vector Index** | FAISS CPU IndexIDMap2(IndexFlatIP) persistent vector index & mapping | `COMPLETE` |
-| **Stage 6** | **Ready for AI** | Deep integration with AI Mentor for retrieval-augmented responses | `PLANNED` |
+| **Stage 4** | **Embeddings** | Dense vector representation via Gemini `gemini-embedding-001` (3072-dim) | `COMPLETE` |
+| **Stage 5** | **Vector Index** | FAISS CPU IndexIDMap2(IndexFlatIP) 3072-dim persistent vector index & mapping | `COMPLETE` |
+| **Stage 6** | **Semantic Retrieval** | Top-K vector search, batch metadata JOIN, ownership/lifecycle filtering, ranking | `COMPLETE` |
+| **Stage 7** | **AI Mentor RAG** | Context Builder, LLM prompt injection, and generative answer synthesis | `PLANNED` |
 
 ---
 
 ### 🔢 Embedding Architecture
 
-The embedding engine transforms each persisted `Chunk` into a dense numerical vector representation suitable for future semantic retrieval.
+The embedding engine transforms each persisted `Chunk` into a dense 3072-dimensional vector representation suitable for semantic retrieval.
 
 #### Provider Abstraction
 
@@ -311,7 +318,7 @@ graph LR
     DB -.-|Vector data NEVER sent to API| Frontend
 ```
 
-#### Embedding Lifecycle
+#### Embedding Lifecycle & Automatic Recovery
 
 ```mermaid
 %%{init: {
@@ -328,7 +335,9 @@ stateDiagram-v2
     PENDING --> PROCESSING : Batch job starts
     PROCESSING --> READY : Embedding validated & stored
     PROCESSING --> FAILED : Provider error / timeout
-    FAILED --> PROCESSING : Retry job
+    FAILED --> RETRYING : Background daemon worker (30s delay)
+    RETRYING --> READY : Auto-retry succeeds
+    RETRYING --> FAILED : Auto-retry fails (manual inspection)
     READY --> ARCHIVED : Re-embedding triggered
     ARCHIVED --> [*]
 ```
@@ -361,7 +370,7 @@ sequenceDiagram
     loop Batch processing
         Svc->>Prov: embed_batch(texts)
         Prov-->>Svc: BatchEmbeddingResult
-        Svc->>Val: validate_vectors(vectors, expected_dim=768)
+        Svc->>Val: validate_vectors(vectors, expected_dim=3072)
         Val-->>Svc: Validation OK
         Svc->>Repo: upsert(chunk_id, vector, status=READY)
         Repo->>DB: INSERT / UPDATE embeddings
@@ -374,16 +383,23 @@ sequenceDiagram
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `EMBEDDING_PROVIDER` | `gemini` | Active embedding backend |
-| `EMBEDDING_MODEL` | `text-embedding-004` | Model identifier |
-| `EMBEDDING_BATCH_SIZE` | `100` | Chunks processed per API call |
-| `EMBEDDING_MAX_RETRIES` | `3` | Max retry attempts on transient failure |
+| `EMBEDDING_MODEL` | `gemini-embedding-001` | Active model identifier (3072 dimensions) |
+| `EMBEDDING_BATCH_SIZE` | `32` | Chunks processed per API call |
+| `EMBEDDING_MAX_RETRIES` | `3` | Max immediate retry attempts on transient failure |
 | `EMBEDDING_TIMEOUT` | `30` | Per-request timeout in seconds |
 | `EMBEDDING_VERSION` | `1` | Embedding schema version for idempotency |
+| `EMBEDDING_AUTO_RETRY` | `true` | Enable non-blocking daemon background retry pass |
+| `EMBEDDING_AUTO_RETRY_DELAY_SECONDS` | `30` | Delay pause before auto-retry pass |
+
+#### Automatic Recovery Mechanics
+- **Configurable Auto-Retry**: When `EMBEDDING_AUTO_RETRY=true`, failed embeddings enter a non-blocking daemon thread.
+- **30-Second Rate Limit Pause**: The worker waits 30 seconds (`EMBEDDING_AUTO_RETRY_DELAY_SECONDS`) to let Gemini API quota / rate limits clear before retrying.
+- **Single Pass Bounded Recovery**: Performs exactly one automatic retry pass. Persistent failures remain marked `FAILED` for human inspection; infinite retry loops are strictly avoided.
 
 #### Vector Security Boundary
 
 > [!CAUTION]
-> Raw embedding vectors (768-dimensional float arrays) are stored **exclusively in PostgreSQL** and are **never serialized into any API response or frontend payload**. The `EmbeddingResult` object implements a `safe_repr()` method that redacts vector content from logs. Frontend components receive only metadata: `status`, `model_name`, `dimension`, `provider`, and `embedding_version`.
+> Raw embedding vectors (3072-dimensional float arrays) are stored **exclusively in PostgreSQL** and are **never serialized into any API response or frontend payload**. The `EmbeddingResult` object implements a `safe_repr()` method that redacts vector content from logs. Frontend components receive only metadata: `status`, `model_name`, `dimension`, `provider`, and `embedding_version`.
 
 ---
 
@@ -543,8 +559,118 @@ flowchart TD
 | `FAISS_INDEX_DIR` | `vector_store` | Directory for persistent FAISS index & mapping files |
 | `FAISS_INDEX_FILENAME` | `skillswap.index` | Binary FAISS index file |
 | `FAISS_MAPPING_FILENAME` | `skillswap_mapping.json` | JSON bidirectional ID mapping file |
-| `FAISS_EMBEDDING_DIMENSION` | `768` | Target embedding dimension (`text-embedding-004`) |
+| `FAISS_EMBEDDING_DIMENSION` | `3072` | Target embedding dimension (`gemini-embedding-001`) |
 | `FAISS_INDEXING_BATCH_SIZE` | `100` | Batch size for vector indexing operations |
+
+---
+
+### 🔍 10. Semantic Retrieval Engine Architecture (Day 71)
+
+Day 71 introduces the production-grade **Retriever Layer** on top of the FAISS vector index and PostgreSQL metadata.
+
+#### Retrieval Engine Flowchart
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#2563EB",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#14B8A6",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart TD
+    A[User Query] --> B[Query Embedding - Gemini 3072-dim]
+    B --> C[Retriever Layer - FAISSRetriever]
+    C --> D[VectorStore Abstraction]
+    D --> E[FAISS CPU IndexFlatIP Search]
+    E --> F[Candidate Vector IDs]
+    F --> G[Persistent Vector-ID Mapping]
+    G --> H[(PostgreSQL Database)]
+    H --> I[Authorization & Metadata Validation]
+    I --> J[Lifecycle & Document Filtering]
+    J --> K[Score Thresholding & Deduplication]
+    K --> L[Ranked Retrieved Chunks]
+```
+
+#### Complete Retrieval Sequence
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#2563EB",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#14B8A6",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+sequenceDiagram
+    autonumber
+    participant U as User / Client
+    participant API as Retrieval API Router
+    participant Svc as RetrievalService
+    participant Prov as GeminiEmbeddingProvider
+    participant Ret as FAISSRetriever
+    participant Store as FAISSVectorStore
+    participant DB as PostgreSQL
+
+    U->>API: POST /retrieval/search (query, top_k, threshold)
+    API->>Svc: retrieve(db, request, user_id)
+    Svc->>Prov: embed_query(query)
+    Prov-->>Svc: 3072-dim float query vector
+    Svc->>Ret: search(query_vector, top_k, user_id)
+    Ret->>Store: search(query_vector, top_k * candidate_multiplier)
+    Store-->>Ret: List of (faiss_id, inner_product_score)
+    Ret->>Store: resolve_faiss_ids(faiss_ids)
+    Store-->>Ret: dict[faiss_id -> embedding_id]
+    Ret->>DB: get_candidate_metadata_batch(embedding_ids)
+    DB-->>Ret: dict[embedding_id -> CandidateMetadata] (Single JOIN)
+    Ret->>Ret: Filter: Auth (user_id) + Lifecycle (READY) + Threshold + Dedup
+    Ret-->>Svc: Ordered list of RetrievedChunk
+    Svc-->>API: RetrievalResponse (results, total, timings)
+    API-->>U: JSON Response with ranked chunks & metrics
+```
+
+#### PostgreSQL ↔ FAISS Boundary in Retrieval
+
+```
+FAISS Index
+   └── High-speed vector metric comparison (IndexFlatIP exact inner product)
+   └── Returns raw vector IDs (faiss_id) + floating-point scores
+
+PostgreSQL (Source of Truth)
+   └── Authoritative ownership check (meta.embedding_user_id == caller_user_id)
+   └── Lifecycle status verification (Embedding, Chunk, and Document must be READY/active)
+   └── Single JOIN query fetches chunk_text, original_filename, document_id without N+1
+```
+
+#### Retrieval Configuration
+
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `RETRIEVAL_DEFAULT_TOP_K` | `5` | Default number of ranked chunks returned |
+| `RETRIEVAL_MAX_TOP_K` | `20` | Hard upper bound on requested `top_k` |
+| `RETRIEVAL_CANDIDATE_MULTIPLIER` | `4` | Overfetch factor (`top_k × 4`) to ensure candidate depth post-filtering |
+| `RETRIEVAL_SIMILARITY_THRESHOLD` | `0.0` | Minimum inner-product similarity score (0.0 = no threshold) |
+| `RETRIEVAL_MAX_QUERY_LENGTH` | `2000` | Maximum character length for user query string |
+
+#### Separation of Retrieval from Future RAG
+
+```
+IMPLEMENTED TODAY (Day 71)
+User Query ──► Gemini Query Embed ──► FAISS Index ──► PostgreSQL Auth/Filter ──► Ranked Chunks
+
+FUTURE ROADMAP (Day 72+)
+Ranked Chunks ──► Prompt Context Builder ──► Gemini LLM ──► Generative Answer Synthesis
+```
 
 #### Future RAG Architecture Roadmap
 

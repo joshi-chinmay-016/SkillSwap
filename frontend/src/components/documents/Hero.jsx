@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Sparkles, HardDrive, ShieldCheck, UploadCloud, Layers } from "lucide-react";
 
-export default function Hero({ totalDocuments = 0, totalBytes = 0, isHealthy = true, onQuickUpload }) {
+export default function Hero({ totalDocuments = 0, totalBytes = 0, isHealthy = true, onQuickUpload, onOpenRetrieval }) {
   const formatBytes = (bytes) => {
     if (!bytes || bytes === 0) return "0 B";
     const k = 1024;
@@ -125,18 +125,28 @@ export default function Hero({ totalDocuments = 0, totalBytes = 0, isHealthy = t
           </motion.div>
         </div>
 
-        {/* High Contrast Upload Document CTA Button */}
+        {/* CTA Buttons */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.35, delay: 0.2 }}
-          className="shrink-0"
+          className="shrink-0 flex flex-col sm:flex-row items-center gap-3"
         >
           <motion.button
             whileHover={{ scale: 1.03, y: -2 }}
             whileTap={{ scale: 0.98 }}
+            onClick={onOpenRetrieval}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-sm border border-slate-300 dark:border-slate-700 shadow-sm cursor-pointer transition-all duration-150"
+          >
+            <Sparkles size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Semantic Retrieval</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onQuickUpload}
-            className="w-full md:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/40 cursor-pointer transition-all duration-150 border border-indigo-500/50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-extrabold text-sm shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/40 cursor-pointer transition-all duration-150 border border-indigo-500/50"
           >
             <UploadCloud size={20} className="text-white shrink-0" />
             <span className="text-white font-black tracking-wide">Upload Document</span>
