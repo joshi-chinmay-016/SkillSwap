@@ -16,21 +16,21 @@ logger = logging.getLogger(__name__)
 # ── 1. Try google.genai ───────────────────────────────────────────────────────
 GENAI_SDK = False
 try:
-    import google.genai as genai
-    from google.genai import types
+    import google.genai as genai  # type: ignore[import]
+    from google.genai import types  # type: ignore[import]
     GENAI_SDK = True
 except ImportError:
-    genai = None
-    types = None
+    genai = None  # type: ignore[assignment]
+    types = None  # type: ignore[assignment]
 
 # ── 2. Try google.generativeai ────────────────────────────────────────────────
 GENERATIVEAI_SDK = False
 if not GENAI_SDK:
     try:
-        import google.generativeai as genai_legacy
+        import google.generativeai as genai_legacy  # type: ignore[import]
         GENERATIVEAI_SDK = True
     except ImportError:
-        genai_legacy = None
+        genai_legacy = None  # type: ignore[assignment]
 
 from app.core.config import settings
 

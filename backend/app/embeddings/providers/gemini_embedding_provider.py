@@ -56,11 +56,25 @@ except ImportError:
 
 
 # ── Model constants ────────────────────────────────────────────────────────────
-_DEFAULT_MODEL = "text-embedding-004"
-_MODEL_DIMENSION = 768          # text-embedding-004 fixed output dimension
+_DEFAULT_MODEL = "gemini-embedding-001"
+_MODEL_DIMENSION = 3072         # gemini-embedding-001 fixed output dimension
 _MODEL_VERSION = "v1"           # application-managed version tag
 _PROVIDER_NAME = "gemini"
-_REST_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
+# Google API base URLs — both v1 and v1beta work for gemini-embedding-001.
+# v1beta is listed first as it has wider model availability.
+_REST_BASE_URLS = [
+    "https://generativelanguage.googleapis.com/v1beta/models", # preferred for newer models
+    "https://generativelanguage.googleapis.com/v1/models",     # v1 stable
+]
+
+# Bare model names tried in order. Update this list if the API key
+# supports additional models. Only models confirmed available for this key
+# are included. To check availability run:
+#   python -c "import google.generativeai as g; g.configure(api_key='KEY'); [print(m.name) for m in g.list_models() if 'embedContent' in m.supported_generation_methods]"
+_MODEL_BARE_NAMES = [
+    "gemini-embedding-001",  # only confirmed-available embedding model
+]
 
 
 class GeminiEmbeddingProvider(EmbeddingProvider):
@@ -153,15 +167,23 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         if not texts:
             return []
 
-        # Try SDK first, then REST
+        # Try SDK first; fall back to REST on any non-fatal failure.
+        # NOTE: EmbeddingRateLimitError and EmbeddingTimeoutError are always
+        # re-raised immediately because they signal conditions where retrying
+        # the REST path won't help (quota exhausted / network timeout).
+        # EmbeddingProviderError (e.g. 404 NOT_FOUND model name mismatch) IS
+        # allowed to fall through to the REST path so the fallback model chain
+        # can be tried.
         if self._sdk_client is not None:
             try:
                 return self._generate_via_sdk(texts)
-            except (EmbeddingRateLimitError, EmbeddingTimeoutError, EmbeddingProviderError):
-                raise  # Don't swallow classified exceptions
+            except (EmbeddingRateLimitError, EmbeddingTimeoutError):
+                raise  # Fatal — don't try REST
+            except EmbeddingConfigurationError:
+                raise  # Bad API key — REST won't help either
             except Exception as exc:
                 logger.warning(
-                    "GeminiEmbeddingProvider — SDK call failed, trying REST fallback: %s",
+                    "GeminiEmbeddingProvider — SDK call failed, falling back to REST: %s",
                     exc,
                 )
 
@@ -186,23 +208,63 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         """
         Generate embeddings using the google.genai SDK.
 
-        The SDK accepts a list of contents; we process them individually
-        since the v1 SDK's embed_content may accept only one at a time.
-        We process batch by iterating and collecting results.
+        Tries the bare model name first, then the prefixed form (models/<name>).
+        The SDK processes one text at a time.
         """
-        try:
-            vectors: list[list[float]] = []
-            for text in texts:
-                result = self._sdk_client.models.embed_content(
-                    model=self._model,
-                    contents=text,
+        # Try bare name first, then models/<name> prefix
+        model_candidates = [self._model]
+        if not self._model.startswith("models/"):
+            model_candidates.append(f"models/{self._model}")
+
+        last_exc: Exception | None = None
+        for candidate in model_candidates:
+            try:
+                vectors: list[list[float]] = []
+                for text in texts:
+                    result = self._sdk_client.models.embed_content(
+                        model=candidate,
+                        contents=text,
+                    )
+                    # google.genai SDK returns EmbedContentResponse:
+                    # - .embedding (ContentEmbedding) with .values for single content
+                    # - .embeddings (list[ContentEmbedding]) for batch
+                    if hasattr(result, "embeddings") and result.embeddings:
+                        embedding_obj = result.embeddings[0]
+                    elif hasattr(result, "embedding") and result.embedding:
+                        embedding_obj = result.embedding
+                    else:
+                        raise EmbeddingProviderError(
+                            f"Unexpected SDK response structure for model={candidate!r}: "
+                            f"no 'embedding' or 'embeddings' attribute found."
+                        )
+                    values = getattr(embedding_obj, "values", None)
+                    if not values:
+                        raise EmbeddingProviderError(
+                            f"SDK returned empty values for model={candidate!r}."
+                        )
+                    vectors.append(list(values))
+                logger.debug(
+                    "GeminiEmbeddingProvider — SDK success: model=%s texts=%d",
+                    candidate, len(texts),
                 )
-                # SDK returns an EmbedContentResponse with .embeddings
-                embedding_obj = result.embeddings[0]
-                vectors.append(list(embedding_obj.values))
-            return vectors
-        except Exception as exc:
-            return self._classify_and_raise(exc)
+                return vectors
+            except (EmbeddingProviderError, EmbeddingRateLimitError,
+                    EmbeddingTimeoutError, EmbeddingConfigurationError):
+                raise  # already typed — propagate immediately
+            except Exception as exc:
+                exc_str = str(exc).lower()
+                if "404" in exc_str or "not found" in exc_str or "not_found" in exc_str:
+                    logger.warning(
+                        "GeminiEmbeddingProvider — SDK 404 for model=%s, trying next candidate",
+                        candidate,
+                    )
+                    last_exc = exc
+                    continue
+                # Non-404 error — classify and raise immediately
+                return self._classify_and_raise(exc)
+
+        # All SDK candidates exhausted — fall through to REST
+        return self._classify_and_raise(last_exc)
 
     # ── REST implementation ────────────────────────────────────────────────────
 
@@ -210,53 +272,100 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         """
         Generate embeddings using the Gemini REST API (batchEmbedContents).
 
-        REST endpoint: POST /v1beta/models/{model}:batchEmbedContents
+        Iterates over all combinations of (API version, model name) so that
+        the request succeeds regardless of which version/model is available
+        for the active API key:
 
-        This endpoint accepts up to 100 contents per request.
+            v1/text-embedding-004          ← preferred (stable)
+            v1/embedding-001               ← stable legacy fallback
+            v1beta/text-embedding-004      ← beta
+            v1beta/embedding-001           ← beta legacy fallback
         """
-        url = (
-            f"{_REST_BASE_URL}/{self._model}:batchEmbedContents"
-            f"?key={self._api_key}"
-        )
+        # Build primary bare name from configured model (strip any "models/" prefix)
+        primary_bare = self._model.removeprefix("models/")
 
-        # Build request payload
-        requests_payload = [
-            {
-                "model": f"models/{self._model}",
-                "content": {"parts": [{"text": text}]},
-            }
-            for text in texts
-        ]
-        payload = {"requests": requests_payload}
+        # Ordered candidate list: (base_url, bare_model_name)
+        candidates: list[tuple[str, str]] = []
+        for base_url in _REST_BASE_URLS:
+            for bare_name in _MODEL_BARE_NAMES:
+                # Put the configured model name first within each API version
+                if bare_name == primary_bare:
+                    candidates.insert(
+                        # insert at position = number of already-added entries for v1
+                        sum(1 for c in candidates if _REST_BASE_URLS[0] in c[0]),
+                        (base_url, bare_name),
+                    )
+                else:
+                    candidates.append((base_url, bare_name))
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+        # Deduplicate while preserving order
+        seen: set[tuple[str, str]] = set()
+        ordered: list[tuple[str, str]] = []
+        for entry in candidates:
+            if entry not in seen:
+                seen.add(entry)
+                ordered.append(entry)
 
-        try:
-            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                embeddings_data = data.get("embeddings", [])
-                vectors: list[list[float]] = []
-                for emb in embeddings_data:
-                    vectors.append(emb.get("values", []))
-                return vectors
+        last_err: Exception | None = None
+        for base_url, bare_name in ordered:
+            url = f"{base_url}/{bare_name}:batchEmbedContents?key={self._api_key}"
+            model_field = f"models/{bare_name}"
 
-        except urllib.error.HTTPError as err:
-            self._handle_http_error(err)
-        except TimeoutError as exc:
-            raise EmbeddingTimeoutError(
-                f"Gemini embedding REST call timed out after {self._timeout}s.",
-                cause=exc,
-            ) from exc
-        except Exception as exc:
-            raise EmbeddingProviderError(
-                f"Gemini embedding REST call failed: {exc}",
-                cause=exc,
-            ) from exc
+            requests_payload = [
+                {
+                    "model": model_field,
+                    "content": {"parts": [{"text": text}]},
+                }
+                for text in texts
+            ]
+
+            req = urllib.request.Request(
+                url,
+                data=json.dumps({"requests": requests_payload}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    vectors: list[list[float]] = [
+                        emb.get("values", []) for emb in data.get("embeddings", [])
+                    ]
+                    label = f"{base_url.split('/v')[1].split('/')[0]}/{bare_name}"
+                    if bare_name != primary_bare or "v1beta" in base_url:
+                        logger.info(
+                            "GeminiEmbeddingProvider — REST succeeded via %s", label
+                        )
+                    return vectors
+
+            except urllib.error.HTTPError as err:
+                if err.code == 404:
+                    label = f"{base_url.split('/v')[1].split('/')[0]}/{bare_name}"
+                    logger.warning(
+                        "GeminiEmbeddingProvider — REST 404 for %s, trying next", label
+                    )
+                    last_err = err
+                    continue
+                self._handle_http_error(err)
+            except TimeoutError as exc:
+                raise EmbeddingTimeoutError(
+                    f"Gemini embedding REST call timed out after {self._timeout}s.",
+                    cause=exc,
+                ) from exc
+            except Exception as exc:
+                raise EmbeddingProviderError(
+                    f"Gemini embedding REST call failed: {exc}",
+                    cause=exc,
+                ) from exc
+
+        tried = [(b.split("/v")[1].split("/")[0] + "/" + m) for b, m in ordered]
+        raise EmbeddingProviderError(
+            f"Gemini REST API returned 404 for all candidates: {tried}. "
+            "Ensure the Generative Language API (embedding) is enabled for your "
+            "API key at console.cloud.google.com, or set a different EMBEDDING_MODEL.",
+            cause=last_err,
+        ) from last_err
 
     # ── Error handling ─────────────────────────────────────────────────────────
 

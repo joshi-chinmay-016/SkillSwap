@@ -524,6 +524,7 @@ class EmbeddingService:
         return {
             "job_id": job_id,
             "document_id": document_id,
+            "parsed_document_id": parsed.id,
             "chunk_count": len(chunks),
             "ready": total_ready,
             "failed": total_failed,
