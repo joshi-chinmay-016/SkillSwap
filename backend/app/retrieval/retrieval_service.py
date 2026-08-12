@@ -124,7 +124,7 @@ class RetrievalService:
         retriever = FAISSRetriever(store, candidate_multiplier=candidate_multiplier)
 
         # ── Embedding provider ────────────────────────────────────────────
-        provider = GeminiEmbeddingProvider.from_settings()
+        provider = GeminiEmbeddingProvider()
 
         return cls(
             retriever=retriever,
@@ -178,7 +178,7 @@ class RetrievalService:
         # ── Step 2: Generate query embedding ─────────────────────────────────
         t_emb_start = time.perf_counter()
         try:
-            query_vector: list[float] = self._provider.embed_query(request.query)
+            query_vector: list[float] = self._provider.generate_embedding(request.query)
         except Exception as exc:
             raise QueryEmbeddingError(
                 "Failed to generate query embedding.",

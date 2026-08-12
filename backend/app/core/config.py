@@ -177,6 +177,40 @@ class Settings(BaseSettings):
     # Maximum allowed query string length in characters.
     RETRIEVAL_MAX_QUERY_LENGTH: int = 2000
 
+    # ----------------------------
+    # RAG Context Builder (Day 72 A1)
+    # ----------------------------
+
+    # Maximum number of retrieved chunks to include in the context window.
+    RAG_MAX_CONTEXT_CHUNKS: int = 10
+
+    # Maximum total character count across all selected context chunks.
+    # Prevents unbounded context from reaching the LLM.
+    RAG_MAX_CONTEXT_CHARACTERS: int = 12000
+
+    # Approximate maximum token budget for context (estimated as chars // 4).
+    # This is a rough estimate; do NOT treat it as exact token accounting.
+    RAG_MAX_CONTEXT_TOKENS: int = 3000
+
+    # ----------------------------
+    # RAG Prompt Builder / Generation (Day 72 A2)
+    # ----------------------------
+
+    # Maximum estimated token budget for the full constructed prompt (context +
+    # instructions + query). Prompt construction fails safely if exceeded.
+    RAG_MAX_PROMPT_TOKENS: int = 4000
+
+    # Generation temperature for RAG answers. Low values keep answers grounded.
+    # 0.0 = fully deterministic (where provider supports it); 0.2 = slight variance.
+    RAG_TEMPERATURE: float = 0.2
+
+    # Maximum number of tokens the LLM should generate in its answer.
+    RAG_MAX_OUTPUT_TOKENS: int = 1024
+
+    # Default response style passed to PromptBuilder.
+    # Supported values: "concise" | "detailed" | "explanatory"
+    RAG_RESPONSE_STYLE: str = "detailed"
+
     class Config:
         env_file = ".env"
 

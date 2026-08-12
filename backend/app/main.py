@@ -147,6 +147,16 @@ from app.api.retrieval_router import (
     router as retrieval_router
 )
 
+# Optional RAG router — guarded to avoid import errors when RAG deps are missing
+try:
+    from app.api.rag_router import router as rag_router
+except Exception as _rag_import_err:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "RAG router not loaded due to import error: %s", _rag_import_err
+    )
+    rag_router = None
+
 from app.api.learning_sessions import (
     journey_sessions_router as learning_sessions_journey_router,
     sessions_router as learning_sessions_router
@@ -201,6 +211,8 @@ app.include_router(ai_context_router)
 app.include_router(mentor_memory_router)
 app.include_router(document_router)
 app.include_router(retrieval_router)
+if rag_router:
+    app.include_router(rag_router)
 
 # Include optional AI routers only if they were successfully imported
 if ai_router:
