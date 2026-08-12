@@ -29,7 +29,7 @@ import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
 import AIMentorPage from "../pages/AIMentorPage";
 import MentorMemoryPage from "../pages/MentorMemoryPage";
-import DocumentLibraryPage from "../pages/DocumentLibraryPage";
+import MentorKnowledgePage from "../pages/MentorKnowledgePage";
 
 export default function AppRoutes() {
   return (
@@ -51,11 +51,17 @@ export default function AppRoutes() {
         {/* Dashboard and Core Sections have AppLayout (Header + Sidebar) */}
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          
+          {/* Unified AI Mentor Experience */}
           <Route path="/mentor" element={<AIMentorPage />} />
+          <Route path="/mentor/knowledge" element={<MentorKnowledgePage />} />
           <Route path="/mentor/memory" element={<MentorMemoryPage />} />
           <Route path="/mentor/:conversationId" element={<AIMentorPage />} />
-          <Route path="/documents" element={<DocumentLibraryPage />} />
 
+          {/* Legacy AI Route Redirects for Seamless Backward Compatibility */}
+          <Route path="/ai/chat" element={<Navigate to="/mentor" replace />} />
+          <Route path="/knowledge" element={<Navigate to="/mentor/knowledge" replace />} />
+          <Route path="/documents" element={<Navigate to="/mentor/knowledge?tab=documents" replace />} />
 
           <Route path="/mentors" element={<MentorList />} />
           <Route path="/mentors/:id" element={<MentorDetail />} />
@@ -67,7 +73,6 @@ export default function AppRoutes() {
           <Route path="/journeys/:journeyId/sessions" element={<LearningJourney />} />
           <Route path="/learning-sessions/:sessionId" element={<SessionPage />} />
           <Route path="/activity" element={<ActivityFeed />} />
-          <Route path="/ai/chat" element={<AIChat />} />
           <Route path="/ai/mentor-recommendation" element={<MentorRecommendation />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/wallet" element={<Wallet />} />

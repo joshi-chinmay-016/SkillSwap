@@ -24,6 +24,7 @@ import MemoryDetailsDrawer from "../components/Mentor/MemoryDetailsDrawer";
 import EditMemoryModal from "../components/Mentor/EditMemoryModal";
 import ConfirmActionModal from "../components/Mentor/ConfirmActionModal";
 import MemorySettingsModal from "../components/Mentor/MemorySettingsModal";
+import MentorNavTabs from "../components/Mentor/MentorNavTabs";
 
 export default function MentorMemoryPage() {
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
@@ -185,38 +186,33 @@ export default function MentorMemoryPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      {/* Top Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-bg border border-border shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <Link
-            to="/mentor"
-            className="p-2.5 rounded-2xl border border-border bg-bg-alt text-text-secondary hover:text-text hover:border-accent/30 transition-all cursor-pointer"
-            title="Back to AI Mentor Chat"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="w-10 h-10 rounded-2xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center shrink-0">
-            <Brain className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-extrabold text-text tracking-tight">AI Memory</h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
-                <Sparkles className="w-3 h-3" /> Transparency & Control
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary">
-              View, manage, and control what your AI Mentor remembers about you.
-            </p>
-          </div>
-        </div>
+    <div className="flex flex-col gap-4 h-[calc(100vh-6.5rem)]">
+      {/* Outer Card Container */}
+      <div className="flex-1 flex flex-col bg-bg border border-border rounded-2xl shadow-sm overflow-hidden">
+        {/* Mentor Workspace Navigation Tabs */}
+        <MentorNavTabs />
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-bg-alt text-xs font-semibold text-text hover:bg-bg transition-colors cursor-pointer"
+        <div className="p-6 space-y-6 overflow-y-auto">
+          {/* Top Page Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-bg-alt/30 border border-border">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center shrink-0">
+                <Brain className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-extrabold text-text tracking-tight">What Your Mentor Remembers</h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
+                    <Sparkles className="w-3 h-3" /> Transparency & Control
+                  </span>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  View, edit, pin, or forget long-term learning memories accumulated by your AI Mentor.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
           >
             <Settings className="w-4 h-4 text-accent" />
             <span>Memory Settings</span>
@@ -320,6 +316,8 @@ export default function MentorMemoryPage() {
         onSave={(data) => updateSettingsMutation.mutate(data)}
         isLoading={updateSettingsMutation.isPending}
       />
+        </div>
+      </div>
     </div>
   );
 }

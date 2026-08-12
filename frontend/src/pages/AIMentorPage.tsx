@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MentorHeader from "../components/Mentor/MentorHeader";
+import MentorNavTabs from "../components/Mentor/MentorNavTabs";
 import ProfileSidebar from "../components/Mentor/ProfileSidebar";
 import ConversationSidebar from "../components/Mentor/ConversationSidebar";
 import ConversationView from "../components/Mentor/ConversationView";
@@ -16,8 +17,9 @@ import {
   useRetryMentorMessage,
   useCreateMentorConversation,
 } from "../hooks/useMentorConversations";
+import { useRAGQuery } from "../hooks/useRAGQuery";
 import type { MessageItem } from "../types/mentor";
-import { SlidersHorizontal, AlertTriangle, RefreshCw, Lock, Sparkles } from "lucide-react";
+import { SlidersHorizontal, AlertTriangle, RefreshCw, Lock, Sparkles, BookOpen } from "lucide-react";
 
 export default function AIMentorPage() {
   const { conversationId: paramId } = useParams<{ conversationId?: string }>();
@@ -25,6 +27,12 @@ export default function AIMentorPage() {
 
   const parsedId = paramId ? parseInt(paramId, 10) : null;
   const conversationId = parsedId && !isNaN(parsedId) ? parsedId : null;
+
+  // Mode state: General AI vs Knowledge Base (RAG)
+  const [aiMode, setAiMode] = useState<"general" | "knowledge">("general");
+
+  // RAG query mutation
+  const ragMutation = useRAGQuery();
 
   // AI Context hook
   const { context, isLoading: isContextLoading, isError: isContextError, refetch: refetchContext } = useAIContext();
@@ -93,11 +101,16 @@ export default function AIMentorPage() {
     <div className="flex flex-col gap-4 h-[calc(100vh-6.5rem)]">
       {/* Outer Card Container */}
       <div className="flex-1 flex flex-col overflow-hidden bg-bg border border-border rounded-2xl shadow-sm">
+        {/* Mentor Workspace Navigation Tabs */}
+        <MentorNavTabs />
+
         {/* Header */}
         <MentorHeader
           conversation={activeConversation}
           contextVersion={context?.context_version}
           showProfileSidebar={showProfileSidebar}
+          aiMode={aiMode}
+          onToggleAiMode={setAiMode}
           onToggleSidebar={() => setShowMobileConvSidebar(!showMobileConvSidebar)}
           onToggleProfileSidebar={() => setShowProfileSidebar(!showProfileSidebar)}
         />
@@ -199,6 +212,8 @@ export default function AIMentorPage() {
                   placeholder={
                     isArchived
                       ? "Conversation is archived (read-only)"
+                      : aiMode === "knowledge"
+                      ? "Ask AI Mentor using your indexed Knowledge Base (RAG)..."
                       : "Ask your AI Mentor anything..."
                   }
                 />
