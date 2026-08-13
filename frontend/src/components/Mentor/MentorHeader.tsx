@@ -10,6 +10,8 @@ interface MentorHeaderProps {
   conversation?: MentorConversation | null;
   contextVersion?: number;
   showProfileSidebar?: boolean;
+  aiMode?: "general" | "knowledge";
+  onToggleAiMode?: (mode: "general" | "knowledge") => void;
   onToggleSidebar?: () => void;
   onToggleProfileSidebar?: () => void;
 }
@@ -18,6 +20,8 @@ export default function MentorHeader({
   conversation,
   contextVersion = 1,
   showProfileSidebar = false,
+  aiMode = "general",
+  onToggleAiMode,
   onToggleSidebar,
   onToggleProfileSidebar,
 }: MentorHeaderProps) {
@@ -70,6 +74,36 @@ export default function MentorHeader({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        {onToggleAiMode && (
+          <div className="flex items-center gap-1 bg-bg-alt p-1 rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => onToggleAiMode("general")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                aiMode === "general"
+                  ? "bg-bg text-text shadow-xs border border-border"
+                  : "text-text-secondary hover:text-text"
+              }`}
+            >
+              <Bot className="w-3.5 h-3.5 text-accent" />
+              <span className="hidden sm:inline">General AI</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onToggleAiMode("knowledge")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                aiMode === "knowledge"
+                  ? "bg-accent text-white shadow-xs font-bold"
+                  : "text-text-secondary hover:text-text"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>My Knowledge (RAG)</span>
+            </button>
+          </div>
+        )}
+
         <Link
           to="/mentor/memory"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-bg-alt text-text-secondary hover:text-text hover:bg-bg text-xs font-semibold transition-all cursor-pointer"

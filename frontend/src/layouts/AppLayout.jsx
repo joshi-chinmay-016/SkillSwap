@@ -26,7 +26,9 @@ import {
   Activity,
   Bot,
   Brain,
-  FolderOpen
+  FolderOpen,
+  Sparkles,
+  BookOpen
 } from "lucide-react";
 
 
@@ -122,15 +124,12 @@ export default function AppLayout() {
   const navItems = [
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
     { name: "AI Mentor", to: "/mentor", icon: Bot },
-    { name: "AI Memory", to: "/mentor/memory", icon: Brain },
-    { name: "AI Library", to: "/documents", icon: FolderOpen },
+    { name: "Mentor Knowledge", to: "/mentor/knowledge", icon: BookOpen },
+    { name: "Mentor Memory", to: "/mentor/memory", icon: Brain },
     { name: "Learning Journey", to: "/journey/roadmap", icon: Compass },
-
-
     { name: "Skill Gap", to: "/journey/skill-gap", icon: Target },
     { name: "Discover Mentors", to: "/mentors", icon: Users },
     { name: "Sessions", to: "/sessions", icon: Calendar },
-    { name: "AI Chat", to: "/ai/chat", icon: MessageSquare },
     { name: "Wallet", to: "/wallet", icon: WalletIcon },
     { name: "Learning Activity", to: "/activity", icon: Activity },
     { name: "Profile Settings", to: "/profile", icon: Settings },

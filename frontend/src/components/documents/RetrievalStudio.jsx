@@ -72,7 +72,7 @@ export default function RetrievalStudio({ documents = [], onClose }) {
             <h2 className="text-base font-bold text-text flex items-center gap-2">
               Semantic Knowledge Retrieval Studio
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 text-accent border border-accent/20">
-                Day 71 Part A+B
+                FAISS Vector Search
               </span>
             </h2>
             <p className="text-xs text-text-secondary mt-0.5">

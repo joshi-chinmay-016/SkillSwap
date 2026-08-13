@@ -53,7 +53,7 @@ export default function ReadyCard({ document, parsedData, onOpenMetadata }) {
       <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[11px]">
         <div className="flex items-center gap-1.5 text-text-secondary">
           <Scissors size={12} className="text-primary" />
-          <span>Next: <strong className="text-text">Chunk Generation (Day 68)</strong></span>
+          <span>Next: <strong className="text-text">Chunk Generation</strong></span>
         </div>
         {onOpenMetadata && (
           <button
