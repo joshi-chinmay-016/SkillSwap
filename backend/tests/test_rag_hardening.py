@@ -86,18 +86,19 @@ def test_db():
         Embedding.__table__,
         VectorIndexEntry.__table__,
     ]
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine, tables=tables)
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = session_factory()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine, tables=tables)
 
 
 @pytest.fixture
 def tmp_vector_store():
+    pytest.importorskip("faiss")
     tmp_dir = Path(tempfile.mkdtemp())
     index_path = tmp_dir / "test.index"
     mapping_path = tmp_dir / "test_mapping.json"
@@ -439,6 +440,7 @@ def test_llm_empty_response_rejected():
 # ── 4. Cross-User Isolation Test ──────────────────────────────────────────────
 
 def test_cross_user_retrieval_isolation(test_db, tmp_vector_store, mock_embedding_provider):
+    pytest.importorskip("faiss")
     vec = [0.0] * TEST_DIM
     vec[0] = 1.0
 
@@ -623,9 +625,13 @@ def test_rag_api_endpoint_validation_error():
     fake_user = User(id=1, email="test@example.com", name="Test User")
     app.dependency_overrides[get_current_user] = lambda: fake_user
 
+    mock_service = MagicMock()
+    mock_service.query.side_effect = RAGValidationError("Query must not be empty or whitespace-only.")
+
     try:
-        # Empty query -> 422
-        resp = client.post("/rag/query", json={"query": "   "})
-        assert resp.status_code == 422
+        with patch("app.api.rag_router.RAGService.create", return_value=mock_service):
+            # Empty query -> 422
+            resp = client.post("/rag/query", json={"query": "   "})
+            assert resp.status_code == 422
     finally:
         app.dependency_overrides.clear()

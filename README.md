@@ -284,6 +284,114 @@ sequenceDiagram
 | **Stage 5** | **Vector Index** | FAISS CPU IndexIDMap2(IndexFlatIP) 3072-dim persistent vector index & mapping | `COMPLETE` |
 | **Stage 6** | **Semantic Retrieval** | Top-K vector search, batch metadata JOIN, ownership/lifecycle filtering, ranking | `COMPLETE` |
 | **Stage 7** | **Grounded RAG** | `ContextBuilder`, `PromptBuilder`, `RAGService`, and grounded answer generation | `COMPLETE` |
+| **Stage 8** | **Grounded Answer Engine & Eval** | `AnswerValidator`, source integrity validation, document deduplication, and 9-category Evaluation Framework | `COMPLETE` |
+
+---
+
+### 🧠 Grounded Answer Engine & Evaluation Architecture
+
+SkillSwap Arena implements a production-grade Grounded Answer Engine and Evaluation Framework on top of the FAISS retrieval pipeline.
+
+#### Product Architecture
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+graph TD
+    subgraph PrimaryExperience [AI Mentor Workspace]
+        Mentor[AI Mentor] --> Chat[Chat Mode - Learner-Aware Guidance]
+        Mentor --> Knowledge[Knowledge Mode - Grounded Answer Engine]
+        Mentor --> Memory[Memory Mode - Learner Facts & Memory]
+    end
+
+    subgraph Management [Knowledge Library]
+        Library[User Knowledge Library] --> Docs[Document Processing & Uploads]
+        Library --> FAISSIdx[FAISS Vector Storage & Status]
+    end
+
+    Knowledge -->|Retrieves & Synthesizes| Library
+```
+
+#### Grounded Answer Generation Pipeline
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"secondaryColor":"#ECFEFF",
+"tertiaryColor":"#F8FAFC",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+sequenceDiagram
+    autonumber
+    participant UI as AI Mentor UI
+    participant API as RAG Router
+    participant Service as RAGService
+    participant Ret as RetrievalService (FAISS)
+    participant Ctx as ContextBuilder
+    participant Prompt as PromptBuilder
+    participant LLM as Gemini Provider
+    participant Val as AnswerValidator
+
+    UI->>API: POST /rag/query (query, top_k, style)
+    API->>Service: query(db, query, user_id)
+    Service->>Ret: retrieve(request, user_id)
+    Ret-->>Service: RetrievalResponse (ranked chunks + timings)
+    Service->>Ctx: build(ContextRequest)
+    Ctx-->>Service: ContextResult (XML-wrapped context block + sources)
+    Service->>Prompt: build(PromptRequest)
+    Prompt-->>Service: PromptResult (grounding system instruction + user msg)
+    Service->>LLM: generate_text(user_msg, system_instruction)
+    LLM-->>Service: Raw Answer String
+    Service->>Val: validate(answer, sources, retrieved_chunk_ids)
+    Val-->>Service: AnswerValidationResult (grounded=True, deduped sources)
+    Service-->>API: GenerationResult (answer, grounded, sources, metadata)
+    API-->>UI: RAGQueryResponse JSON
+```
+
+#### Evaluation Framework Architecture
+
+The Grounded Answer Evaluation Framework operates independently from production request paths:
+
+```mermaid
+%%{init: {
+"theme":"base",
+"themeVariables":{
+"primaryColor":"#E8F0FE",
+"primaryBorderColor":"#2563EB",
+"primaryTextColor":"#1E293B",
+"lineColor":"#64748B",
+"fontSize":"15px"
+}
+}}%%
+flowchart LR
+    Dataset[9-Category Dataset\n25 Test Cases] --> Runner[EvaluationRunner]
+    Runner --> Pipeline[Production Pipeline\nContext + Prompt + Validator]
+    Pipeline --> Evaluator[GroundingEvaluator]
+    Evaluator --> Report[AggregateReport & JSON Report]
+```
+
+#### Evaluation Metrics Separation
+
+| Metric Category | Metrics | Evaluator |
+| :--- | :--- | :--- |
+| **Retrieval Evaluation** | Hit@K, Recall@K, Precision@K, MRR | `RetrievalEvaluator` (Day 73) |
+| **Grounded Answer Evaluation** | Grounded Answer Rate, Correct Refusal Rate, Answer Fact Coverage, Source Validity Rate, Source Coverage, Unsupported Response Count | `GroundingEvaluator` (Day 74) |
 
 ---
 

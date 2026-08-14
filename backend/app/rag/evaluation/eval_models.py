@@ -209,7 +209,7 @@ class AggregateReport:
 
         lines = [
             "Grounded Answer Evaluation",
-            "─" * 43,
+            "-" * 43,
             f"Cases:                  {self.total_cases}",
             f"Answerable:             {self.answerable_cases}",
             f"Unanswerable:           {self.unanswerable_cases}",
