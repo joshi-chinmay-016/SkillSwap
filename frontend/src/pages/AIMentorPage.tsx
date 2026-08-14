@@ -1,7 +1,7 @@
 // src/pages/AIMentorPage.tsx
 
-import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MentorHeader from "../components/Mentor/MentorHeader";
 import MentorNavTabs from "../components/Mentor/MentorNavTabs";
 import ProfileSidebar from "../components/Mentor/ProfileSidebar";
@@ -23,13 +23,15 @@ import { SlidersHorizontal, AlertTriangle, RefreshCw, Lock, Sparkles, BookOpen }
 
 export default function AIMentorPage() {
   const { conversationId: paramId } = useParams<{ conversationId?: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const parsedId = paramId ? parseInt(paramId, 10) : null;
   const conversationId = parsedId && !isNaN(parsedId) ? parsedId : null;
 
   // Mode state: General AI vs Knowledge Base (RAG)
-  const [aiMode, setAiMode] = useState<"general" | "knowledge">("general");
+  const initialMode = searchParams.get("mode") === "knowledge" ? "knowledge" : "general";
+  const [aiMode, setAiMode] = useState<"general" | "knowledge">(initialMode);
 
   // RAG query mutation
   const ragMutation = useRAGQuery();
@@ -157,6 +159,26 @@ export default function AIMentorPage() {
 
           {/* Central Chat Workspace (Takes full width when profile sidebar is collapsed) */}
           <div className="flex-1 flex flex-col overflow-hidden bg-bg-alt/30 min-w-0">
+            {/* Grounded Knowledge Mode Banner */}
+            {aiMode === "knowledge" && (
+              <div className="px-4 py-2.5 bg-accent/10 border-b border-accent/20 text-accent text-xs flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="w-4 h-4 shrink-0 text-accent" />
+                  <span className="font-semibold truncate">
+                    Grounded Knowledge Mode: AI Mentor will synthesize answers from your indexed Knowledge Base.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/mentor/knowledge?tab=documents")}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-bg border border-accent/30 text-accent hover:bg-accent hover:text-white text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>View Knowledge Library</span>
+                </button>
+              </div>
+            )}
+
             {/* Read-Only Banner for Archived Conversation */}
             {isArchived && (
               <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">

@@ -40,6 +40,23 @@ class RAGError(Exception):
         return False
 
 
+class RAGValidationError(RAGError):
+    """
+    Raised when input validation for a RAG request fails before downstream execution.
+
+    Examples:
+        - Query is empty or whitespace-only.
+        - Query exceeds maximum character limit.
+        - top_k is outside allowed range.
+        - document_id is not a valid UUID format.
+        - response_style is unsupported.
+    """
+
+    @property
+    def is_recoverable(self) -> bool:
+        return False
+
+
 class ContextBuildError(RAGError):
     """
     Raised when the ContextBuilder fails to construct context unexpectedly.

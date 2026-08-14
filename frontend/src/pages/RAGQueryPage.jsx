@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Sparkles, Brain, BookOpen, AlertCircle } from "lucide-react";
 import { useRAGQuery } from "../hooks/useRAGQuery";
 import KnowledgePipelineVisual from "../components/rag/KnowledgePipelineVisual";
@@ -9,8 +10,12 @@ import AnswerCard from "../components/rag/AnswerCard";
 import SourceList from "../components/rag/SourceList";
 
 export default function RAGQueryPage() {
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+  const docIdParam = searchParams.get("docId") || null;
+
   const [responseStyle, setResponseStyle] = useState("detailed");
-  const [activeQuery, setActiveQuery] = useState("");
+  const [activeQuery, setActiveQuery] = useState(initialQuery);
 
   const ragMutation = useRAGQuery();
 
@@ -18,9 +23,16 @@ export default function RAGQueryPage() {
     setActiveQuery(queryText);
     ragMutation.mutate({
       query: queryText,
+      document_id: docIdParam,
       response_style: responseStyle,
     });
   };
+
+  useEffect(() => {
+    if (initialQuery && !ragMutation.data && !ragMutation.isPending) {
+      handleQuerySubmit(initialQuery);
+    }
+  }, [initialQuery]);
 
   const handleReset = () => {
     setActiveQuery("");

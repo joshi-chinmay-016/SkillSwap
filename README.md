@@ -675,6 +675,14 @@ User Query ──► Gemini Query Embed ──► FAISS Index ──► PostgreS
 
 SkillSwap Arena consolidates the user-facing AI experience under **AI Mentor** (`/mentor`) as the primary AI destination, exposing Chat, Knowledge (Grounded RAG & Document Library), and Long-Term Memory as integrated capabilities while keeping backend services strictly modular.
 
+#### Core Terminology & Product Boundaries
+
+- **AI Mentor**: Primary intelligent AI experience providing personalized, learner-aware guidance.
+- **Knowledge**: The user's accessible, indexed learning resources (PDFs, Markdown notes, text files).
+- **Library**: Document management and storage interface (`/mentor/knowledge?tab=documents`).
+- **RAG**: Retrieval-augmented generation engine used by AI Mentor to ground answers in Library knowledge.
+- **Memory**: Learner facts, goals, and style preferences remembered across conversations.
+
 #### Product UX Architecture
 
 ```mermaid

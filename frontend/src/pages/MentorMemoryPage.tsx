@@ -213,11 +213,15 @@ export default function MentorMemoryPage() {
             </div>
 
             <div className="flex items-center gap-2">
-          >
-            <Settings className="w-4 h-4 text-accent" />
-            <span>Memory Settings</span>
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-bg hover:bg-bg-alt text-text text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+              >
+                <Settings className="w-4 h-4 text-accent" />
+                <span>Memory Settings</span>
+              </button>
+            </div>
       </div>
 
       {/* Part 2 — Memory Dashboard Statistics */}

@@ -69,6 +69,7 @@ from app.rag.context_exceptions import (
     PromptBuildError,
     RAGError,
     RAGUnavailableError,
+    RAGValidationError,
 )
 from app.rag.context_models import ContextRequest
 from app.rag.prompt_builder import GroundedPromptBuilder, PromptBuilder
@@ -192,6 +193,15 @@ class RAGService:
         """
         request_id = str(uuid.uuid4())[:8]
         t_total_start = time.perf_counter()
+
+        # ── Step 0: Input validation ──────────────────────────────────────────
+        self._validate_request(
+            query=query,
+            user_id=user_id,
+            top_k=top_k,
+            document_id=document_id,
+            response_style=response_style,
+        )
 
         logger.info(
             "RAGService.query — request_id=%s user_id=%d "
@@ -345,3 +355,52 @@ class RAGService:
             )
 
         return raw_answer.strip()
+
+    def _validate_request(
+        self,
+        *,
+        query: str,
+        user_id: int,
+        top_k: Optional[int],
+        document_id: Optional[str],
+        response_style: Optional[str],
+    ) -> None:
+        """
+        Validate incoming request parameters at the RAG service boundary.
+
+        Raises:
+            RAGValidationError: Input parameter validation failure.
+        """
+        if not query or not query.strip():
+            raise RAGValidationError("Query must not be empty or whitespace-only.")
+
+        max_query_len = getattr(settings, "RETRIEVAL_MAX_QUERY_LENGTH", 2000)
+        if len(query.strip()) > max_query_len:
+            raise RAGValidationError(
+                f"Query exceeds maximum allowed length of {max_query_len} characters."
+            )
+
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise RAGValidationError("A valid authenticated user_id is required.")
+
+        if top_k is not None:
+            max_k = getattr(settings, "RETRIEVAL_MAX_TOP_K", 20)
+            if top_k < 1 or top_k > max_k:
+                raise RAGValidationError(
+                    f"top_k must be between 1 and {max_k}, got {top_k}."
+                )
+
+        if document_id is not None:
+            doc_id = document_id.strip()
+            if len(doc_id) != 36:
+                raise RAGValidationError(
+                    "document_id must be a valid UUID string (36 characters)."
+                )
+
+        if response_style is not None:
+            from app.rag.prompt_models import SUPPORTED_RESPONSE_STYLES
+            if response_style not in SUPPORTED_RESPONSE_STYLES:
+                raise RAGValidationError(
+                    f"Unsupported response_style '{response_style}'. "
+                    f"Supported values: {sorted(SUPPORTED_RESPONSE_STYLES)}."
+                )

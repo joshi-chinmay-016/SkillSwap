@@ -2,18 +2,27 @@
 GeminiProvider — client provider for Google Gemini models.
 
 Supports:
-1. `google.genai` SDK
-2. `google.generativeai` SDK
-3. Standard library `urllib.request` REST API fallback (works without external SDK packages)
+1. `google.generativeai` SDK (official stable Python SDK)
+2. `google.genai` SDK
+3. Standard library `urllib.request` REST API fallback with SSL context
 """
 import json
 import logging
+import ssl
 import urllib.request
 import urllib.error
 
 logger = logging.getLogger(__name__)
 
-# ── 1. Try google.genai ───────────────────────────────────────────────────────
+# ── 1. Try google.generativeai (Official stable SDK) ──────────────────────────
+GENERATIVEAI_SDK = False
+try:
+    import google.generativeai as genai_legacy  # type: ignore[import]
+    GENERATIVEAI_SDK = True
+except ImportError:
+    genai_legacy = None  # type: ignore[assignment]
+
+# ── 2. Try google.genai ───────────────────────────────────────────────────────
 GENAI_SDK = False
 try:
     import google.genai as genai  # type: ignore[import]
@@ -23,21 +32,19 @@ except ImportError:
     genai = None  # type: ignore[assignment]
     types = None  # type: ignore[assignment]
 
-# ── 2. Try google.generativeai ────────────────────────────────────────────────
-GENERATIVEAI_SDK = False
-if not GENAI_SDK:
-    try:
-        import google.generativeai as genai_legacy  # type: ignore[import]
-        GENERATIVEAI_SDK = True
-    except ImportError:
-        genai_legacy = None  # type: ignore[assignment]
-
 from app.core.config import settings
 
 
 class GeminiProvider:
 
     def __init__(self):
+        if GENERATIVEAI_SDK and settings.GEMINI_API_KEY:
+            try:
+                genai_legacy.configure(api_key=settings.GEMINI_API_KEY)
+                logger.info("Configured google.generativeai SDK successfully.")
+            except Exception as exc:
+                logger.warning("Failed to configure google.generativeai: %s", exc)
+
         if GENAI_SDK and settings.GEMINI_API_KEY:
             try:
                 self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -47,19 +54,29 @@ class GeminiProvider:
         else:
             self.client = None
 
-        if GENERATIVEAI_SDK and settings.GEMINI_API_KEY:
-            try:
-                genai_legacy.configure(api_key=settings.GEMINI_API_KEY)
-            except Exception as exc:
-                logger.warning("Failed to configure google.generativeai: %s", exc)
-
     def generate_text(
         self,
         prompt: str,
         system_instruction: str | None = None,
         temperature: float = 0.7,
     ) -> str:
-        # Strategy 1: google.genai SDK
+        # Strategy 1: google.generativeai SDK (Most stable on Windows)
+        if GENERATIVEAI_SDK and genai_legacy:
+            try:
+                model = genai_legacy.GenerativeModel(
+                    model_name=settings.GEMINI_MODEL,
+                    system_instruction=system_instruction,
+                )
+                response = model.generate_content(
+                    prompt,
+                    generation_config=genai_legacy.types.GenerationConfig(temperature=temperature),
+                )
+                if response and hasattr(response, "text") and response.text:
+                    return response.text
+            except Exception as exc:
+                logger.warning("google.generativeai call failed, trying google.genai / REST fallback: %s", exc)
+
+        # Strategy 2: google.genai SDK
         if GENAI_SDK and self.client:
             try:
                 config = types.GenerateContentConfig(
@@ -71,24 +88,10 @@ class GeminiProvider:
                     contents=prompt,
                     config=config,
                 )
-                return response.text or ""
+                if response and hasattr(response, "text") and response.text:
+                    return response.text
             except Exception as exc:
-                logger.warning("google.genai call failed, trying fallback: %s", exc)
-
-        # Strategy 2: google.generativeai legacy SDK
-        if GENERATIVEAI_SDK and genai_legacy:
-            try:
-                model = genai_legacy.GenerativeModel(
-                    model_name=settings.GEMINI_MODEL,
-                    system_instruction=system_instruction,
-                )
-                response = model.generate_content(
-                    prompt,
-                    generation_config=genai_legacy.types.GenerationConfig(temperature=temperature),
-                )
-                return response.text or ""
-            except Exception as exc:
-                logger.warning("google.generativeai call failed, trying REST fallback: %s", exc)
+                logger.warning("google.genai call failed, trying REST fallback: %s", exc)
 
         # Strategy 3: Direct REST API via urllib.request (zero external dependency)
         return self._generate_via_rest(prompt, system_instruction, temperature)
@@ -102,9 +105,12 @@ class GeminiProvider:
         if not settings.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY is not configured in settings.")
 
+        # Clean model name (ensure no duplicate 'models/' prefix)
+        model_name = settings.GEMINI_MODEL.removeprefix("models/")
+
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+            f"{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
         )
 
         payload = {
@@ -126,12 +132,16 @@ class GeminiProvider:
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SkillSwap-GeminiProvider/1.0",
+            },
             method="POST",
         )
 
+        ctx = ssl.create_default_context()
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
                 res_data = json.loads(resp.read().decode("utf-8"))
                 candidates = res_data.get("candidates", [])
                 if candidates:

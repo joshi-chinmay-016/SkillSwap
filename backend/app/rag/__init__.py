@@ -43,6 +43,7 @@ from app.rag.context_exceptions import (
     PromptBuildError,
     RAGError,
     RAGUnavailableError,
+    RAGValidationError,
 )
 from app.rag.context_models import ContextRequest, ContextResult, ContextSource
 from app.rag.prompt_builder import GroundedPromptBuilder, PromptBuilder
@@ -67,6 +68,7 @@ __all__ = [
     "RAGService",
     # Exceptions
     "RAGError",
+    "RAGValidationError",
     "ContextBuildError",
     "ContextValidationError",
     "PromptBuildError",
