@@ -71,6 +71,7 @@ export default function RAGQueryPage() {
             insufficientContext={ragMutation.data.insufficient_context}
             contextChunkCount={ragMutation.data.context_chunk_count}
             model={ragMutation.data.model}
+            grounded={ragMutation.data.grounded}
           />
 
           {!ragMutation.data.insufficient_context && (

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, FolderPlus, AlertCircle } from "lucide-react";
+import { Sparkles, FolderPlus, AlertCircle, ShieldCheck } from "lucide-react";
 import CodeBlock from "../common/CodeBlock";
 
 export default function AnswerCard({
@@ -11,6 +11,7 @@ export default function AnswerCard({
   insufficientContext,
   contextChunkCount,
   model,
+  grounded,
 }) {
   const navigate = useNavigate();
 
@@ -59,6 +60,15 @@ export default function AnswerCard({
           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/20">
             Grounded in {contextChunkCount} {contextChunkCount === 1 ? "chunk" : "chunks"}
           </span>
+          {grounded === true && (
+            <span
+              title="Answer verified against retrieved Knowledge"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+            >
+              <ShieldCheck size={11} />
+              Grounded
+            </span>
+          )}
         </div>
 
         {model && (

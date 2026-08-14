@@ -1,5 +1,5 @@
 """
-RAGService — Day 72 Part A2.
+RAGService — Day 72 Part A2, hardened Day 73, grounded Day 74.
 
 Orchestrates the complete retrieval-augmented generation pipeline:
 
@@ -12,19 +12,26 @@ Orchestrates the complete retrieval-augmented generation pipeline:
     ContextBuilder (Day 72 A1)      — validation + dedup + budget + format
         │
         ▼
+    Grounding Contract              — system instruction hierarchy enforced
+        │
+        ▼
     PromptBuilder (Day 72 A2)       — grounded prompt construction
         │
         ▼
-    LLMService (existing)           — Gemini generation
+    LLM Provider (existing)         — Gemini generation
         │
         ▼
-    GenerationResult                — answer + backend-controlled sources
+    AnswerValidator (Day 74 A1)     — answer validation + source integrity
+        │
+        ▼
+    GenerationResult                — grounded answer + backend-controlled sources
 
 Design:
     - Uses RetrievalService.create() — does NOT access FAISS directly.
     - Uses DefaultContextBuilder.from_settings() — does NOT duplicate context logic.
     - Uses GroundedPromptBuilder.from_settings() — does NOT duplicate prompt logic.
     - Uses LLMService (existing) — does NOT duplicate the LLM provider.
+    - Uses AnswerValidator — does NOT call LLM again.
     - All dependencies are injectable for testing (mock-friendly constructor).
 
 Security:
@@ -32,7 +39,9 @@ Security:
     - RAGService receives only authorized, lifecycle-filtered chunks.
     - ContextBuilder receives only pre-authorized chunks.
     - PromptBuilder builds application-level instructions only.
+    - Retrieved content is inside <retrieved_context> tags — treated as data, not instructions.
     - Source metadata is backend-controlled; never trusted from LLM output.
+    - AnswerValidator validates source integrity against the retrieved chunk set.
     - No raw context, queries, or answers are logged (private user data).
     - No API keys, credentials, or stack traces reach the API response.
 
@@ -46,6 +55,11 @@ Observability (logged at INFO):
     - context_chunk_count
     - answer_length
     - insufficient_context
+    - grounded                   (Day 74)
+    - source_count               (Day 74)
+    - answer_validation_status   (Day 74)
+    - generation_latency_ms      (Day 74 alias of generation_ms)
+    - total_rag_latency_ms       (Day 74 alias of total_ms)
 
 No chat history, streaming, agents, or tool calling is implemented.
 """
@@ -59,6 +73,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.rag.answer_validator import AnswerValidator
 from app.rag.context_builder import ContextBuilder, DefaultContextBuilder
 from app.rag.context_exceptions import (
     ContextBuildError,
@@ -70,6 +85,7 @@ from app.rag.context_exceptions import (
     RAGError,
     RAGUnavailableError,
     RAGValidationError,
+    SourceValidationFailure,
 )
 from app.rag.context_models import ContextRequest
 from app.rag.prompt_builder import GroundedPromptBuilder, PromptBuilder
@@ -226,7 +242,7 @@ class RAGService:
         retrieved_chunks = retrieval_response.results
         retrieved_count = len(retrieved_chunks)
 
-        # ── Step 2: Context building ──────────────────────────────────────────
+        # ── Step 2: Context building ───────────────────────────────────────────
         t_context_start = time.perf_counter()
         context_req = ContextRequest(retrieved_chunks=retrieved_chunks)
         context_result = self._context_builder.build(context_req)
@@ -253,20 +269,52 @@ class RAGService:
         )
         generation_ms = (time.perf_counter() - t_generation_start) * 1000
 
+        # ── Step 5: Answer Validation ─────────────────────────────────────────
+        # Build the set of retrieved chunk_ids for source integrity check.
+        # This is the authoritative set — the server controls it, not the LLM.
+        retrieved_chunk_ids: set[str] = {
+            chunk.chunk_id for chunk in retrieved_chunks
+        }
+        max_answer_length = getattr(settings, "RAG_MAX_ANSWER_LENGTH", 8192)
+        validator = AnswerValidator(max_answer_length=max_answer_length)
+        validation_result = validator.validate(
+            answer=answer,
+            sources=prompt_result.sources,
+            retrieved_chunk_ids=retrieved_chunk_ids,
+            has_context=not insufficient_context,
+        )
+
+        if not validation_result.valid:
+            logger.warning(
+                "RAGService.query — answer validation failed. "
+                "request_id=%s reason=%s",
+                request_id,
+                validation_result.failure_reason,
+            )
+            raise InvalidGenerationResponseError(
+                validation_result.failure_reason
+                or "Answer validation failed."
+            )
+
         total_ms = (time.perf_counter() - t_total_start) * 1000
 
         logger.info(
             "RAGService.query — request_id=%s "
             "retrieved_chunks=%d context_chunks=%d answer_length=%d "
-            "insufficient_context=%s truncated=%s "
+            "insufficient_context=%s truncated=%s grounded=%s "
+            "source_count=%d invalid_source_ids=%d "
+            "answer_validation_status=pass "
             "retrieval_ms=%.1f context_ms=%.1f prompt_ms=%.1f "
-            "generation_ms=%.1f total_ms=%.1f",
+            "generation_latency_ms=%.1f total_rag_latency_ms=%.1f",
             request_id,
             retrieved_count,
             context_result.chunk_count,
             len(answer),
             insufficient_context,
             context_result.truncated,
+            validation_result.grounded,
+            len(validation_result.deduplicated_sources),
+            len(validation_result.invalid_source_ids),
             retrieval_ms,
             context_build_ms,
             prompt_build_ms,
@@ -276,10 +324,11 @@ class RAGService:
 
         return GenerationResult(
             answer=answer,
-            sources=prompt_result.sources,  # backend-controlled, from ContextBuilder
+            sources=validation_result.deduplicated_sources,  # document-deduplicated, backend-controlled
             model=getattr(settings, "GEMINI_MODEL", ""),
             insufficient_context=insufficient_context,
             context_chunk_count=context_result.chunk_count,
+            grounded=validation_result.grounded,
         )
 
     # ── Private helpers ───────────────────────────────────────────────────────
