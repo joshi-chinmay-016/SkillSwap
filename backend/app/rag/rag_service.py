@@ -242,9 +242,18 @@ class RAGService:
         retrieved_chunks = retrieval_response.results
         retrieved_count = len(retrieved_chunks)
 
-        # ── Step 2: Context building ───────────────────────────────────────────
+        # ── Step 2: Context Optimization (Day 75 Part A2) ─────────────────────
         t_context_start = time.perf_counter()
-        context_req = ContextRequest(retrieved_chunks=retrieved_chunks)
+        if getattr(settings, "CONTEXT_OPTIMIZATION_ENABLED", True):
+            from app.rag.optimization import DefaultContextOptimizer
+            optimizer = DefaultContextOptimizer.from_settings()
+            opt_result = optimizer.optimize(retrieved_chunks)
+            effective_chunks = opt_result.optimized_chunks
+        else:
+            effective_chunks = retrieved_chunks
+
+        # ── Step 3: Context building ───────────────────────────────────────────
+        context_req = ContextRequest(retrieved_chunks=effective_chunks)
         context_result = self._context_builder.build(context_req)
         context_build_ms = (time.perf_counter() - t_context_start) * 1000
 

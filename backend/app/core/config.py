@@ -212,13 +212,20 @@ class Settings(BaseSettings):
     RAG_RESPONSE_STYLE: str = "detailed"
 
     # ----------------------------
-    # RAG Answer Validator (Day 74)
+    # RAG Context Quality Analysis & Optimization (Day 75)
     # ----------------------------
 
-    # Maximum character length of a generated answer.
-    # Answers exceeding this are rejected by the AnswerValidator.
-    # ~8 k chars ≈ 2048 tokens, a generous but bounded limit.
-    RAG_MAX_ANSWER_LENGTH: int = 8192
+    # Enable diagnostic context quality analysis
+    CONTEXT_ANALYSIS_ENABLED: bool = True
+
+    # Enable context optimization pass
+    CONTEXT_OPTIMIZATION_ENABLED: bool = True
+
+    # Textual overlap threshold (Jaccard similarity 0.0 - 1.0) above which redundant chunks are reduced
+    CONTEXT_OVERLAP_THRESHOLD: float = 0.85
+
+    # Target maximum token budget for optimized context
+    CONTEXT_MAX_OPTIMIZED_TOKENS: int = 2048
 
     class Config:
         env_file = ".env"
