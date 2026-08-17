@@ -64,24 +64,24 @@ class RAGQueryRequest(BaseModel):
     query: str = Field(
         ...,
         description="Natural language question to answer using indexed documents.",
-        example="What is dependency injection?",
+        json_schema_extra={"example": "What is dependency injection?"},
         min_length=1,
     )
     top_k: Optional[int] = Field(
         default=None,
         description="Maximum number of chunks to retrieve (1 to max_top_k).",
-        example=5,
+        json_schema_extra={"example": 5},
         ge=1,
     )
     document_id: Optional[str] = Field(
         default=None,
         description="Optional document UUID to restrict retrieval scope.",
-        example="2bb6bf0a-5e82-4102-80b4-924bc2163ae1",
+        json_schema_extra={"example": "2bb6bf0a-5e82-4102-80b4-924bc2163ae1"},
     )
     response_style: Optional[str] = Field(
         default=None,
         description="Response style: 'concise', 'detailed', or 'explanatory'.",
-        example="detailed",
+        json_schema_extra={"example": "detailed"},
     )
 
 

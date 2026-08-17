@@ -21,7 +21,7 @@ class Feedback(Base):
     )
 
     session_id: Mapped[int] = mapped_column(
-        ForeignKey("sessions.id")
+        ForeignKey("learning_sessions.id")
     )
 
     reviewer_id: Mapped[int] = mapped_column(

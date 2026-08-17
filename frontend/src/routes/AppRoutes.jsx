@@ -22,7 +22,6 @@ import Roadmap from "../pages/Roadmap";
 import SkillGap from "../pages/SkillGap";
 import Profile from "../pages/Profile";
 import Wallet from "../pages/Wallet";
-import AIChat from "../pages/AIChat";
 import MentorRecommendation from "../pages/MentorRecommendation";
 import LearningJourney from "../pages/LearningJourney";
 import SessionPage from "../pages/SessionPage";

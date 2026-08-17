@@ -47,22 +47,22 @@ class RetrievalSearchApiRequest(BaseModel):
     query: str = Field(
         ...,
         description="Natural language search query.",
-        example="What is dependency injection?",
+        json_schema_extra={"example": "What is dependency injection?"},
     )
     top_k: Optional[int] = Field(
         default=None,
         description="Maximum number of chunks to return (1 to max_top_k).",
-        example=5,
+        json_schema_extra={"example": 5},
     )
     similarity_threshold: Optional[float] = Field(
         default=None,
         description="Minimum similarity score threshold (0.0 to 1.0).",
-        example=0.0,
+        json_schema_extra={"example": 0.0},
     )
     document_id: Optional[str] = Field(
         default=None,
         description="Optional document UUID to restrict search scope.",
-        example="2bb6bf0a-5e82-4102-80b4-924bc2163ae1",
+        json_schema_extra={"example": "2bb6bf0a-5e82-4102-80b4-924bc2163ae1"},
     )
 
 
