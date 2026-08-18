@@ -1,8 +1,19 @@
 import React from "react";
-import { FileText, Layers, Bookmark } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Bookmark, ArrowRight } from "lucide-react";
 
 export default function SourceList({ sources = [] }) {
+  const navigate = useNavigate();
+
   if (!sources || sources.length === 0) return null;
+
+  const handleSourceClick = (documentId) => {
+    if (documentId) {
+      navigate(`/mentor/knowledge?tab=documents&docId=${documentId}`);
+    } else {
+      navigate("/mentor/knowledge?tab=documents");
+    }
+  };
 
   return (
     <div className="space-y-3 pt-2">
@@ -14,8 +25,8 @@ export default function SourceList({ sources = [] }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {sources.map((src) => (
           <div
-            key={`${src.document_id}-${src.chunk_id}`}
-            className="p-3.5 bg-bg border border-border rounded-xl shadow-sm hover:border-accent/40 transition-all flex flex-col justify-between"
+            key={`${src.document_id}-${src.chunk_id || src.rank}`}
+            className="p-3.5 bg-bg border border-border rounded-xl shadow-sm hover:border-accent/40 transition-all flex flex-col justify-between group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -29,12 +40,18 @@ export default function SourceList({ sources = [] }) {
               </span>
             </div>
 
-            <div className="mt-2.5 pt-2 border-t border-border/50 flex items-center justify-between text-[11px] text-text-secondary font-mono">
-              <div className="flex items-center gap-1">
-                <Layers size={11} />
-                <span>Chunk ID: {src.chunk_id.slice(0, 8)}...</span>
-              </div>
-              <span>Relevance: {(src.score * 100).toFixed(1)}%</span>
+            <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between">
+              <span className="text-[11px] text-text-secondary">
+                Grounded source document
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSourceClick(src.document_id)}
+                className="flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-accent-hover hover:underline cursor-pointer"
+              >
+                <span>View in Knowledge</span>
+                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+              </button>
             </div>
           </div>
         ))}

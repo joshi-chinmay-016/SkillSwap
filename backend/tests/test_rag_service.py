@@ -449,7 +449,7 @@ class TestErrorHandling:
         service, _, _ = make_rag_service()
         db = MagicMock()
 
-        with pytest.raises(PromptBuildError):
+        with pytest.raises((RAGValidationError, PromptBuildError)):
             service.query(db, query="", user_id=1)
 
 

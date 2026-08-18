@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   FileText,
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   Sparkles,
   Layers,
+  Bot,
 } from "lucide-react";
 import ProcessingBadge from "./ProcessingBadge";
 import ProcessingTimeline from "./ProcessingTimeline";
@@ -29,9 +31,15 @@ export default function DocumentCard({
   onRetry,
   onExploreChunks,
 }) {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const menuRef = useRef(null);
+
+  const handleUseInMentor = (e) => {
+    e?.stopPropagation();
+    navigate(`/mentor/knowledge?tab=rag&docId=${doc.id}`);
+  };
 
   // Fetch parsed text status if ready
   const { data: parsedData } = useParsingStatus(doc.id, doc.status === "READY");
@@ -178,6 +186,18 @@ export default function DocumentCard({
                       >
                         <Eye size={14} className="text-indigo-500" />
                         <span>Details & Pipeline</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          setIsMenuOpen(false);
+                          handleUseInMentor(e);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold transition-colors cursor-pointer"
+                      >
+                        <Bot size={14} />
+                        <span>Use in Mentor</span>
                       </button>
 
                       {onExploreChunks && (

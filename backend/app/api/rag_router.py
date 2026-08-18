@@ -38,6 +38,7 @@ from app.rag import (
     RAGError,
     RAGService,
     RAGUnavailableError,
+    RAGValidationError,
 )
 from app.retrieval import (
     InvalidRetrievalRequestError,
@@ -154,6 +155,12 @@ def rag_query(
         )
 
     # ── Client errors ─────────────────────────────────────────────────────────
+    except RAGValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
     except InvalidRetrievalRequestError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

@@ -7,14 +7,19 @@ import { Sparkles, FolderOpen, BookOpen } from "lucide-react";
 
 export default function MentorKnowledgePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "documents" ? "documents" : "rag";
+  const docId = searchParams.get("docId");
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "documents" ? "documents" : "rag";
 
   const handleTabChange = (tab) => {
+    const params = {};
     if (tab === "documents") {
-      setSearchParams({ tab: "documents" });
-    } else {
-      setSearchParams({});
+      params.tab = "documents";
     }
+    if (docId) {
+      params.docId = docId;
+    }
+    setSearchParams(params);
   };
 
   return (

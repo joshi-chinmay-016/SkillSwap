@@ -1,8 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, Info, BookOpen, AlertCircle } from "lucide-react";
+import { Sparkles, FolderPlus, AlertCircle } from "lucide-react";
 import CodeBlock from "../common/CodeBlock";
 
 export default function AnswerCard({
@@ -11,20 +12,32 @@ export default function AnswerCard({
   contextChunkCount,
   model,
 }) {
+  const navigate = useNavigate();
+
   if (insufficientContext) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-warning/10 border border-warning/30 rounded-2xl space-y-3"
+        className="p-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-4"
       >
-        <div className="flex items-center gap-2.5 text-warning font-semibold text-sm">
+        <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400 font-bold text-sm">
           <AlertCircle size={18} />
-          <span>Insufficient Knowledge Base Context</span>
+          <span>No Relevant Knowledge Found</span>
         </div>
         <p className="text-xs text-text-secondary leading-relaxed">
-          I couldn't find enough relevant information in your indexed knowledge base to answer this question confidently. Try asking the question differently or uploading relevant documents.
+          I couldn't find relevant information in your indexed Knowledge Base to answer this question accurately. You can add relevant materials (PDFs, Markdown, text notes) to your Knowledge Library so your AI Mentor can ground its answers.
         </p>
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => navigate("/mentor/knowledge?tab=documents")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors shadow-xs cursor-pointer"
+          >
+            <FolderPlus size={14} />
+            <span>View & Add Knowledge</span>
+          </button>
+        </div>
       </motion.div>
     );
   }
