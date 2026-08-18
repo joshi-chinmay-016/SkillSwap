@@ -285,12 +285,13 @@ sequenceDiagram
 | **Stage 6** | **Semantic Retrieval** | Top-K vector search, batch metadata JOIN, ownership/lifecycle filtering, ranking | `COMPLETE` |
 | **Stage 7** | **Grounded RAG** | `ContextBuilder`, `PromptBuilder`, `RAGService`, and grounded answer generation | `COMPLETE` |
 | **Stage 8** | **Grounded Answer Engine & Eval** | `AnswerValidator`, source integrity validation, document deduplication, and 9-category Evaluation Framework | `COMPLETE` |
+| **Stage 9** | **Context Quality & Optimization** | `ContextAnalyzer` 9-dimension quality diagnostic + deterministic `DefaultContextOptimizer` pass | `COMPLETE` |
 
 ---
 
-### 🧠 Grounded Answer Engine & Evaluation Architecture
+### 🧠 Grounded Answer Engine & Context Optimization Architecture
 
-SkillSwap Arena implements a production-grade Grounded Answer Engine and Evaluation Framework on top of the FAISS retrieval pipeline.
+SkillSwap Arena implements a production-grade Grounded Answer Engine, Context Quality Analysis, and Controlled Context Optimization layer on top of the FAISS retrieval pipeline.
 
 #### Product Architecture
 
@@ -322,7 +323,7 @@ graph TD
     Knowledge -->|Retrieves & Synthesizes| Library
 ```
 
-#### Grounded Answer Generation Pipeline
+#### Grounded Answer Generation & Optimization Pipeline
 
 ```mermaid
 %%{init: {
@@ -343,6 +344,8 @@ sequenceDiagram
     participant API as RAG Router
     participant Service as RAGService
     participant Ret as RetrievalService (FAISS)
+    participant Analyzer as ContextAnalyzer
+    participant Opt as ContextOptimizer
     participant Ctx as ContextBuilder
     participant Prompt as PromptBuilder
     participant LLM as Gemini Provider
@@ -351,8 +354,12 @@ sequenceDiagram
     UI->>API: POST /rag/query (query, top_k, style)
     API->>Service: query(db, query, user_id)
     Service->>Ret: retrieve(request, user_id)
-    Ret-->>Service: RetrievalResponse (ranked chunks + timings)
-    Service->>Ctx: build(ContextRequest)
+    Ret-->>Service: RetrievalResponse (ranked authorized chunks)
+    Service->>Analyzer: analyze_chunks(chunks) [Diagnostic Pass]
+    Analyzer-->>Service: ContextQualityAnalysis (9 quality dimensions)
+    Service->>Opt: optimize(chunks) [Optimization Pass]
+    Opt-->>Service: ContextOptimizationResult (optimized chunks, zero duplicates)
+    Service->>Ctx: build(ContextRequest with effective_chunks)
     Ctx-->>Service: ContextResult (XML-wrapped context block + sources)
     Service->>Prompt: build(PromptRequest)
     Prompt-->>Service: PromptResult (grounding system instruction + user msg)
