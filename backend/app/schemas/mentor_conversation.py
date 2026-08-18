@@ -6,7 +6,7 @@ Conventions match the existing project (Pydantic v2, from_attributes=True).
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -36,8 +36,7 @@ class MentorMessageResponse(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MentorMessageListResponse(BaseModel):
@@ -95,8 +94,7 @@ class MentorConversationResponse(BaseModel):
     updated_at: datetime
     last_message_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MentorConversationListResponse(BaseModel):

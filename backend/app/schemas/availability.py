@@ -1,6 +1,6 @@
 from datetime import time
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AvailabilityCreate(
@@ -28,6 +28,4 @@ class AvailabilityResponse(
 
     end_time: time
 
-    class Config:
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

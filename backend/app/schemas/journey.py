@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import List, Optional
 
@@ -12,8 +12,7 @@ class JourneyTaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JourneyMilestoneResponse(BaseModel):
@@ -27,8 +26,7 @@ class JourneyMilestoneResponse(BaseModel):
     updated_at: datetime
     tasks: List[JourneyTaskResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LearningJourneyResponse(BaseModel):
@@ -46,8 +44,7 @@ class LearningJourneyResponse(BaseModel):
     updated_at: datetime
     milestones: List[JourneyMilestoneResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JourneyTaskCreate(BaseModel):
