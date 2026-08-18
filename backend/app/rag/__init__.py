@@ -1,5 +1,5 @@
 """
-RAG Package — Day 72 A1 + A2.
+RAG Package — Day 72 A1 + A2, Day 74 A1.
 
 Public surface for the RAG layer.
 
@@ -17,6 +17,10 @@ A2 — Prompt Builder + Generation:
     PromptResult            structured prompt for LLMService
     GenerationResult        final grounded answer
 
+Day 74 A1 — Answer Validator:
+    AnswerValidator         validates LLM output before returning
+    AnswerValidationResult  structured validation result
+
 Exceptions:
     RAGError                base
     ContextBuildError
@@ -26,12 +30,14 @@ Exceptions:
     GenerationTimeoutError
     GenerationProviderError
     InvalidGenerationResponseError
+    SourceValidationFailure  (Day 74 A1)
     RAGUnavailableError
 
 Orchestration:
     RAGService              end-to-end pipeline orchestrator
 """
 
+from app.rag.answer_validator import AnswerValidationResult, AnswerValidator
 from app.rag.context_builder import ContextBuilder, DefaultContextBuilder
 from app.rag.context_exceptions import (
     ContextBuildError,
@@ -44,6 +50,7 @@ from app.rag.context_exceptions import (
     RAGError,
     RAGUnavailableError,
     RAGValidationError,
+    SourceValidationFailure,
 )
 from app.rag.context_models import ContextRequest, ContextResult, ContextSource
 from app.rag.prompt_builder import GroundedPromptBuilder, PromptBuilder
@@ -64,6 +71,9 @@ __all__ = [
     "PromptResult",
     # Generation
     "GenerationResult",
+    # Answer Validator (Day 74 A1)
+    "AnswerValidator",
+    "AnswerValidationResult",
     # RAG orchestration
     "RAGService",
     # Exceptions
@@ -76,5 +86,6 @@ __all__ = [
     "GenerationTimeoutError",
     "GenerationProviderError",
     "InvalidGenerationResponseError",
+    "SourceValidationFailure",
     "RAGUnavailableError",
 ]

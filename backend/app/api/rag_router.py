@@ -39,6 +39,7 @@ from app.rag import (
     RAGService,
     RAGUnavailableError,
     RAGValidationError,
+    SourceValidationFailure,
 )
 from app.retrieval import (
     InvalidRetrievalRequestError,
@@ -98,6 +99,7 @@ class RAGQueryResponse(BaseModel):
     insufficient_context: bool
     context_chunk_count: int
     model: str
+    grounded: bool = False  # Day 74 A1 — True when answer is validated and grounded
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ def rag_query(
             insufficient_context=result.insufficient_context,
             context_chunk_count=result.context_chunk_count,
             model=result.model,
+            grounded=result.grounded,
         )
 
     # ── Client errors ─────────────────────────────────────────────────────────
@@ -208,6 +211,13 @@ def rag_query(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="The generation provider returned an invalid response.",
+        ) from exc
+
+    except SourceValidationFailure as exc:
+        logger.error("RAG source validation failure: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Generated answer source validation failed.",
         ) from exc
 
     # ── Vector / context errors ────────────────────────────────────────────────

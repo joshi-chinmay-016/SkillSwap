@@ -23,6 +23,8 @@ export interface RAGQueryResponse {
   insufficient_context: boolean;
   context_chunk_count: number;
   model: string;
+  /** Day 74 A1: true when the answer is grounded in retrieved Knowledge. */
+  grounded?: boolean;
 }
 
 /**

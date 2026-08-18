@@ -1,5 +1,5 @@
 """
-RAG Exceptions — Day 72 A1 + A2.
+RAG Exceptions — Day 72 A1 + A2, Day 74 A1.
 
 All RAG-layer errors inherit from RAGError.
 User-facing messages are concise; internal details belong in logs.
@@ -13,7 +13,17 @@ Exception tree:
     │   ├── GenerationTimeoutError         — provider request timed out
     │   ├── GenerationProviderError        — provider-level API error
     │   └── InvalidGenerationResponseError — empty or malformed LLM response
+    ├── SourceValidationFailure   — generated answer references invalid sources (Day 74)
     └── RAGUnavailableError       — underlying retrieval infrastructure unavailable
+
+Error categories supported:
+    NO_RELEVANT_KNOWLEDGE     — insufficient_context=True
+    CONTEXT_BUILD_FAILURE     — ContextBuildError
+    GENERATION_FAILURE        — GenerationError / GenerationProviderError / GenerationTimeoutError
+    INVALID_GENERATION        — InvalidGenerationResponseError
+    SOURCE_VALIDATION_FAILURE — SourceValidationFailure (Day 74)
+    AUTHORIZATION_FAILURE     — enforced inside RetrievalService (not exposed as an exception)
+    TIMEOUT                   — GenerationTimeoutError
 """
 from __future__ import annotations
 
@@ -167,6 +177,26 @@ class RAGUnavailableError(RAGError):
     making the entire RAG pipeline non-functional.
 
     Signals an infrastructure fault, not a user error.
+    """
+
+    @property
+    def is_recoverable(self) -> bool:
+        return False
+
+
+class SourceValidationFailure(RAGError):
+    """
+    Raised when the AnswerValidator detects that the LLM-generated answer
+    references source identifiers that are not present in the set of retrieved
+    chunks — i.e., the model invented a source. (Day 74 A1)
+
+    This exception is raised only when source fabrication cannot be silently
+    corrected.  In most cases the AnswerValidator removes invalid sources and
+    returns grounded=False rather than raising.
+
+    Examples:
+        - Answer references a chunk_id not in the retrieved set AND the
+          remaining valid sources are empty while context was present.
     """
 
     @property

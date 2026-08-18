@@ -33,6 +33,7 @@ from app.rag.context_exceptions import (
     InvalidGenerationResponseError,
     PromptBuildError,
     RAGUnavailableError,
+    RAGValidationError,
 )
 from app.rag.context_models import ContextRequest, ContextResult, ContextSource
 from app.rag.prompt_builder import GroundedPromptBuilder
@@ -373,8 +374,8 @@ class TestPromptInjectionBoundary:
 class TestSourcePreservation:
     def test_multiple_sources_preserved(self):
         chunks = [
-            make_retrieved_chunk(chunk_id="s1", document_name="Source 1", rank=1),
-            make_retrieved_chunk(chunk_id="s2", document_name="Source 2", rank=2),
+            make_retrieved_chunk(chunk_id="s1", document_id="doc-1", document_name="Source 1", rank=1),
+            make_retrieved_chunk(chunk_id="s2", document_id="doc-2", document_name="Source 2", rank=2),
         ]
         service, _, _ = make_rag_service(chunks=chunks)
         db = MagicMock()

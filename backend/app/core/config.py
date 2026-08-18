@@ -211,6 +211,15 @@ class Settings(BaseSettings):
     # Supported values: "concise" | "detailed" | "explanatory"
     RAG_RESPONSE_STYLE: str = "detailed"
 
+    # ----------------------------
+    # RAG Answer Validator (Day 74)
+    # ----------------------------
+
+    # Maximum character length of a generated answer.
+    # Answers exceeding this are rejected by the AnswerValidator.
+    # ~8 k chars ≈ 2048 tokens, a generous but bounded limit.
+    RAG_MAX_ANSWER_LENGTH: int = 8192
+
     class Config:
         env_file = ".env"
 
