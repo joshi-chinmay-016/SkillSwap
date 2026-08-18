@@ -2,7 +2,7 @@
 
 # ⚡ SkillSwap Arena
 
-### **Enterprise Peer Learning & AI-Powered Knowledge Exchange Platform**
+### **Peer Learning & AI-Powered Knowledge Exchange Platform**
 
 *Connecting learners and mentors through real-time skill exchange, intelligent matching, structured learning journeys, and an AI Mentor powered by long-term memory and RAG document architecture.*
 
@@ -113,16 +113,43 @@ SkillSwap Arena is architected around enterprise scalability, clean isolation of
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 graph TD
     Client[React Frontend / SPA] -->|HTTPS / REST API| Router[FastAPI Router Layer]
@@ -177,16 +204,43 @@ The AI subsystem transforms uploaded documents into structured semantic knowledg
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart LR
     Upload[Document Upload] --> Store[Storage Provider]
@@ -203,16 +257,43 @@ flowchart LR
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 graph TD
     ParsedDoc[Parsed Document Text] --> Normalizer[Text Normalizer]
@@ -242,16 +323,43 @@ graph TD
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -297,16 +405,43 @@ SkillSwap Arena implements a production-grade Grounded Answer Engine, Context Qu
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 graph TD
     subgraph PrimaryExperience [AI Mentor Workspace]
@@ -327,16 +462,43 @@ graph TD
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -345,7 +507,7 @@ sequenceDiagram
     participant Service as RAGService
     participant Ret as RetrievalService (FAISS)
     participant Analyzer as ContextAnalyzer
-    participant Opt as ContextOptimizer
+    participant Optimizer as ContextOptimizer
     participant Ctx as ContextBuilder
     participant Prompt as PromptBuilder
     participant LLM as Gemini Provider
@@ -357,8 +519,8 @@ sequenceDiagram
     Ret-->>Service: RetrievalResponse (ranked authorized chunks)
     Service->>Analyzer: analyze_chunks(chunks) [Diagnostic Pass]
     Analyzer-->>Service: ContextQualityAnalysis (9 quality dimensions)
-    Service->>Opt: optimize(chunks) [Optimization Pass]
-    Opt-->>Service: ContextOptimizationResult (optimized chunks, zero duplicates)
+    Service->>Optimizer: optimize(chunks) [Optimization Pass]
+    Optimizer-->>Service: ContextOptimizationResult (optimized chunks, zero duplicates)
     Service->>Ctx: build(ContextRequest with effective_chunks)
     Ctx-->>Service: ContextResult (XML-wrapped context block + sources)
     Service->>Prompt: build(PromptRequest)
@@ -377,14 +539,43 @@ The Grounded Answer Evaluation Framework operates independently from production 
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart LR
     Dataset[9-Category Dataset\n25 Test Cases] --> Runner[EvaluationRunner]
@@ -397,8 +588,8 @@ flowchart LR
 
 | Metric Category | Metrics | Evaluator |
 | :--- | :--- | :--- |
-| **Retrieval Evaluation** | Hit@K, Recall@K, Precision@K, MRR | `RetrievalEvaluator` (Day 73) |
-| **Grounded Answer Evaluation** | Grounded Answer Rate, Correct Refusal Rate, Answer Fact Coverage, Source Validity Rate, Source Coverage, Unsupported Response Count | `GroundingEvaluator` (Day 74) |
+| **Retrieval Evaluation** | Hit@K, Recall@K, Precision@K, MRR | `RetrievalEvaluator` |
+| **Grounded Answer Evaluation** | Grounded Answer Rate, Correct Refusal Rate, Answer Fact Coverage, Source Validity Rate, Source Coverage, Unsupported Response Count | `GroundingEvaluator` |
 
 ---
 
@@ -410,16 +601,43 @@ The embedding engine transforms each persisted `Chunk` into a dense 3072-dimensi
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 graph LR
     Chunk[Chunk Entity] --> EmbSvc[EmbeddingService]
@@ -437,13 +655,43 @@ graph LR
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 stateDiagram-v2
     [*] --> PENDING : Chunk persisted
@@ -461,14 +709,43 @@ stateDiagram-v2
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -526,16 +803,43 @@ SkillSwap Arena includes a persistent FAISS Vector Storage layer, connecting `RE
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart TD
     subgraph PostgreSQL [PostgreSQL - Source of Truth]
@@ -571,14 +875,43 @@ FAISS uses 63-bit positive integers (`int64`) for vector IDs. A deterministic ma
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart LR
     EmbUUID["Embedding UUID\n(e.g., 123e4567-e89b-...)"] --> SHA256["SHA-256 Hash Digest\n(256 bits)"]
@@ -591,13 +924,43 @@ flowchart LR
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 stateDiagram-v2
     [*] --> PENDING : Embedding created
@@ -613,14 +976,43 @@ stateDiagram-v2
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -646,14 +1038,43 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart TD
     Start[Rebuild Triggered] --> Fetch[Fetch All READY Embeddings from PostgreSQL]
@@ -687,16 +1108,43 @@ SkillSwap Arena features a production-grade **Retriever Layer** on top of the FA
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#2563EB",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#14B8A6",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 flowchart TD
     A[User Query] --> B[Query Embedding - Gemini 3072-dim]
@@ -716,16 +1164,43 @@ flowchart TD
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#2563EB",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#14B8A6",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -804,13 +1279,40 @@ SkillSwap Arena consolidates the user-facing AI experience under **AI Mentor** (
 %%{init: {
   "theme": "base",
   "themeVariables": {
-    "primaryColor": "#2563EB",
+    "primaryColor": "#EDF2FE",
     "primaryBorderColor": "#2563EB",
-    "primaryTextColor": "#FFFFFF",
-    "secondaryColor": "#14B8A6",
-    "tertiaryColor": "#F8FAFC",
-    "lineColor": "#64748B",
-    "fontSize": "14px"
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
   }
 }}%%
 flowchart TD
@@ -822,15 +1324,11 @@ flowchart TD
     Knowledge --> Library[Document Library & FAISS Indexer]
 
     RAG --> Ret[FAISSRetriever]
-    Ret --> Context[ContextBuilder]
+    Ret --> Analyzer[ContextAnalyzer]
+    Analyzer --> Opt[DefaultContextOptimizer]
+    Opt --> Context[ContextBuilder]
     Context --> Prompt[PromptBuilder]
     Prompt --> LLM[LLM Provider]
-
-    style Mentor fill:#2563EB,color:#FFFFFF,stroke:#2563EB
-    style Knowledge fill:#14B8A6,color:#FFFFFF,stroke:#14B8A6
-    style Memory fill:#F59E0B,color:#FFFFFF,stroke:#F59E0B
-    style RAG fill:#22C55E,color:#FFFFFF,stroke:#22C55E
-    style Library fill:#64748B,color:#FFFFFF,stroke:#64748B
 ```
 
 #### RAG Architectural Flowchart
@@ -839,13 +1337,40 @@ flowchart TD
 %%{init: {
   "theme": "base",
   "themeVariables": {
-    "primaryColor": "#2563EB",
+    "primaryColor": "#EDF2FE",
     "primaryBorderColor": "#2563EB",
-    "primaryTextColor": "#FFFFFF",
-    "secondaryColor": "#14B8A6",
-    "tertiaryColor": "#F8FAFC",
-    "lineColor": "#64748B",
-    "fontSize": "14px"
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
   }
 }}%%
 flowchart TD
@@ -854,19 +1379,15 @@ flowchart TD
     C --> D[FAISS Vector Store Search]
     D --> E[PostgreSQL Metadata & Auth Resolution]
     E --> F[Authorized Retrieved Chunks]
-    F --> G[DefaultContextBuilder]
-    G --> H[Bounded Context Result]
-    H --> I[GroundedPromptBuilder]
-    I --> J[Grounded Prompt]
-    J --> K[LLM Provider - Gemini 2.5 Flash]
-    K --> L[Validated Grounded Answer]
-    L --> M[Backend-Controlled Sources]
-
-    style A fill:#2563EB,color:#FFFFFF,stroke:#2563EB
-    style F fill:#14B8A6,color:#FFFFFF,stroke:#14B8A6
-    style H fill:#F59E0B,color:#FFFFFF,stroke:#F59E0B
-    style L fill:#22C55E,color:#FFFFFF,stroke:#22C55E
-    style M fill:#64748B,color:#FFFFFF,stroke:#64748B
+    F --> G[ContextQualityAnalysis - Diagnostic Pass]
+    G --> H[DefaultContextOptimizer - 4-Stage Pass]
+    H --> I[DefaultContextBuilder]
+    I --> J[Bounded Context Result]
+    J --> K[GroundedPromptBuilder]
+    K --> L[Grounded Prompt]
+    L --> M[LLM Provider - Gemini Provider]
+    M --> N[Validated Grounded Answer]
+    N --> O[Backend-Controlled Sources]
 ```
 
 #### RAG Sequence Diagram
@@ -875,12 +1396,40 @@ flowchart TD
 %%{init: {
   "theme": "base",
   "themeVariables": {
-    "primaryColor": "#2563EB",
+    "primaryColor": "#EDF2FE",
     "primaryBorderColor": "#2563EB",
-    "primaryTextColor": "#1E293B",
-    "secondaryColor": "#14B8A6",
-    "lineColor": "#64748B",
-    "fontSize": "14px"
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
   }
 }}%%
 sequenceDiagram
@@ -889,6 +1438,8 @@ sequenceDiagram
     participant API as RAG API Router (/rag/query)
     participant Svc as RAGService
     participant Ret as RetrievalService
+    participant Analyzer as ContextAnalyzer
+    participant Optimizer as ContextOptimizer
     participant Ctx as ContextBuilder
     participant Prm as PromptBuilder
     participant LLM as LLMService (GeminiProvider)
@@ -897,7 +1448,11 @@ sequenceDiagram
     API->>Svc: query(db, query, user_id, response_style)
     Svc->>Ret: retrieve(db, request, user_id)
     Ret-->>Svc: Authorized RetrievedChunk[]
-    Svc->>Ctx: build(ContextRequest(chunks))
+    Svc->>Analyzer: analyze_chunks(chunks) [Diagnostic Pass]
+    Analyzer-->>Svc: ContextQualityAnalysis
+    Svc->>Optimizer: optimize(chunks) [Optimization Pass]
+    Optimizer-->>Svc: ContextOptimizationResult (effective_chunks)
+    Svc->>Ctx: build(ContextRequest(effective_chunks))
     Ctx-->>Svc: ContextResult (context_text, sources, truncated)
     Svc->>Prm: build(PromptRequest(query, context_result))
     Prm-->>Svc: PromptResult (system_instruction, user_message, sources)
@@ -950,16 +1505,43 @@ The database model is managed via SQLAlchemy 2.0 and version-controlled using Al
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#EDF2FE",
+    "primaryBorderColor": "#2563EB",
+    "primaryTextColor": "#0F172A",
+    "secondaryColor": "#EDF2FE",
+    "secondaryBorderColor": "#2563EB",
+    "secondaryTextColor": "#0F172A",
+    "tertiaryColor": "#FFFFFF",
+    "tertiaryBorderColor": "#64748B",
+    "tertiaryTextColor": "#0F172A",
+    "lineColor": "#38BDF8",
+    "textColor": "#0F172A",
+    "nodeTextColor": "#0F172A",
+    "mainBkg": "#EDF2FE",
+    "nodeBorder": "#2563EB",
+    "clusterBkg": "#FFFFFF",
+    "clusterBorder": "#64748B",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#0F172A",
+    "edgeLabelBackground": "#FFFFFF",
+    "actorBkg": "#EDF2FE",
+    "actorBorder": "#2563EB",
+    "actorTextColor": "#0F172A",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#38BDF8",
+    "sequenceNumberColor": "#38BDF8",
+    "labelBoxBkgColor": "#EDF2FE",
+    "labelBoxBorderColor": "#2563EB",
+    "labelTextColor": "#0F172A",
+    "loopTextColor": "#38BDF8",
+    "noteBkgColor": "#EDF2FE",
+    "noteTextColor": "#0F172A",
+    "noteBorderColor": "#2563EB",
+    "fontSize": "15px"
+  }
 }}%%
 erDiagram
     USERS ||--o{ DOCUMENTS : "owns"
@@ -1075,16 +1657,42 @@ We enforce strict separation into four independent, stateless layers:
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"secondaryColor":"#ECFEFF",
-"tertiaryColor":"#F8FAFC",
-"lineColor":"#64748B",
-"fontSize":"15px"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#1E293B",
+    "primaryBorderColor": "#3B82F6",
+    "primaryTextColor": "#FFFFFF",
+    "secondaryColor": "#0F172A",
+    "secondaryBorderColor": "#0EA5E9",
+    "secondaryTextColor": "#FFFFFF",
+    "tertiaryColor": "#1E293B",
+    "tertiaryBorderColor": "#6366F1",
+    "tertiaryTextColor": "#FFFFFF",
+    "lineColor": "#38BDF8",
+    "textColor": "#FFFFFF",
+    "nodeTextColor": "#FFFFFF",
+    "mainBkg": "#1E293B",
+    "nodeBorder": "#3B82F6",
+    "clusterBkg": "#0F172A",
+    "clusterBorder": "#38BDF8",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#FFFFFF",
+    "edgeLabelBackground": "#0F172A",
+    "actorBkg": "#1E293B",
+    "actorBorder": "#3B82F6",
+    "actorTextColor": "#FFFFFF",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#FFFFFF",
+    "labelBoxBkgColor": "#1E293B",
+    "labelBoxBorderColor": "#3B82F6",
+    "labelTextColor": "#FFFFFF",
+    "loopTextColor": "#FFFFFF",
+    "noteBkgColor": "#1E293B",
+    "noteTextColor": "#FFFFFF",
+    "noteBorderColor": "#3B82F6",
+    "fontSize": "15px"
+  }
 }}%%
 sequenceDiagram
     autonumber
@@ -1321,24 +1929,69 @@ tests/test_documents.py::TestDocumentSecurity::test_upload_duplicate_rejected PA
 
 ```mermaid
 %%{init: {
-"theme":"base",
-"themeVariables":{
-"primaryColor":"#E8F0FE",
-"primaryBorderColor":"#2563EB",
-"primaryTextColor":"#1E293B",
-"lineColor":"#64748B"
-}
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#1E293B",
+    "primaryBorderColor": "#3B82F6",
+    "primaryTextColor": "#FFFFFF",
+    "secondaryColor": "#0F172A",
+    "secondaryBorderColor": "#0EA5E9",
+    "secondaryTextColor": "#FFFFFF",
+    "tertiaryColor": "#1E293B",
+    "tertiaryBorderColor": "#6366F1",
+    "tertiaryTextColor": "#FFFFFF",
+    "lineColor": "#38BDF8",
+    "textColor": "#FFFFFF",
+    "nodeTextColor": "#FFFFFF",
+    "mainBkg": "#1E293B",
+    "nodeBorder": "#3B82F6",
+    "clusterBkg": "#0F172A",
+    "clusterBorder": "#38BDF8",
+    "defaultLinkColor": "#38BDF8",
+    "titleColor": "#FFFFFF",
+    "edgeLabelBackground": "#0F172A",
+    "actorBkg": "#1E293B",
+    "actorBorder": "#3B82F6",
+    "actorTextColor": "#FFFFFF",
+    "actorLineColor": "#38BDF8",
+    "signalColor": "#38BDF8",
+    "signalTextColor": "#FFFFFF",
+    "labelBoxBkgColor": "#1E293B",
+    "labelBoxBorderColor": "#3B82F6",
+    "labelTextColor": "#FFFFFF",
+    "loopTextColor": "#FFFFFF",
+    "noteBkgColor": "#1E293B",
+    "noteTextColor": "#FFFFFF",
+    "noteBorderColor": "#3B82F6",
+    "fontSize": "15px"
+  }
 }}%%
-timeline
-    title SkillSwap Arena Development Roadmap
-    section Phase 1 : Core SaaS (Completed)
-        User Auth & JWT : Session Request Flow : Peer Skill Matching
-    section Phase 2 : RAG Foundation (Completed)
-        Storage Abstraction : Multi-Format Parser Engine : Pipeline UI & Drawer
-    section Phase 3 : AI Engine (Completed)
-        Semantic Text Chunking : Dense Embedding Generation : FAISS Vector Store
-    section Phase 4 : Grounded RAG & Future Chat
-        Semantic Retriever : Grounded RAG Assistant : Real-Time Session Reminders
+flowchart LR
+    subgraph P1 [Phase 1: Core SaaS - Completed]
+        P1_1[User Auth & JWT]
+        P1_2[Session Request Flow]
+        P1_3[Peer Skill Matching]
+    end
+
+    subgraph P2 [Phase 2: RAG Foundation - Completed]
+        P2_1[Storage Abstraction]
+        P2_2[Multi-Format Parser Engine]
+        P2_3[Pipeline UI & Drawer]
+    end
+
+    subgraph P3 [Phase 3: AI Engine - Completed]
+        P3_1[Semantic Text Chunking]
+        P3_2[Dense Embedding Generation]
+        P3_3[FAISS Vector Store]
+    end
+
+    subgraph P4 [Phase 4: Grounded RAG & Context Optimization]
+        P4_1[Semantic Retriever]
+        P4_2[Grounded Answer Engine]
+        P4_3[Context Quality & Optimization]
+    end
+
+    P1 --> P2 --> P3 --> P4
 ```
 
 ---
