@@ -41,6 +41,16 @@ def test_websocket_invalid_token_rejected(client: TestClient):
     assert exc_info.value.code == 1008
 
 
+def test_websocket_expired_token_rejected(client: TestClient):
+    """Connecting with an expired JWT MUST fail with WS close code 1008."""
+    from datetime import timedelta
+    expired_token = create_access_token({"sub": "1"}, expires_delta=timedelta(seconds=-1))
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(f"/ws/1?token={expired_token}"):
+            pass
+    assert exc_info.value.code == 1008
+
+
 def test_websocket_user_mismatch_rejected(client: TestClient):
     """Token for user_id=1 attempting to connect to /ws/2 MUST fail with 1008."""
     token = create_access_token({"sub": "1"})

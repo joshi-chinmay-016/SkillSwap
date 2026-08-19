@@ -119,3 +119,38 @@ def get_candidate_metadata_batch(
         )
 
     return result
+
+
+@dataclass
+class RetrievalMetricsData:
+    total_documents: int
+    total_chunks: int
+    total_embeddings: int
+    ready_embeddings: int
+    failed_embeddings: int
+
+
+def get_retrieval_metrics(
+    db: Session,
+    user_id: int,
+) -> RetrievalMetricsData:
+    """
+    Query database metrics for indexed documents, chunks, and embeddings for a given user.
+    """
+    from app.models.chunk import Chunk
+    from app.models.document import Document
+    from app.models.embedding import Embedding
+
+    total_docs = db.query(Document).filter(Document.user_id == user_id).count()
+    total_chunks = db.query(Chunk).filter(Chunk.user_id == user_id).count()
+    total_embs = db.query(Embedding).filter(Embedding.user_id == user_id).count()
+    ready_embs = db.query(Embedding).filter(Embedding.user_id == user_id, Embedding.status == "READY").count()
+    failed_embs = db.query(Embedding).filter(Embedding.user_id == user_id, Embedding.status == "FAILED").count()
+
+    return RetrievalMetricsData(
+        total_documents=total_docs,
+        total_chunks=total_chunks,
+        total_embeddings=total_embs,
+        ready_embeddings=ready_embs,
+        failed_embeddings=failed_embs,
+    )

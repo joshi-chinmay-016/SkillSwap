@@ -155,3 +155,40 @@ def search_documents(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Retrieval operation failed.",
         ) from exc
+
+
+class RetrievalMetricsApiResponse(BaseModel):
+    total_documents: int
+    total_chunks: int
+    total_embeddings: int
+    ready_embeddings: int
+    failed_embeddings: int
+
+
+@router.get(
+    "/metrics",
+    response_model=RetrievalMetricsApiResponse,
+    summary="Retrieval Engine Metrics",
+    description="Retrieve count metrics for user's indexed documents, chunks, and vector embeddings.",
+)
+def get_retrieval_metrics_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        from app.retrieval.retrieval_repository import get_retrieval_metrics
+        metrics = get_retrieval_metrics(db, user_id=current_user.id)
+        return RetrievalMetricsApiResponse(
+            total_documents=metrics.total_documents,
+            total_chunks=metrics.total_chunks,
+            total_embeddings=metrics.total_embeddings,
+            ready_embeddings=metrics.ready_embeddings,
+            failed_embeddings=metrics.failed_embeddings,
+        )
+    except Exception as exc:
+        logger.error("Failed to retrieve retrieval metrics: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch retrieval metrics.",
+        ) from exc
+

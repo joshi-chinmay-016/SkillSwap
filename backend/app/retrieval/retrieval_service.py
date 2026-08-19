@@ -284,3 +284,16 @@ class RetrievalService:
             request.document_id = doc_id
 
         return top_k, threshold
+
+    def get_metrics(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+    ):
+        """
+        Delegate retrieval metric computation to the retrieval repository.
+        """
+        from app.retrieval.retrieval_repository import get_retrieval_metrics
+        return get_retrieval_metrics(db, user_id=user_id)
+

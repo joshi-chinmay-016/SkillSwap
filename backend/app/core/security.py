@@ -27,13 +27,17 @@ def verify_password(
 
 
 def create_access_token(
-    data: dict
+    data: dict,
+    expires_delta: timedelta | None = None
 ):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
     to_encode.update(
         {"exp": expire}

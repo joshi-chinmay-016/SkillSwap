@@ -1,6 +1,5 @@
 .antigravity/*
 
-docs/*
 .venv/*
 venv/*
 backend/venv/*

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -12,8 +12,7 @@ class LearningActivityResponse(BaseModel):
     activity_data: Optional[Dict[str, Any]] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LearningActivityListResponse(BaseModel):
@@ -81,8 +80,7 @@ class AnalyticsResponse(BaseModel):
     average_per_day: float = 0.0
     summary: AnalyticsSummaryInfo
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

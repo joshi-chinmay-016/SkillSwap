@@ -688,3 +688,30 @@ def test_retrieval_api_endpoint(test_db, tmp_vector_store):
         assert "query_duration_ms" in data
 
     app.dependency_overrides.clear()
+
+
+def test_retrieval_metrics_endpoint(test_db):
+    """Test GET /retrieval/metrics HTTP endpoint via FastAPI TestClient."""
+    create_test_document_chain(test_db, user_id=1)
+    user1 = test_db.query(User).filter(User.id == 1).first()
+
+    app.dependency_overrides[get_db] = lambda: test_db
+    client = TestClient(app)
+
+    # Unauthenticated -> 401
+    res_unauth = client.get("/retrieval/metrics")
+    assert res_unauth.status_code == 401
+
+    # Authenticated -> 200
+    app.dependency_overrides[get_current_user] = lambda: user1
+    res = client.get("/retrieval/metrics")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_documents"] == 1
+    assert data["total_chunks"] == 1
+    assert data["total_embeddings"] == 1
+    assert data["ready_embeddings"] == 1
+    assert data["failed_embeddings"] == 0
+
+    app.dependency_overrides.clear()
+
