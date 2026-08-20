@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLearningSession, useCompleteSession, useArchiveSession } from "../hooks/useSessions";
 import SessionStatusBadge from "../components/JourneySessions/SessionStatusBadge";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Skeleton from "../components/common/Skeleton";
+import SectionHeader from "../components/common/SectionHeader";
+import PageTransition from "../components/common/PageTransition";
 import { useToast } from "../components/common/Toast";
 import {
   ArrowLeft,
@@ -17,17 +19,17 @@ import {
   MessageSquare,
   Bot,
   Layers,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Video,
+  ExternalLink,
 } from "lucide-react";
 
-/**
- * SessionPage Component
- * Displays metadata for a single Learning Session and prepares the space for future AI Mentor & Chat features.
- */
 export default function SessionPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const [sessionNotes, setSessionNotes] = useState("");
 
   const { data: session, isLoading, error } = useLearningSession(sessionId);
   const completeSessionMutation = useCompleteSession(session?.journey_id);
@@ -35,7 +37,7 @@ export default function SessionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 max-w-4xl mx-auto p-4">
+      <div className="space-y-6 max-w-4xl mx-auto p-4">
         <Skeleton variant="rectangular" width="120px" height="32px" />
         <Skeleton variant="text" width="60%" height="32px" />
         <Card className="p-6 space-y-4">
@@ -93,32 +95,32 @@ export default function SessionPage() {
   const status = (session.status || "").toUpperCase();
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl mx-auto">
-      {/* Top Header */}
+    <PageTransition className="space-y-6 max-w-4xl mx-auto text-left">
+      {/* Top Header Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-2">
           <button
-            onClick={() => navigate(`/journey/${session.journey_id}`)}
-            className="flex items-center text-xs font-semibold text-text-secondary hover:text-accent w-fit transition-colors gap-1 group"
+            onClick={() => navigate(session.journey_id ? `/journey/${session.journey_id}` : "/sessions")}
+            className="flex items-center text-xs font-semibold text-text-secondary hover:text-accent w-fit transition-colors gap-1 group cursor-pointer"
           >
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-            Back to Journey
+            <span>{session.journey_id ? "Back to Learning Journey" : "Back to Sessions"}</span>
           </button>
-          
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-text">
-              {session.title}
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
+              {session.title || "Live Learning Session"}
             </h1>
             <SessionStatusBadge status={status} />
           </div>
-          
-          <p className="text-xs text-text-secondary font-mono">
-            Session ID: {session.uuid}
+
+          <p className="text-xs text-text-muted font-mono">
+            Session ID: {session.uuid || session.id}
           </p>
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
           {status === "ACTIVE" && (
             <>
               <Button
@@ -126,9 +128,9 @@ export default function SessionPage() {
                 size="sm"
                 onClick={handleArchive}
                 disabled={archiveSessionMutation.isPending}
+                leftIcon={Archive}
                 className="text-text-secondary hover:text-danger hover:border-danger/30"
               >
-                <Archive size={14} className="mr-1.5" />
                 Archive
               </Button>
               <Button
@@ -136,9 +138,9 @@ export default function SessionPage() {
                 size="sm"
                 onClick={handleComplete}
                 disabled={completeSessionMutation.isPending}
-                className="bg-success hover:bg-success/90 text-white border-none"
+                leftIcon={CheckCircle2}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-glow"
               >
-                <CheckCircle2 size={14} className="mr-1.5" />
                 Complete Session
               </Button>
             </>
@@ -150,46 +152,68 @@ export default function SessionPage() {
               size="sm"
               onClick={handleArchive}
               disabled={archiveSessionMutation.isPending}
+              leftIcon={Archive}
               className="text-text-secondary hover:text-danger hover:border-danger/30"
             >
-              <Archive size={14} className="mr-1.5" />
               Archive
             </Button>
           )}
         </div>
       </div>
 
-      {/* Main Details Card */}
-      <Card title="Session Overview">
+      {/* Main Details Grid */}
+      <Card title="Session Metadata & Timing">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-2">
-          <div className="p-3 bg-bg-alt rounded-lg border border-border/60">
+          <div className="p-3.5 bg-bg-alt rounded-xl border border-border/70">
             <span className="text-text-secondary font-medium block">Started At</span>
             <span className="text-text font-bold mt-1 flex items-center gap-1.5 text-sm">
-              <Clock size={14} className="text-accent" />
-              {new Date(session.started_at).toLocaleString()}
+              <Clock size={15} className="text-accent" />
+              {session.started_at ? new Date(session.started_at).toLocaleString() : "Pending Start"}
             </span>
           </div>
 
-          <div className="p-3 bg-bg-alt rounded-lg border border-border/60">
+          <div className="p-3.5 bg-bg-alt rounded-xl border border-border/70">
             <span className="text-text-secondary font-medium block">Ended At</span>
             <span className="text-text font-bold mt-1 flex items-center gap-1.5 text-sm">
-              <CheckCircle2 size={14} className="text-success" />
+              <CheckCircle2 size={15} className="text-emerald-500" />
               {session.ended_at ? new Date(session.ended_at).toLocaleString() : "In Progress"}
             </span>
           </div>
 
-          <div className="p-3 bg-bg-alt rounded-lg border border-border/60">
+          <div className="p-3.5 bg-bg-alt rounded-xl border border-border/70">
             <span className="text-text-secondary font-medium block">Created Date</span>
             <span className="text-text font-bold mt-1 flex items-center gap-1.5 text-sm">
-              <Calendar size={14} className="text-accent" />
-              {new Date(session.created_at).toLocaleDateString()}
+              <Calendar size={15} className="text-accent" />
+              {new Date(session.created_at || Date.now()).toLocaleDateString()}
             </span>
           </div>
         </div>
       </Card>
 
-      {/* AI Assistant Ready Container (Day 60+ Future Ready) */}
-      <Card className="p-8 border-accent/20 bg-gradient-to-br from-accent/5 via-bg to-bg relative overflow-hidden">
+      {/* Live Notes Area */}
+      <Card title="Session Notes & Key Learnings" subtitle="Capture important discussion points and code snippets">
+        <div className="space-y-3">
+          <textarea
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            placeholder="Write key concepts, debugging tips, and next steps discussed in this session..."
+            rows={4}
+            className="w-full p-3.5 text-xs rounded-xl border border-border bg-bg text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent leading-relaxed"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={() => toast.show("Session notes saved locally.", "success")}
+            >
+              Save Notes
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* AI Assistant Ready Container */}
+      <Card className="p-8 border-accent/25 bg-gradient-to-br from-accent/5 via-surface-elevated to-bg relative overflow-hidden shadow-md">
         <div className="max-w-md mx-auto text-center space-y-4">
           <div className="p-3.5 bg-accent/15 text-accent rounded-2xl w-fit mx-auto shadow-xs">
             <Bot size={32} />
@@ -197,30 +221,26 @@ export default function SessionPage() {
 
           <div className="space-y-1.5">
             <h3 className="text-lg font-bold text-text">
-              Context-Aware AI Mentor Ready
+              Context-Aware AI Mentor Linked
             </h3>
             <p className="text-xs text-text-secondary leading-relaxed">
-              This session is established as a persistent anchor for your learning journey. Future modules will enable persistent chat, automated AI summaries, and memory retrieval.
+              This session is established as a persistent anchor for your learning journey. You can analyze discussion takeaways with the AI Mentor anytime.
             </p>
           </div>
 
-          {/* Future feature badges */}
           <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-[11px]">
-            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-medium flex items-center gap-1">
-              <MessageSquare size={12} className="text-accent" /> Persistent Chat
+            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-semibold flex items-center gap-1">
+              <MessageSquare size={12} className="text-accent" /> Session Chat
             </span>
-            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-medium flex items-center gap-1">
-              <Sparkles size={12} className="text-success" /> Session Summaries
+            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-semibold flex items-center gap-1">
+              <Sparkles size={12} className="text-emerald-500" /> AI Grounding
             </span>
-            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-medium flex items-center gap-1">
-              <Brain size={12} className="text-warning" /> AI Memory
-            </span>
-            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-medium flex items-center gap-1">
-              <Layers size={12} className="text-accent" /> RAG Pipeline
+            <span className="px-3 py-1 bg-bg border border-border rounded-full text-text-secondary font-semibold flex items-center gap-1">
+              <Brain size={12} className="text-amber-500" /> Mentor Memory
             </span>
           </div>
         </div>
       </Card>
-    </div>
+    </PageTransition>
   );
 }

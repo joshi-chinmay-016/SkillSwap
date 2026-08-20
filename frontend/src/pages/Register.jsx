@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
-import Card from "../components/common/Card";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
+import { PushPin } from "../components/common/PinnedCard";
+import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
 import { AVATAR_OPTIONS } from "../utils/avatars";
+import { Sparkles, ArrowRight, ShieldCheck, UserPlus } from "lucide-react";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -71,7 +73,7 @@ export default function Register() {
 
       const token = authResponse.data.access_token;
 
-      // 3. Fetch user info (now includes avatar_url)
+      // 3. Fetch user info
       const userResponse = await api.get("/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -93,45 +95,64 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4 select-none">
+    <div className="min-h-screen flex items-center justify-center whiteboard-grid text-text px-4 py-12 select-none relative">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent/10 text-accent mb-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight text-text">
-            Create your account
+        <div className="text-center mb-7 space-y-2">
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-2 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent to-purple-600 flex items-center justify-center text-white shadow-md group-hover:rotate-6 transition-transform duration-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+            </div>
+            <span className="font-black text-2xl tracking-tight text-text">
+              Skill<span className="text-accent">Swap</span>{" "}
+              <span className="font-handwriting text-xl font-bold text-rose-500 rotate-[-4deg] inline-block ml-1">
+                Arena 📌
+              </span>
+            </span>
+          </Link>
+
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-text">
+            Enroll in the Classroom
           </h2>
-          <p className="text-xs text-text-secondary mt-1">
-            Join the peer learning community and start swapping skills
-          </p>
+          <div className="flex items-center justify-center gap-2 pt-0.5">
+            <span className="text-xs text-text-secondary">Join student peer mentorship</span>
+            <HandDrawnNote color="rose" rotate="-2deg" className="text-lg">
+              ✦ 100% Free Desk!
+            </HandDrawnNote>
+          </div>
         </div>
 
-        {/* Card for registration form */}
-        <Card className="shadow-md">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Pinned Card containing registration form */}
+        <div className="relative rounded-3xl border border-card-border bg-card-bg/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8 text-left">
+          <PushPin color="cyan" className="-top-3" />
+
+          {/* Hand-drawn badge */}
+          <div className="absolute -top-3 right-6 font-handwriting text-sm font-bold text-sky-900 dark:text-sky-300 bg-sky-100 dark:bg-sky-950 px-2.5 py-0.5 rounded-lg border border-sky-300 dark:border-sky-700 rotate-2 shadow-xs">
+            Student Enrollment 📌
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             {apiError && (
               <div
-                className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-md font-medium text-left"
+                className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-xl font-medium text-left"
                 role="alert"
               >
                 {apiError}
@@ -151,7 +172,7 @@ export default function Register() {
             <Input
               label="Email Address"
               type="email"
-              placeholder="alex@example.com"
+              placeholder="alex@university.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
@@ -159,11 +180,11 @@ export default function Register() {
             />
 
             {/* Avatar Picker */}
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-2">
-                Choose your avatar
+            <div className="space-y-1.5 text-left">
+              <label className="block text-xs font-bold text-text-secondary">
+                Choose your classroom avatar
               </label>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-6 gap-2 p-2 bg-bg-alt/70 rounded-2xl border border-border/80">
                 {AVATAR_OPTIONS.map((avatar) => (
                   <button
                     key={avatar.id}
@@ -172,9 +193,10 @@ export default function Register() {
                     className={`
                       relative w-full aspect-square rounded-full overflow-hidden
                       transition-all duration-150 cursor-pointer
-                      ${selectedAvatar.id === avatar.id
-                        ? "ring-2 ring-accent ring-offset-2 ring-offset-bg scale-110 shadow-lg"
-                        : "hover:scale-105 opacity-70 hover:opacity-100"
+                      ${
+                        selectedAvatar.id === avatar.id
+                          ? "ring-2 ring-accent ring-offset-2 ring-offset-bg scale-110 shadow-glow"
+                          : "hover:scale-105 opacity-65 hover:opacity-100"
                       }
                     `}
                   >
@@ -213,21 +235,22 @@ export default function Register() {
               variant="primary"
               size="md"
               isLoading={isLoading}
-              className="w-full mt-2"
+              className="w-full mt-2 shadow-glow font-bold"
+              rightIcon={ArrowRight}
             >
-              Sign Up
+              Sign Up & Claim Desk
             </Button>
           </form>
-        </Card>
+        </div>
 
         {/* Footer info link */}
         <p className="text-center text-xs text-text-secondary mt-6">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-semibold text-accent hover:text-accent-hover underline"
+            className="font-bold text-accent hover:text-accent-hover underline"
           >
-            Sign in
+            Sign in to desk
           </Link>
         </p>
       </motion.div>

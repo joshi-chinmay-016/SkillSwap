@@ -1,10 +1,29 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "motion/react";
 import api from "../services/api";
 import Button from "../components/common/Button";
-import Card from "../components/common/Card";
-import { Calendar, Video, Clock, CheckCircle, XCircle, AlertCircle, MessageSquare } from "lucide-react";
+import SectionHeader from "../components/common/SectionHeader";
+import EmptyState from "../components/common/EmptyState";
+import ErrorState from "../components/common/ErrorState";
+import PageTransition from "../components/common/PageTransition";
+import { PushPin } from "../components/common/PinnedCard";
+import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
+import {
+  Calendar,
+  Video,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  MessageSquare,
+  ArrowRight,
+  Sparkles,
+  ExternalLink,
+  UserCheck,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function Sessions() {
   const [activeTab, setActiveTab] = useState("upcoming");
@@ -16,6 +35,7 @@ export default function Sessions() {
     data: upcoming = [],
     isLoading: isUpcomingLoading,
     isError: isUpcomingError,
+    refetch: refetchUpcoming,
   } = useQuery({
     queryKey: ["upcomingSessions"],
     queryFn: async () => {
@@ -29,6 +49,7 @@ export default function Sessions() {
     data: completed = [],
     isLoading: isCompletedLoading,
     isError: isCompletedError,
+    refetch: refetchCompleted,
   } = useQuery({
     queryKey: ["completedSessions"],
     queryFn: async () => {
@@ -65,156 +86,200 @@ export default function Sessions() {
   const sessionsList = activeTab === "upcoming" ? upcoming : completed;
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text m-0">
-          Your Sessions
-        </h1>
-        <p className="text-xs text-text-secondary mt-1">
-          Manage your booked learning swaps and view past lesson history summaries
-        </p>
-      </div>
+    <PageTransition className="space-y-8 text-left max-w-6xl mx-auto">
+      {/* Section Header */}
+      <SectionHeader
+        badge="Classroom Desk"
+        badgeIcon={Calendar}
+        handwrittenNote="📌 Live Study Rooms"
+        title="Learning Sessions"
+        subtitle="Manage your 1-on-1 peer exchange sessions, join live rooms, and review completed notes."
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate("/mentors")}
+            rightIcon={ArrowRight}
+            className="shadow-glow font-bold"
+          >
+            Book New Session 📌
+          </Button>
+        }
+      />
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-border">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-elevated border border-border w-fit shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab("upcoming")}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
             activeTab === "upcoming"
-              ? "border-accent text-accent"
-              : "border-transparent text-text-secondary hover:text-text"
+              ? "bg-accent text-white shadow-glow"
+              : "text-text-secondary hover:text-text"
           }`}
         >
-          Upcoming Sessions ({upcoming.length})
+          Upcoming ({upcoming.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("completed")}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
             activeTab === "completed"
-              ? "border-accent text-accent"
-              : "border-transparent text-text-secondary hover:text-text"
+              ? "bg-accent text-white shadow-glow"
+              : "text-text-secondary hover:text-text"
           }`}
         >
-          Completed Swaps ({completed.length})
+          Completed ({completed.length})
         </button>
       </div>
 
-      {/* Content list */}
-      {isLoading ? (
-        <div className="flex flex-col gap-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-28 w-full bg-border/40 animate-pulse rounded-lg border border-border" />
-          ))}
-        </div>
-      ) : isError ? (
-        <div className="py-12 bg-bg border border-border rounded-xl flex flex-col items-center gap-2 text-center">
-          <AlertCircle className="text-danger" size={32} />
-          <p className="font-semibold text-sm">Failed to load sessions</p>
-          <p className="text-xs text-text-secondary">Please check your server connection.</p>
-        </div>
-      ) : sessionsList.length === 0 ? (
-        <div className="py-16 bg-bg border border-border rounded-xl flex flex-col items-center gap-3 text-center">
-          <div className="w-12 h-12 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border">
-            <Calendar size={20} />
+      {/* Sessions Content */}
+      <div>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 w-full bg-border/40 animate-pulse rounded-2xl" />
+            ))}
           </div>
-          <p className="font-semibold text-sm">
-            {activeTab === "upcoming" ? "No upcoming sessions scheduled" : "No completed sessions yet"}
-          </p>
-          <p className="text-xs text-text-secondary max-w-sm">
-            {activeTab === "upcoming"
-              ? "Schedule a mentoring call with a student peer. Search mentors to get started."
-              : "Completed sessions will show up here along with your AI recap summaries."}
-          </p>
-          {activeTab === "upcoming" && (
-            <Button size="sm" variant="primary" onClick={() => navigate("/mentors")} className="mt-2">
-              Discover Mentors
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {sessionsList.map((session) => (
-            <Card
-              key={session.id}
-              className="bg-bg border border-border hover:shadow-xs transition-shadow"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                {/* Details info */}
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold text-sm shrink-0">
-                    {session.mentor_name?.charAt(0) || "S"}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-text">
-                      {session.skill_name || "Mentoring Session"}
-                    </h3>
-                    <p className="text-xs text-text-secondary mt-0.5">
-                      {activeTab === "upcoming" ? "Mentor:" : "Swapped with:"} <span className="font-semibold text-text">{session.mentor_name}</span>
-                    </p>
-                    
-                    {/* Time */}
-                    <div className="flex items-center gap-3 text-[11px] text-text-secondary mt-2">
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {new Date(session.scheduled_at).toLocaleDateString()} at{" "}
-                        {new Date(session.scheduled_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+        ) : isError ? (
+          <ErrorState
+            title="Failed to load sessions"
+            message="Could not load your session history. Please try again."
+            onRetry={() => (activeTab === "upcoming" ? refetchUpcoming() : refetchCompleted())}
+          />
+        ) : sessionsList.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title={activeTab === "upcoming" ? "No upcoming sessions scheduled" : "No completed sessions yet"}
+            description={
+              activeTab === "upcoming"
+                ? "You don't have any pending peer learning sessions. Browse our verified student mentors to schedule one."
+                : "You haven't completed any sessions yet. Once you complete a session with a peer, it will appear here."
+            }
+            actionLabel={activeTab === "upcoming" ? "Browse Peer Mentors" : undefined}
+            onAction={() => navigate("/mentors")}
+          />
+        ) : (
+          <div className="space-y-6">
+            {sessionsList.map((session, index) => {
+              const pinColors = ["cyan", "yellow", "purple", "green", "red"];
+              const selectedColor = pinColors[index % pinColors.length];
+
+              return (
+                <motion.div
+                  key={session.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative p-6 sm:p-7 bg-card-bg border border-card-border hover:border-accent/50 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-200 space-y-4"
+                >
+                  <PushPin color={selectedColor} className="-top-3 left-10" />
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center font-extrabold text-lg border border-accent/20 shrink-0">
+                        {session.mentor_name?.charAt(0) || "M"}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h3 className="font-black text-base text-text">
+                            {session.skill_name || "Peer Mentoring Session"}
+                          </h3>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                              session.status === "completed"
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                : session.status === "cancelled"
+                                ? "bg-danger/10 text-danger border-danger/20"
+                                : "bg-accent/10 text-accent border-accent/20"
+                            }`}
+                          >
+                            {session.status || "Scheduled"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-secondary font-medium">
+                          Mentor: <strong>{session.mentor_name}</strong> • Learner: <strong>{session.learner_name || "You"}</strong>
+                        </p>
+                        <p className="text-xs text-text-secondary flex items-center gap-1.5 pt-0.5">
+                          <Clock size={13} className="text-accent" />
+                          <span>
+                            {new Date(session.scheduled_at).toLocaleDateString(undefined, {
+                              weekday: "short",
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            at{" "}
+                            {new Date(session.scheduled_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {activeTab === "upcoming" && (
+                        <>
+                          <Link
+                            to={`/learning-sessions/${session.id}`}
+                            className="px-3.5 py-2 text-xs font-bold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border text-text transition-colors"
+                          >
+                            Session Room
+                          </Link>
+                          {session.meeting_link && (
+                            <a
+                              href={session.meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 text-xs font-bold rounded-xl bg-accent text-white hover:bg-accent-hover shadow-glow flex items-center gap-1.5 transition-colors"
+                            >
+                              <Video size={14} />
+                              <span>Join Meeting</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => completeMutation.mutate(session.id)}
+                            isLoading={completeMutation.isPending}
+                            leftIcon={CheckCircle}
+                            className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 font-bold"
+                          >
+                            Mark Complete
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => cancelMutation.mutate(session.id)}
+                            isLoading={cancelMutation.isPending}
+                            leftIcon={XCircle}
+                            className="text-danger hover:bg-danger/10 font-bold"
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+
+                      {activeTab === "completed" && (
+                        <Link
+                          to={`/learning-sessions/${session.id}`}
+                          className="px-4 py-2 text-xs font-bold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border text-text transition-colors flex items-center gap-1.5"
+                        >
+                          <MessageSquare size={14} />
+                          <span>View Notes & Reflection</span>
+                        </Link>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                {/* Actions button */}
-                <div className="flex flex-wrap items-center gap-2 sm:self-center">
-                  {activeTab === "upcoming" ? (
-                    <>
-                      <a
-                        href={session.meeting_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-accent text-white hover:bg-accent-hover rounded-md shadow-xs transition-colors"
-                      >
-                        <Video size={14} /> Join Call
-                      </a>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => completeMutation.mutate(session.id)}
-                        isLoading={completeMutation.isPending}
-                        className="text-green-600 border-green-500/20 hover:bg-green-500/10"
-                      >
-                        <CheckCircle size={14} /> Complete
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => cancelMutation.mutate(session.id)}
-                        isLoading={cancelMutation.isPending}
-                        className="text-danger hover:bg-danger/10"
-                      >
-                        <XCircle size={14} /> Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Link
-                      to={`/sessions/${session.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-bg-alt border border-border text-text hover:bg-border rounded-md transition-colors"
-                    >
-                      <MessageSquare size={14} className="text-accent" />
-                      View AI Summary & Notes
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </PageTransition>
   );
 }

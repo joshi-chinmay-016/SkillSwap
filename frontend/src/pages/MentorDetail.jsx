@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "motion/react";
 import api from "../services/api";
 import Avatar from "../components/common/Avatar";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import Modal from "../components/common/Modal";
 import Input from "../components/common/Input";
+import PageTransition from "../components/common/PageTransition";
+import CredibilityBadge from "../components/verification/CredibilityBadge";
 import {
   ArrowLeft,
   Star,
@@ -16,11 +19,12 @@ import {
   Clock,
   Video,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  ShieldCheck,
+  Zap,
+  Sparkles,
+  UserCheck,
 } from "lucide-react";
-import CredibilityBadge from "../components/verification/CredibilityBadge";
-import { verificationApi } from "../api/verificationApi";
-
 
 export default function MentorDetail() {
   const { id } = useParams();
@@ -29,7 +33,6 @@ export default function MentorDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Retrieve initial information from state if available for faster layout load
   const initialName = location.state?.mentorName || "Mentor Profile";
   const initialRating = location.state?.averageRating || 0;
 
@@ -57,7 +60,6 @@ export default function MentorDetail() {
     },
   });
 
-  // Filters
   const teachSkills = mentorSkills.filter((s) => s.type === "teach");
   const learnSkills = mentorSkills.filter((s) => s.type === "learn");
 
@@ -69,16 +71,15 @@ export default function MentorDetail() {
     },
     onSuccess: () => {
       setBookingSuccess(true);
-      // Invalidate queries to refresh sessions lists
       queryClient.invalidateQueries(["upcomingSessions"]);
       setTimeout(() => {
         setIsBookModalOpen(false);
         setBookingSuccess(false);
         navigate("/sessions");
-      }, 2000);
+      }, 1800);
     },
     onError: (err) => {
-      const msg = err.response?.data?.detail || "Booking failed. You might not have enough coins.";
+      const msg = err.response?.data?.detail || "Booking failed. You might not have enough coins in your wallet.";
       setBookingError(msg);
     },
   });
@@ -86,16 +87,14 @@ export default function MentorDetail() {
   const handleOpenBooking = () => {
     setBookingError("");
     setBookingSuccess(false);
-    // Auto-select first teaching skill if available
     if (teachSkills.length > 0) {
-      setSelectedSkillId(teachSkills[0].skill_id.toString());
+      setSelectedSkillId(teachSkills[0].skill_id?.toString() || "");
     }
-    // Set default date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(10, 0, 0, 0);
-    setScheduledAt(tomorrow.toISOString().slice(0, 16)); // format for datetime-local input
-    
+    setScheduledAt(tomorrow.toISOString().slice(0, 16));
+
     setIsBookModalOpen(true);
   };
 
@@ -112,7 +111,6 @@ export default function MentorDetail() {
       return;
     }
 
-    // Auto-generate Jitsi video meeting room link
     const roomName = `skillswap-${mentorId}-${Date.now().toString().slice(-6)}`;
     const meetingLink = `https://meet.jit.si/${roomName}`;
 
@@ -127,97 +125,118 @@ export default function MentorDetail() {
   const isLoading = isProfileLoading || isSkillsLoading;
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Back button */}
+    <PageTransition className="space-y-6 text-left">
+      {/* Back Button */}
       <div>
         <button
           type="button"
           onClick={() => navigate("/mentors")}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-text cursor-pointer transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-text-secondary hover:text-accent cursor-pointer transition-colors"
         >
-          <ArrowLeft size={16} /> Back to Mentors
+          <ArrowLeft size={16} />
+          <span>Back to Mentors</span>
         </button>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col gap-6">
-          <div className="h-28 w-full bg-border/40 animate-pulse rounded-lg" />
+        <div className="space-y-6">
+          <div className="h-40 w-full bg-border/40 animate-pulse rounded-3xl" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 h-64 bg-border/40 animate-pulse rounded-lg" />
-            <div className="h-48 bg-border/40 animate-pulse rounded-lg" />
+            <div className="md:col-span-2 h-64 bg-border/40 animate-pulse rounded-3xl" />
+            <div className="h-64 bg-border/40 animate-pulse rounded-3xl" />
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="space-y-6">
           {/* Header Card */}
-          <div className="bg-bg border border-border p-6 rounded-xl flex flex-col sm:flex-row items-center sm:items-start gap-5 shadow-xs">
-            <Avatar
-              src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${initialName}`}
-              alt={initialName}
-              size="2xl"
-            />
-            <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-2xl font-bold tracking-tight text-text m-0">
-                {initialName}
-              </h2>
-              <p className="text-sm font-medium text-text-secondary mt-1">
-                {profile?.department ? `${profile.department} Major` : "Student"} • Year {profile?.year || 1}
-              </p>
-              
-              <div className="flex items-center justify-center sm:justify-start gap-1 mt-2 text-xs">
-                <div className="flex items-center text-yellow-500">
-                  <Star size={16} fill="currentColor" />
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card-bg border border-card-border p-6 sm:p-8 rounded-3xl flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 shadow-md relative overflow-hidden"
+          >
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+              <Avatar
+                src={profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${initialName}`}
+                alt={initialName}
+                size="2xl"
+                className="ring-4 ring-accent/20 shrink-0"
+              />
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
+                    {initialName}
+                  </h1>
+                  {teachSkills[0] && (
+                    <CredibilityBadge
+                      status={teachSkills[0].verification_status || "CLAIMED"}
+                      score={teachSkills[0].score}
+                      size="md"
+                    />
+                  )}
                 </div>
-                <span className="font-bold text-sm text-text">
-                  {initialRating > 0 ? initialRating.toFixed(1) : "New Mentor"}
-                </span>
+                <p className="text-xs sm:text-sm font-semibold text-text-secondary">
+                  {profile?.department ? `${profile.department} Student` : "Peer Mentor"} • Year {profile?.year || 1}
+                </p>
+
+                <div className="flex items-center justify-center sm:justify-start gap-1 text-xs pt-1">
+                  <Star size={16} className="text-amber-500 fill-amber-500" />
+                  <span className="font-extrabold text-sm text-text">
+                    {initialRating > 0 ? Number(initialRating).toFixed(1) : "New Mentor"}
+                  </span>
+                </div>
               </div>
             </div>
-            
+
             <div className="shrink-0 mt-2 sm:mt-0">
-              <Button onClick={handleOpenBooking} variant="primary" size="md">
-                <Calendar size={16} /> Book Swap Session
+              <Button
+                onClick={handleOpenBooking}
+                variant="primary"
+                size="md"
+                className="font-bold shadow-glow"
+                leftIcon={Calendar}
+              >
+                Book Swap Session
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Grid details */}
+          {/* Grid Details */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Bio Card */}
-            <div className="lg:col-span-2 flex flex-col gap-6">
-              <Card title="About Mentor">
+            <div className="lg:col-span-2 space-y-6">
+              <Card title="About Mentor" subtitle="Background & Teaching Philosophy">
                 {profile?.bio ? (
                   <p className="text-sm text-text-secondary whitespace-pre-line leading-relaxed">
                     {profile.bio}
                   </p>
                 ) : (
                   <p className="text-sm text-text-secondary italic">
-                    This mentor hasn't written a biography yet.
+                    This mentor has not provided a biography yet.
                   </p>
                 )}
               </Card>
             </div>
 
             {/* Skills Card */}
-            <div className="flex flex-col gap-6">
-              <Card title="Mentor's Expertise">
-                <div className="flex flex-col gap-4">
+            <div className="space-y-6">
+              <Card title="Mentor's Skill Profile" subtitle="Active competencies">
+                <div className="space-y-5">
                   {/* Skills to Teach */}
                   <div>
-                    <h4 className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Award size={14} /> Skills I Can Teach
+                    <h4 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <Award size={14} /> Teaches & Offers
                     </h4>
                     {teachSkills.length === 0 ? (
-                      <p className="text-xs text-text-secondary italic">No skills listed</p>
+                      <p className="text-xs text-text-secondary italic">No teaching skills listed</p>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="space-y-2">
                         {teachSkills.map((s) => (
                           <div
                             key={s.id}
-                            className="flex items-center justify-between p-2 bg-green-500/5 rounded-md border border-green-500/10"
+                            className="flex items-center justify-between p-2.5 bg-emerald-500/5 rounded-xl border border-emerald-500/15"
                           >
-                            <span className="text-xs font-semibold text-text">
-                              {s.skill?.name}
+                            <span className="text-xs font-bold text-text">
+                              {s.skill?.name || s.name}
                             </span>
                             <CredibilityBadge
                               status={s.verification_status || "CLAIMED"}
@@ -227,25 +246,24 @@ export default function MentorDetail() {
                           </div>
                         ))}
                       </div>
-
                     )}
                   </div>
 
                   {/* Skills to Learn */}
                   <div>
-                    <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <BookOpen size={14} /> Skills I Want to Learn
+                    <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <BookOpen size={14} /> Wants to Learn
                     </h4>
                     {learnSkills.length === 0 ? (
-                      <p className="text-xs text-text-secondary italic">No skills listed</p>
+                      <p className="text-xs text-text-secondary italic">No learning goals listed</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {learnSkills.map((s) => (
                           <span
                             key={s.id}
-                            className="px-2.5 py-1 text-xs font-semibold bg-accent/10 text-accent rounded-md border border-accent/10"
+                            className="px-3 py-1 text-xs font-semibold bg-accent/10 text-accent rounded-full border border-accent/20"
                           >
-                            {s.skill?.name}
+                            {s.skill?.name || s.name}
                           </span>
                         ))}
                       </div>
@@ -262,30 +280,36 @@ export default function MentorDetail() {
       <Modal
         isOpen={isBookModalOpen}
         onClose={() => !bookSessionMutation.isPending && setIsBookModalOpen(false)}
-        title={`Book Session with ${initialName}`}
+        title={`Book Peer Session with ${initialName}`}
         size="md"
         closeOnOverlayClick={!bookSessionMutation.isPending}
       >
         {bookingSuccess ? (
-          <div className="py-8 flex flex-col items-center gap-3 text-center">
-            <CheckCircle className="text-green-500" size={48} />
-            <h3 className="font-bold text-base text-text">Session Booked Successfully!</h3>
-            <p className="text-xs text-text-secondary">
-              Redirecting you to your sessions list...
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="py-8 flex flex-col items-center gap-3 text-center"
+          >
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 shadow-glow">
+              <CheckCircle size={36} />
+            </div>
+            <h3 className="font-extrabold text-lg text-text">Session Booked Successfully!</h3>
+            <p className="text-xs text-text-secondary max-w-xs">
+              Your 1-on-1 swap session is confirmed. Redirecting you to sessions...
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <form onSubmit={handleBookSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleBookSubmit} className="space-y-4">
             {bookingError && (
-              <div className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-md font-medium flex items-center gap-1.5">
-                <AlertCircle size={14} className="shrink-0" />
+              <div className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-xl font-medium flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0" />
                 <span>{bookingError}</span>
               </div>
             )}
 
             {/* Select Skill */}
-            <div className="flex flex-col gap-1.5 text-left">
-              <label htmlFor="select-skill" className="text-xs font-semibold text-text-secondary">
+            <div className="space-y-1.5 text-left">
+              <label htmlFor="select-skill" className="text-xs font-bold text-text-secondary">
                 Select Skill to Learn
               </label>
               <select
@@ -293,14 +317,14 @@ export default function MentorDetail() {
                 value={selectedSkillId}
                 onChange={(e) => setSelectedSkillId(e.target.value)}
                 disabled={bookSessionMutation.isPending}
-                className="w-full px-3 py-2 text-sm rounded-md border border-border bg-bg text-text shadow-sm focus:outline-none focus:border-accent"
+                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-border bg-bg text-text shadow-xs focus:outline-none focus:border-accent"
               >
                 {teachSkills.length === 0 ? (
                   <option value="">No teaching skills available</option>
                 ) : (
                   teachSkills.map((s) => (
                     <option key={s.skill_id} value={s.skill_id}>
-                      {s.skill?.name}
+                      {s.skill?.name || s.name}
                     </option>
                   ))
                 )}
@@ -308,8 +332,8 @@ export default function MentorDetail() {
             </div>
 
             {/* Select Date and Time */}
-            <div className="flex flex-col gap-1.5 text-left">
-              <label htmlFor="select-date" className="text-xs font-semibold text-text-secondary">
+            <div className="space-y-1.5 text-left">
+              <label htmlFor="select-date" className="text-xs font-bold text-text-secondary">
                 Date & Time
               </label>
               <Input
@@ -321,27 +345,28 @@ export default function MentorDetail() {
               />
             </div>
 
-            {/* Meeting link preview */}
-            <div className="p-3 bg-bg-alt border border-border rounded-lg flex items-center justify-between text-xs text-text-secondary mt-1">
+            {/* Meeting Link Preview */}
+            <div className="p-3.5 bg-bg-alt border border-border rounded-xl flex items-center justify-between text-xs text-text-secondary mt-1">
               <div className="flex items-center gap-2">
-                <Video size={14} className="text-accent" />
-                <span>Google Meet/Jitsi Call (Auto-Generated)</span>
+                <Video size={15} className="text-accent" />
+                <span className="font-medium">Video Meeting Room (Auto-Generated)</span>
               </div>
-              <span className="font-semibold text-accent">Active</span>
+              <span className="font-bold text-emerald-500">Ready</span>
             </div>
 
             {/* Coin deduction info */}
-            <p className="text-[10px] text-text-secondary mt-2 text-left italic">
+            <p className="text-[11px] text-text-secondary mt-1 text-left italic">
               Note: Scheduling a peer-to-peer lesson will deduct 5 Skill Coins from your wallet balance.
             </p>
 
-            {/* Action buttons */}
-            <div className="flex justify-end gap-3 mt-4">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsBookModalOpen(false)}
                 disabled={bookSessionMutation.isPending}
+                className="text-xs font-semibold"
               >
                 Cancel
               </Button>
@@ -350,13 +375,14 @@ export default function MentorDetail() {
                 variant="primary"
                 isLoading={bookSessionMutation.isPending}
                 disabled={teachSkills.length === 0}
+                className="font-bold text-xs shadow-glow"
               >
-                Book Swap
+                Confirm & Book Swap
               </Button>
             </div>
           </form>
         )}
       </Modal>
-    </div>
+    </PageTransition>
   );
 }

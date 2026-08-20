@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/authStore";
 import api from "../services/api";
-import Card from "../components/common/Card";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
+import { PushPin } from "../components/common/PinnedCard";
+import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
+import { Sparkles, ArrowRight, ShieldCheck, Lock, Mail } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -62,7 +64,7 @@ export default function Login() {
 
       // 3. Set store state and redirect
       loginStore(token, user);
-      
+
       // Navigate to dashboard
       navigate("/dashboard");
     } catch (err) {
@@ -75,45 +77,64 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4 select-none">
+    <div className="min-h-screen flex items-center justify-center whiteboard-grid text-text px-4 select-none relative py-12">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent/10 text-accent mb-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-              />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight text-text">
-            Sign in to SkillSwap
+        <div className="text-center mb-7 space-y-2">
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-2 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent to-purple-600 flex items-center justify-center text-white shadow-md group-hover:rotate-6 transition-transform duration-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+            </div>
+            <span className="font-black text-2xl tracking-tight text-text">
+              Skill<span className="text-accent">Swap</span>{" "}
+              <span className="font-handwriting text-xl font-bold text-rose-500 rotate-[-4deg] inline-block ml-1">
+                Arena 📌
+              </span>
+            </span>
+          </Link>
+
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-text">
+            Welcome to the Classroom
           </h2>
-          <p className="text-xs text-text-secondary mt-1">
-            AI-driven peer learning and skill sharing marketplace
-          </p>
+          <div className="flex items-center justify-center gap-2 pt-0.5">
+            <span className="text-xs text-text-secondary">Sign in to start swapping</span>
+            <HandDrawnNote color="rose" rotate="-2deg" className="text-lg">
+              ✦ Zero fees!
+            </HandDrawnNote>
+          </div>
         </div>
 
-        {/* Card containing login form */}
-        <Card className="shadow-md">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Pinned Card containing login form */}
+        <div className="relative rounded-3xl border border-card-border bg-card-bg/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8 text-left">
+          <PushPin color="yellow" className="-top-3" />
+
+          {/* Hand-drawn badge */}
+          <div className="absolute -top-3 right-6 font-handwriting text-sm font-bold text-amber-900 dark:text-amber-300 bg-yellow-100 dark:bg-yellow-950 px-2.5 py-0.5 rounded-lg border border-yellow-300 dark:border-yellow-700 rotate-3 shadow-xs">
+            Student Login 📌
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             {apiError && (
               <div
-                className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-md font-medium text-left"
+                className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-xl font-medium text-left"
                 role="alert"
               >
                 {apiError}
@@ -123,7 +144,7 @@ export default function Login() {
             <Input
               label="Email Address"
               type="email"
-              placeholder="you@example.com"
+              placeholder="you@university.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
@@ -145,21 +166,22 @@ export default function Login() {
               variant="primary"
               size="md"
               isLoading={isLoading}
-              className="w-full mt-2"
+              className="w-full mt-2 shadow-glow font-bold"
+              rightIcon={ArrowRight}
             >
-              Sign In
+              Sign In to Classroom Desk
             </Button>
           </form>
-        </Card>
+        </div>
 
         {/* Footer info link */}
         <p className="text-center text-xs text-text-secondary mt-6">
-          Don't have an account?{" "}
+          Don&apos;t have an account yet?{" "}
           <Link
             to="/register"
-            className="font-semibold text-accent hover:text-accent-hover underline"
+            className="font-bold text-accent hover:text-accent-hover underline"
           >
-            Create an account
+            Claim your free desk 📌
           </Link>
         </p>
       </motion.div>
