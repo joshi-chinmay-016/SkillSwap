@@ -69,13 +69,22 @@ def get_notifications(
 )
 def mark_read(
     notification_id: int,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
-    return mark_notification_read(
+    notif = mark_notification_read(
         db,
-        notification_id
+        notification_id,
+        current_user.id
     )
+    if not notif:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+    return notif
+
 
 
 

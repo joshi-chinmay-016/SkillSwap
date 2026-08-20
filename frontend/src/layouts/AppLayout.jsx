@@ -265,29 +265,60 @@ export default function AppLayout() {
                             ? `${dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                             : "Just now";
 
+                          const isBooked = notification.type === "SESSION_BOOKED";
+                          const isCancelled = notification.type === "SESSION_CANCELLED";
+                          const isCompleted = notification.type === "SESSION_COMPLETED";
+
                           return (
                             <div
                               key={notification.id}
                               className={`p-4 hover:bg-bg-alt/80 cursor-pointer transition-colors ${
                                 notification.is_read ? "opacity-60" : "bg-accent/5"
                               }`}
-                              onClick={() => markAsReadMutation.mutate(notification.id)}
+                              onClick={() => {
+                                if (!notification.is_read) {
+                                  markAsReadMutation.mutate(notification.id);
+                                }
+                                if (notification.related_session_id || isBooked || isCancelled || isCompleted) {
+                                  setIsNotificationsOpen(false);
+                                  navigate("/sessions");
+                                }
+                              }}
                             >
                               <div className="flex items-start gap-3">
                                 <div
                                   className={`p-2 rounded-xl mt-0.5 shrink-0 ${
-                                    notification.is_read
+                                    isCancelled
+                                      ? "bg-danger/15 text-danger"
+                                      : isCompleted
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                      : isBooked
+                                      ? "bg-accent/15 text-accent"
+                                      : notification.is_read
                                       ? "bg-bg-alt text-text-secondary"
                                       : "bg-accent/15 text-accent"
                                   }`}
                                 >
-                                  <CheckCircle size={15} />
+                                  {isBooked ? (
+                                    <Calendar size={15} />
+                                  ) : isCancelled ? (
+                                    <X size={15} />
+                                  ) : isCompleted ? (
+                                    <CheckCircle size={15} />
+                                  ) : (
+                                    <Bell size={15} />
+                                  )}
                                 </div>
                                 <div className="flex-1 min-w-0 space-y-1">
-                                  <p className="font-semibold text-text text-xs leading-relaxed">
+                                  {notification.title && (
+                                    <p className="font-bold text-text text-xs tracking-tight">
+                                      {notification.title}
+                                    </p>
+                                  )}
+                                  <p className="font-medium text-text text-xs leading-relaxed">
                                     {notification.message}
                                   </p>
-                                  <p className="text-[11px] text-text-muted font-medium">
+                                  <p className="text-[10px] text-text-muted font-medium">
                                     {formattedDate}
                                   </p>
                                 </div>
@@ -296,6 +327,7 @@ export default function AppLayout() {
                           );
                         })
                       )}
+
                     </div>
 
                     <div className="p-3 border-t border-border/80 bg-bg-alt/40">

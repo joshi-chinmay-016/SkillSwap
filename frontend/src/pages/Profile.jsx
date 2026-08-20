@@ -46,8 +46,10 @@ import {
 } from "lucide-react";
 import CredibilityBadge from "../components/verification/CredibilityBadge";
 import SkillAssessmentModal from "../components/verification/SkillAssessmentModal";
+import MentorAvailabilitySettings from "../components/Mentor/MentorAvailabilitySettings";
 import { verificationApi } from "../api/verificationApi";
 import { AVATAR_OPTIONS } from "../utils/avatars";
+
 
 export default function Profile() {
   const queryClient = useQueryClient();
@@ -329,8 +331,9 @@ export default function Profile() {
         {[
           { id: "overview", label: "Credentials & Signals", icon: ShieldCheck },
           { id: "skills", label: `Teachable & Learning Skills (${userSkills.length})`, icon: Award },
+          { id: "availability", label: "Mentor Availability", icon: Calendar },
           { id: "edit", label: "Edit Profile Details", icon: User },
-          { id: "preferences", label: "Preferences & Availability", icon: Settings },
+          { id: "preferences", label: "Preferences & Theme", icon: Settings },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -350,6 +353,7 @@ export default function Profile() {
           );
         })}
       </div>
+
 
       {/* Tab 1: Overview & Verification Signals */}
       {activeTab === "overview" && (
@@ -741,14 +745,26 @@ export default function Profile() {
         </motion.div>
       )}
 
-      {/* Tab 4: Preferences & Availability */}
+      {/* Tab 3: Mentor Availability */}
+      {activeTab === "availability" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <MentorAvailabilitySettings />
+        </motion.div>
+      )}
+
+      {/* Tab 4: Preferences & Theme */}
       {activeTab === "preferences" && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <Card title="Peer Mentorship Availability" subtitle="Set your discovery preferences">
+          <Card title="Account & Appearance Preferences" subtitle="Customize your app experience">
+
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-bg border border-border rounded-2xl">
                 <div className="flex items-center gap-3">
