@@ -188,7 +188,7 @@ def get_recommendations(
     results = recommendations[:limit]
 
     try:
-        redis_client.setex(cache_key, 300, json.dumps(results))
+        redis_client.set(cache_key, json.dumps(results), ex=300)
     except Exception:
         pass
 
