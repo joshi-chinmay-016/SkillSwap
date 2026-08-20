@@ -17,6 +17,12 @@ import StreakCard from "../components/streak/StreakCard";
 import { useStreak } from "../hooks/useStreak";
 import MilestoneCard from "../components/streak/MilestoneCard";
 import AnalyticsSection from "../components/analytics/AnalyticsSection";
+import CredibilityBadge from "../components/verification/CredibilityBadge";
+import SkillAssessmentModal from "../components/verification/SkillAssessmentModal";
+import { verificationApi } from "../api/verificationApi";
+import { ShieldCheck, Award, FileCheck, Star, Sparkles } from "lucide-react";
+
+
 
 export default function Profile() {
   const queryClient = useQueryClient();
@@ -27,6 +33,13 @@ export default function Profile() {
   const [skillType, setSkillType] = useState("teach"); // 'teach' or 'learn'
   const [newSkillName, setNewSkillName] = useState("");
   const [selectedSkillId, setSelectedSkillId] = useState("");
+  const [assessmentSkill, setAssessmentSkill] = useState(null); // { id: number, name: string }
+
+  const { data: myCredibility } = useQuery({
+    queryKey: ["myCredibility"],
+    queryFn: () => verificationApi.getMyCredibility(),
+  });
+
 
   const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["profile"],
@@ -178,17 +191,98 @@ export default function Profile() {
 
   const teachSkills = userSkills.filter((s) => s.type === "teach");
   const learnSkills = userSkills.filter((s) => s.type === "learn");
+  const unverifiedSkills = teachSkills.filter(
+    (s) => s.verification_status === "CLAIMED" || !s.verification_status
+  );
 
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">Profile & Settings</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Profile & Skill Verification</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Manage your personal information and app preferences
+            Manage your profile and verify your teaching skills to build credibility
           </p>
         </div>
+      </div>
+
+      {/* Prominent Skill Verification Hero Hub Banner */}
+      <div className="bg-gradient-to-r from-emerald-600 via-accent to-purple-600 p-6 rounded-2xl text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+        <div className="flex items-start gap-4 z-10">
+          <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl text-white shadow-inner shrink-0">
+            <ShieldCheck size={32} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-extrabold tracking-tight">Skill Verification Hub</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-white/20 backdrop-blur-sm text-white border border-white/30">
+                Official Credibility
+              </span>
+            </div>
+            <p className="text-xs text-white/90 mt-1 max-w-xl leading-relaxed">
+              {unverifiedSkills.length > 0
+                ? `You have ${unverifiedSkills.length} unverified teaching skill(s). Take a 10-question evaluation (Easy → Medium → Hard) to earn your Verified Mentor badge!`
+                : teachSkills.length === 0
+                ? "Claim a skill you can teach, then complete a 10-question evaluation to earn your Verified Mentor status!"
+                : "All your teaching skills are verified! Retake evaluations anytime to boost your score."}
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 z-10 w-full md:w-auto flex justify-end">
+          {unverifiedSkills.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="md"
+              className="bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl px-5 py-2.5 text-sm cursor-pointer w-full md:w-auto font-black"
+              onClick={() =>
+                setAssessmentSkill({
+                  id: unverifiedSkills[0].skill_id,
+                  name: unverifiedSkills[0].skill?.name || unverifiedSkills[0].name,
+                })
+              }
+            >
+              <Sparkles size={16} className="mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-emerald-950 dark:text-white font-black">
+                Verify "{unverifiedSkills[0].skill?.name || unverifiedSkills[0].name}" (10 Qs)
+              </span>
+            </Button>
+          ) : teachSkills.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="md"
+              className="bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl px-5 py-2.5 text-sm cursor-pointer w-full md:w-auto font-black"
+              onClick={() =>
+                setAssessmentSkill({
+                  id: teachSkills[0].skill_id,
+                  name: teachSkills[0].skill?.name || teachSkills[0].name,
+                })
+              }
+            >
+              <ShieldCheck size={16} className="mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-emerald-950 dark:text-white font-black">
+                Verify Skill (10 Qs)
+              </span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="md"
+              className="bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl px-5 py-2.5 text-sm cursor-pointer w-full md:w-auto font-black"
+              onClick={() => {
+                setSkillType("teach");
+                setIsSkillsModalOpen(true);
+              }}
+            >
+              <Plus size={16} className="mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-emerald-950 dark:text-white font-black">
+                Add Skill to Verify
+              </span>
+            </Button>
+          )}
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -249,25 +343,66 @@ export default function Profile() {
                     Add
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-2.5">
                   {isSkillsLoading ? (
                     <div className="h-6 w-20 bg-border/40 animate-pulse rounded-full" />
                   ) : teachSkills.length === 0 ? (
-                    <span className="text-xs text-text-secondary italic">None</span>
+                    <span className="text-xs text-text-secondary italic">No teaching skills added yet.</span>
                   ) : (
-                    teachSkills.map((s) => (
-                      <Badge
-                        key={s.id}
-                        variant="success"
-                        removable={true}
-                        onClose={() => handleRemoveSkill(s.id)}
-                      >
-                        {s.skill?.name || s.name}
-                      </Badge>
-                    ))
+                    teachSkills.map((s) => {
+                      const sName = s.skill?.name || s.name;
+                      const status = s.verification_status || "CLAIMED";
+                      const isVerified = status === "VERIFIED" || status === "TRUSTED";
+
+                      return (
+                        <div
+                          key={s.id}
+                          className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${
+                            isVerified
+                              ? "bg-emerald-500/5 border-emerald-500/20"
+                              : "bg-amber-500/5 border-amber-500/20 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-text">{sName}</span>
+                            <CredibilityBadge status={status} score={s.score} size="sm" />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                            <Button
+                              variant={isVerified ? "outline" : "primary"}
+                              size="xs"
+                              className={
+                                isVerified
+                                  ? "text-xs font-semibold"
+                                  : "bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-sm"
+                              }
+                              onClick={() =>
+                                setAssessmentSkill({
+                                  id: s.skill_id,
+                                  name: sName,
+                                })
+                              }
+                            >
+                              <FileCheck size={13} className="mr-1" />
+                              {isVerified ? "Retake (10 Qs)" : "Verify Skill (10 Qs)"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="text-text-secondary hover:text-red-500 p-1"
+                              onClick={() => handleRemoveSkill(s.id)}
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
@@ -306,6 +441,46 @@ export default function Profile() {
               </div>
             </div>
           </Card>
+
+          {/* Real Skill Credibility & Evidence Card */}
+          {myCredibility && (
+            <Card title="Credibility & Verification Signals" subtitle="Real-time evidence metrics from server" className="mt-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-3 bg-bg border border-border rounded-lg">
+                    <p className="text-xs text-text-secondary font-medium">Overall Score</p>
+                    <p className="text-xl font-extrabold text-accent mt-1">
+                      {myCredibility.overall_credibility_score}/100
+                    </p>
+                  </div>
+                  <div className="p-3 bg-bg border border-border rounded-lg">
+                    <p className="text-xs text-text-secondary font-medium">Verified Skills</p>
+                    <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+                      {myCredibility.verified_skills_count} / {myCredibility.total_teach_skills}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs text-text-secondary border-t border-border pt-3">
+                  <div className="flex justify-between">
+                    <span>Completed Teaching Sessions:</span>
+                    <span className="font-semibold text-text">{myCredibility.total_completed_sessions}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Average Learner Rating:</span>
+                    <span className="font-semibold text-text">
+                      {myCredibility.overall_average_rating > 0 ? `${myCredibility.overall_average_rating} / 5.0` : "No ratings yet"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Feedback Reviews:</span>
+                    <span className="font-semibold text-text">{myCredibility.total_feedback_count}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
         </div>
 
         {/* Right Column - Edit Form */}
@@ -507,6 +682,17 @@ export default function Profile() {
           </div>
         </div>
       </Modal>
+
+      {/* Skill Assessment Modal */}
+      {assessmentSkill && (
+        <SkillAssessmentModal
+          isOpen={!!assessmentSkill}
+          onClose={() => setAssessmentSkill(null)}
+          skillId={assessmentSkill.id}
+          skillName={assessmentSkill.name}
+        />
+      )}
     </div>
   );
 }
+

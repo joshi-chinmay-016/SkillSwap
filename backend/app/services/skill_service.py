@@ -49,13 +49,15 @@ def assign_skill_to_user(
     user_skill = UserSkill(
         user_id=user_id,
         skill_id=skill_id,
-        type=skill_type
+        type=skill_type,
+        verification_status="CLAIMED"
     )
 
     return add_user_skill(
         db,
         user_skill
     )
+
 
 
 def list_user_skills(

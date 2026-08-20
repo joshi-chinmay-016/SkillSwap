@@ -32,6 +32,7 @@ router = APIRouter(
     ]
 )
 def my_recommendations(
+    limit: int = 10,
     current_user=Depends(
         get_current_user
     ),
@@ -40,5 +41,6 @@ def my_recommendations(
 
     return get_recommendations(
         db,
-        current_user.id
-    )
+        current_user.id,
+        limit=limit
+    )

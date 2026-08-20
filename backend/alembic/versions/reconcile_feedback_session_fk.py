@@ -11,7 +11,9 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'f70a1_reconcile_feedback_fk'
-down_revision = 'e5f57eb3748e_create_feedback_table'
+down_revision = 'e10a1_add_chunks_table'
+
+
 branch_labels = None
 depends_on = None
 

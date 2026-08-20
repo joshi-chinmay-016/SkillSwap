@@ -147,6 +147,11 @@ from app.api.retrieval_router import (
     router as retrieval_router
 )
 
+from app.api.verification import (
+    router as verification_router
+)
+
+
 # Optional RAG router — guarded to avoid import errors when RAG deps are missing
 try:
     from app.api.rag_router import router as rag_router
@@ -189,9 +194,12 @@ app.include_router(profiles_router)
 app.include_router(skills_router)
 app.include_router(matches_router)
 app.include_router(request_router)
+app.include_router(notifications_router)
+
+app.include_router(session_router)
 app.include_router(learning_sessions_journey_router)
 app.include_router(learning_sessions_router)
-app.include_router(session_router)
+
 app.include_router(feedback_router)
 app.include_router(leaderboard_router)
 app.include_router(badge_router)
@@ -211,6 +219,8 @@ app.include_router(ai_context_router)
 app.include_router(mentor_memory_router)
 app.include_router(document_router)
 app.include_router(retrieval_router)
+app.include_router(verification_router)
+
 if rag_router:
     app.include_router(rag_router)
 

@@ -9,6 +9,8 @@ import Input from "../components/common/Input";
 import Avatar from "../components/common/Avatar";
 import { useToast } from "../components/common/Toast";
 import { Sparkles, User, Star, MapPin, BookOpen, ArrowRight, Lightbulb } from "lucide-react";
+import CredibilityBadge from "../components/verification/CredibilityBadge";
+
 
 export default function MentorRecommendation() {
   const toast = useToast();
@@ -23,50 +25,29 @@ export default function MentorRecommendation() {
 
   const recommendationMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await api.post("/ai/mentor-recommendation", data);
-      return { recommendationData: res.data, targetSkill: data.target_skill };
-    },
-    onSuccess: async ({ recommendationData, targetSkill }) => {
-      try {
-        // Fetch real mentors from the database for the same skill
-        const mentorsRes = await api.get("/mentors/", { params: { skill: targetSkill } });
-        const realMentors = mentorsRes.data;
-        
-        // Match them by name (case-insensitive)
-        const mentorsList = (recommendationData.mentors || recommendationData).map((rec) => {
-          const matched = realMentors.find(
-            (m) => m.mentor_name?.toLowerCase().trim() === rec.mentor_name?.toLowerCase().trim()
-          );
-          return {
-            ...rec,
-            id: matched?.mentor_id || rec.id || Math.floor(Math.random() * 100000),
-            avatar_url: matched?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${rec.mentor_name || rec.name}`,
-            average_rating: matched?.average_rating || 4.5,
-            completed_sessions: matched?.completed_sessions || 0,
-            name: rec.mentor_name || rec.name,
-          };
-        });
-        
-        setRecommendations(mentorsList);
-      } catch (err) {
-        console.error("Failed to match recommendations with real mentors:", err);
-        // Fallback to raw recommendation data mapping
-        const fallbackList = (recommendationData.mentors || recommendationData).map((rec, idx) => ({
-          ...rec,
-          id: rec.id || idx + 1,
-          name: rec.mentor_name || rec.name,
-          avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${rec.mentor_name || rec.name}`,
-          average_rating: 4.5,
-          completed_sessions: 0
-        }));
-        setRecommendations(fallbackList);
+      // 1. Fetch real peer recommendations from database
+      const realRecs = await api.get("/recommendations/me", { params: { limit: 10 } });
+      const targetSkillLower = (data.target_skill || "").toLowerCase().trim();
+
+      // Filter or enrich with target skill
+      let filtered = realRecs.data.filter((r) =>
+        r.matched_skills?.some((s) => s.toLowerCase().includes(targetSkillLower))
+      );
+      if (filtered.length === 0) {
+        filtered = realRecs.data;
       }
-      toast.success("Mentor recommendations generated!", "Success");
+
+      return filtered;
+    },
+    onSuccess: (data) => {
+      setRecommendations(data);
+      toast.success("Peer recommendations retrieved!", "Success");
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || "Failed to get recommendations", "Error");
     },
   });
+
 
   const onSubmit = (data) => {
     recommendationMutation.mutate(data);
@@ -190,15 +171,22 @@ export default function MentorRecommendation() {
                                 • {mentor.completed_sessions} sessions completed
                               </span>
                             ) : null}
+                            <CredibilityBadge
+                              status={mentor.verification_status || "CLAIMED"}
+                              score={mentor.credibility_score}
+                              size="sm"
+                            />
                           </div>
+
                         </div>
                         <Button 
                           variant="primary" 
                           size="sm"
                           onClick={() => {
-                            if (mentor.id) {
-                              navigate(`/mentors/${mentor.id}`, {
-                                state: { mentorName: mentor.name || mentor.mentor_name, averageRating: mentor.average_rating }
+                            const targetId = mentor.mentor_id || mentor.id;
+                            if (targetId) {
+                              navigate(`/mentors/${targetId}`, {
+                                state: { mentorName: mentor.mentor_name || mentor.name, averageRating: mentor.average_rating }
                               });
                             } else {
                               navigate("/mentors");
@@ -206,13 +194,13 @@ export default function MentorRecommendation() {
                           }}
                         >
                           <User size={14} className="mr-2" />
-                          View Profile
+                          View Profile & Book
                         </Button>
                       </div>
 
-                      {mentor.expertise?.length > 0 && (
+                      {(mentor.matched_skills?.length > 0 || mentor.expertise?.length > 0) && (
                         <div className="flex flex-wrap gap-2 mt-3">
-                          {mentor.expertise.map((skill, index) => (
+                          {(mentor.matched_skills || mentor.expertise).map((skill, index) => (
                             <span
                               key={index}
                               className="px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full border border-accent/10"
@@ -223,22 +211,27 @@ export default function MentorRecommendation() {
                         </div>
                       )}
 
-                      {mentor.reason && (
-                        <div className="mt-4 p-3 bg-bg-alt border border-border rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <Lightbulb size={14} className="text-accent shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">
-                                Why this mentor?
-                              </p>
-                              <p className="text-sm text-text">{mentor.reason}</p>
-                            </div>
+                      {(mentor.reasons?.length > 0 || mentor.reason) && (
+                        <div className="mt-4 p-3 bg-bg-alt border border-border rounded-lg space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Lightbulb size={14} className="text-accent shrink-0" />
+                            <p className="text-xs font-bold text-text uppercase tracking-wider">
+                              Why this peer mentor?
+                            </p>
                           </div>
+                          {mentor.reasons ? (
+                            mentor.reasons.map((r, rIdx) => (
+                              <p key={rIdx} className="text-xs text-text-secondary pl-5">• {r}</p>
+                            ))
+                          ) : (
+                            <p className="text-xs text-text-secondary pl-5">• {mentor.reason}</p>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
                 </Card>
+
               ))}
             </div>
           )}
