@@ -222,10 +222,16 @@ class Settings(BaseSettings):
     CONTEXT_OPTIMIZATION_ENABLED: bool = True
 
     # Textual overlap threshold (Jaccard similarity 0.0 - 1.0) above which redundant chunks are reduced
-    CONTEXT_OVERLAP_THRESHOLD: float = 0.85
+    # ----------------------------
+    # Booking & Availability Infrastructure (Phase 1)
+    # ----------------------------
 
-    # Target maximum token budget for optimized context
-    CONTEXT_MAX_OPTIMIZED_TOKENS: int = 2048
+    BOOKING_RATE_LIMIT: int = 10
+    BOOKING_RATE_WINDOW_SECONDS: int = 60
+    AVAILABILITY_CACHE_TTL_SECONDS: int = 120
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

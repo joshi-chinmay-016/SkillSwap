@@ -27,6 +27,7 @@ import {
 
 export default function Sessions() {
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [actionError, setActionError] = useState("");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -58,6 +59,20 @@ export default function Sessions() {
     },
   });
 
+  // Fetch cancelled sessions
+  const {
+    data: cancelled = [],
+    isLoading: isCancelledLoading,
+    isError: isCancelledError,
+    refetch: refetchCancelled,
+  } = useQuery({
+    queryKey: ["cancelledSessions"],
+    queryFn: async () => {
+      const res = await api.get("/sessions/cancelled");
+      return res.data;
+    },
+  });
+
   // Complete session mutation
   const completeMutation = useMutation({
     mutationFn: async (sessionId) => {
@@ -67,6 +82,10 @@ export default function Sessions() {
     onSuccess: () => {
       queryClient.invalidateQueries(["upcomingSessions"]);
       queryClient.invalidateQueries(["completedSessions"]);
+      setActionError("");
+    },
+    onError: (err) => {
+      setActionError(err.response?.data?.detail || "Failed to mark session as complete.");
     },
   });
 
@@ -78,12 +97,35 @@ export default function Sessions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["upcomingSessions"]);
+      queryClient.invalidateQueries(["cancelledSessions"]);
+      setActionError("");
+    },
+    onError: (err) => {
+      setActionError(err.response?.data?.detail || "Failed to cancel session.");
     },
   });
 
-  const isLoading = activeTab === "upcoming" ? isUpcomingLoading : isCompletedLoading;
-  const isError = activeTab === "upcoming" ? isUpcomingError : isCompletedError;
-  const sessionsList = activeTab === "upcoming" ? upcoming : completed;
+  const isLoading =
+    activeTab === "upcoming"
+      ? isUpcomingLoading
+      : activeTab === "completed"
+      ? isCompletedLoading
+      : isCancelledLoading;
+
+  const isError =
+    activeTab === "upcoming"
+      ? isUpcomingError
+      : activeTab === "completed"
+      ? isCompletedError
+      : isCancelledError;
+
+  const sessionsList =
+    activeTab === "upcoming"
+      ? upcoming
+      : activeTab === "completed"
+      ? completed
+      : cancelled;
+
 
   return (
     <PageTransition className="space-y-8 text-left max-w-6xl mx-auto">
@@ -107,11 +149,31 @@ export default function Sessions() {
         }
       />
 
+      {/* Error Alert */}
+      {actionError && (
+        <div className="p-3.5 text-xs bg-danger/10 border border-danger/20 text-danger rounded-2xl font-medium flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionError("")}
+            className="font-bold underline cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Tabs Switcher */}
       <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-elevated border border-border w-fit shadow-xs">
         <button
           type="button"
-          onClick={() => setActiveTab("upcoming")}
+          onClick={() => {
+            setActiveTab("upcoming");
+            setActionError("");
+          }}
           className={`px-5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
             activeTab === "upcoming"
               ? "bg-accent text-white shadow-glow"
@@ -122,7 +184,10 @@ export default function Sessions() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("completed")}
+          onClick={() => {
+            setActiveTab("completed");
+            setActionError("");
+          }}
           className={`px-5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
             activeTab === "completed"
               ? "bg-accent text-white shadow-glow"
@@ -131,7 +196,22 @@ export default function Sessions() {
         >
           Completed ({completed.length})
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("cancelled");
+            setActionError("");
+          }}
+          className={`px-5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
+            activeTab === "cancelled"
+              ? "bg-accent text-white shadow-glow"
+              : "text-text-secondary hover:text-text"
+          }`}
+        >
+          Cancelled ({cancelled.length})
+        </button>
       </div>
+
 
       {/* Sessions Content */}
       <div>

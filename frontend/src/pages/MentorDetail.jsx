@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import api from "../services/api";
+import { getMentorAvailabilityWindows, getMentorBookableSlots } from "../api/availabilityApi";
 import Avatar from "../components/common/Avatar";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
@@ -24,6 +25,9 @@ import {
   Zap,
   Sparkles,
   UserCheck,
+  CalendarDays,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 
 export default function MentorDetail() {
@@ -38,7 +42,12 @@ export default function MentorDetail() {
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [selectedSkillId, setSelectedSkillId] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  });
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState("");
 
@@ -60,6 +69,23 @@ export default function MentorDetail() {
     },
   });
 
+  // 3. Fetch Real Mentor Availability Windows
+  const { data: availabilityWindows = [], isLoading: isAvailLoading } = useQuery({
+    queryKey: ["mentorAvailabilityWindows", mentorId],
+    queryFn: () => getMentorAvailabilityWindows(mentorId),
+  });
+
+  // 4. Fetch Real Bookable Slots for selected date
+  const {
+    data: slotsResponse,
+    isLoading: isSlotsLoading,
+    refetch: refetchSlots,
+  } = useQuery({
+    queryKey: ["mentorBookableSlots", mentorId, selectedDate],
+    queryFn: () => getMentorBookableSlots(mentorId, selectedDate),
+    enabled: isBookModalOpen && !!selectedDate,
+  });
+
   const teachSkills = mentorSkills.filter((s) => s.type === "teach");
   const learnSkills = mentorSkills.filter((s) => s.type === "learn");
 
@@ -72,6 +98,7 @@ export default function MentorDetail() {
     onSuccess: () => {
       setBookingSuccess(true);
       queryClient.invalidateQueries(["upcomingSessions"]);
+      queryClient.invalidateQueries(["mentorBookableSlots", mentorId, selectedDate]);
       setTimeout(() => {
         setIsBookModalOpen(false);
         setBookingSuccess(false);
@@ -79,21 +106,33 @@ export default function MentorDetail() {
       }, 1800);
     },
     onError: (err) => {
-      const msg = err.response?.data?.detail || "Booking failed. You might not have enough coins in your wallet.";
-      setBookingError(msg);
+      const status = err.response?.status;
+      const msg = err.response?.data?.detail;
+
+      if (status === 409) {
+        setBookingError("⚠️ This slot was just booked by another learner. Please select another time.");
+        refetchSlots();
+      } else if (status === 429) {
+        setBookingError("⚠️ Rate limit reached. You can only make 10 booking requests per minute.");
+      } else {
+        setBookingError(msg || "Booking failed. Please ensure you have sufficient Skill Coins (5 required).");
+      }
     },
   });
 
   const handleOpenBooking = () => {
     setBookingError("");
     setBookingSuccess(false);
+    setSelectedSlot(null);
+
     if (teachSkills.length > 0) {
       setSelectedSkillId(teachSkills[0].skill_id?.toString() || "");
     }
+
+    // Default to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
-    setScheduledAt(tomorrow.toISOString().slice(0, 16));
+    setSelectedDate(tomorrow.toISOString().slice(0, 10));
 
     setIsBookModalOpen(true);
   };
@@ -106,8 +145,8 @@ export default function MentorDetail() {
       setBookingError("Please select a skill to learn.");
       return;
     }
-    if (!scheduledAt) {
-      setBookingError("Please select a date and time.");
+    if (!selectedSlot) {
+      setBookingError("Please select an available time slot.");
       return;
     }
 
@@ -117,12 +156,15 @@ export default function MentorDetail() {
     bookSessionMutation.mutate({
       mentor_id: mentorId,
       skill_id: parseInt(selectedSkillId),
-      scheduled_at: new Date(scheduledAt).toISOString(),
+      scheduled_at: selectedSlot.slot_start,
+      duration_minutes: selectedSlot.duration_minutes || 60,
       meeting_link: meetingLink,
     });
   };
 
-  const isLoading = isProfileLoading || isSkillsLoading;
+  const isLoading = isProfileLoading || isSkillsLoading || isAvailLoading;
+  const availableSlots = slotsResponse?.slots || [];
+  const minDateString = new Date().toISOString().slice(0, 10);
 
   return (
     <PageTransition className="space-y-6 text-left">
@@ -202,7 +244,7 @@ export default function MentorDetail() {
 
           {/* Grid Details */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Bio Card */}
+            {/* Bio Card & Availability Card */}
             <div className="lg:col-span-2 space-y-6">
               <Card title="About Mentor" subtitle="Background & Teaching Philosophy">
                 {profile?.bio ? (
@@ -213,6 +255,46 @@ export default function MentorDetail() {
                   <p className="text-sm text-text-secondary italic">
                     This mentor has not provided a biography yet.
                   </p>
+                )}
+              </Card>
+
+              {/* Real Availability Schedule Card */}
+              <Card title="Weekly Availability Windows" subtitle="Authoritative hours set by mentor">
+                {availabilityWindows.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-bg-alt border border-border text-center space-y-1">
+                    <CalendarDays size={24} className="mx-auto text-text-muted opacity-60" />
+                    <p className="text-xs font-semibold text-text">No active schedule configured</p>
+                    <p className="text-[11px] text-text-secondary">
+                      This mentor has not published weekly availability slots yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {availabilityWindows.map((slot) => (
+                      <div
+                        key={slot.id}
+                        className="p-3.5 rounded-2xl bg-bg-alt/80 border border-border/80 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
+                            {slot.day_of_week.slice(0, 3)}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-text">{slot.day_of_week}</p>
+                            <p className="text-[11px] text-text-secondary font-medium flex items-center gap-1">
+                              <Clock size={11} className="text-accent" />
+                              <span>
+                                {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)} ({slot.timezone || "UTC"})
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          Active
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </Card>
             </div>
@@ -276,7 +358,7 @@ export default function MentorDetail() {
         </div>
       )}
 
-      {/* Booking Form Modal */}
+      {/* Authoritative Booking Form Modal */}
       <Modal
         isOpen={isBookModalOpen}
         onClose={() => !bookSessionMutation.isPending && setIsBookModalOpen(false)}
@@ -295,7 +377,7 @@ export default function MentorDetail() {
             </div>
             <h3 className="font-extrabold text-lg text-text">Session Booked Successfully!</h3>
             <p className="text-xs text-text-secondary max-w-xs">
-              Your 1-on-1 swap session is confirmed. Redirecting you to sessions...
+              Your 1-on-1 swap session is confirmed in the database. Redirecting to your sessions...
             </p>
           </motion.div>
         ) : (
@@ -331,32 +413,90 @@ export default function MentorDetail() {
               </select>
             </div>
 
-            {/* Select Date and Time */}
+            {/* Select Target Date */}
             <div className="space-y-1.5 text-left">
               <label htmlFor="select-date" className="text-xs font-bold text-text-secondary">
-                Date & Time
+                Session Date
               </label>
               <Input
                 id="select-date"
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
+                type="date"
+                min={minDateString}
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setSelectedSlot(null);
+                }}
                 disabled={bookSessionMutation.isPending}
               />
+            </div>
+
+            {/* Real Bookable Discrete Slots */}
+            <div className="space-y-1.5 text-left">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-text-secondary">
+                  Available 60-Min Time Slots
+                </label>
+                {isSlotsLoading && (
+                  <span className="text-[10px] text-accent animate-pulse font-semibold">
+                    Checking database availability...
+                  </span>
+                )}
+              </div>
+
+              {isSlotsLoading ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="h-10 bg-border/40 animate-pulse rounded-xl" />
+                  <div className="h-10 bg-border/40 animate-pulse rounded-xl" />
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <div className="p-3.5 bg-bg-alt border border-border rounded-xl text-center space-y-1">
+                  <p className="text-xs font-bold text-text">No slots available on this date</p>
+                  <p className="text-[11px] text-text-secondary">
+                    The mentor does not have active availability on {slotsResponse?.day_of_week || "this day"}.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                  {availableSlots.map((slot, index) => {
+                    const isSelected = selectedSlot?.slot_start === slot.slot_start;
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        disabled={!slot.is_available || bookSessionMutation.isPending}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`p-2.5 text-xs font-bold rounded-xl border text-left transition-all cursor-pointer ${
+                          !slot.is_available
+                            ? "bg-bg-alt/50 border-border/50 text-text-muted opacity-50 cursor-not-allowed line-through"
+                            : isSelected
+                            ? "bg-accent text-white border-accent shadow-glow"
+                            : "bg-surface-elevated hover:bg-bg-alt border-border text-text"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{slot.formatted_time}</span>
+                          {isSelected && <CheckCircle2 size={13} className="shrink-0" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Meeting Link Preview */}
             <div className="p-3.5 bg-bg-alt border border-border rounded-xl flex items-center justify-between text-xs text-text-secondary mt-1">
               <div className="flex items-center gap-2">
                 <Video size={15} className="text-accent" />
-                <span className="font-medium">Video Meeting Room (Auto-Generated)</span>
+                <span className="font-medium">Video Room (Auto-Generated)</span>
               </div>
               <span className="font-bold text-emerald-500">Ready</span>
             </div>
 
             {/* Coin deduction info */}
             <p className="text-[11px] text-text-secondary mt-1 text-left italic">
-              Note: Scheduling a peer-to-peer lesson will deduct 5 Skill Coins from your wallet balance.
+              Note: Scheduling a peer lesson will atomically deduct 5 Skill Coins from your wallet balance.
             </p>
 
             {/* Action Buttons */}
@@ -374,7 +514,7 @@ export default function MentorDetail() {
                 type="submit"
                 variant="primary"
                 isLoading={bookSessionMutation.isPending}
-                disabled={teachSkills.length === 0}
+                disabled={teachSkills.length === 0 || !selectedSlot}
                 className="font-bold text-xs shadow-glow"
               >
                 Confirm & Book Swap
@@ -386,3 +526,4 @@ export default function MentorDetail() {
     </PageTransition>
   );
 }
+
