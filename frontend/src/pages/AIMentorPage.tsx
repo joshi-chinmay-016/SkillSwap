@@ -19,7 +19,7 @@ import {
 } from "../hooks/useMentorConversations";
 import { useRAGQuery } from "../hooks/useRAGQuery";
 import type { MessageItem } from "../types/mentor";
-import { SlidersHorizontal, AlertTriangle, RefreshCw, Lock, Sparkles, BookOpen } from "lucide-react";
+import { SlidersHorizontal, AlertTriangle, RefreshCw, Lock, Sparkles, BookOpen, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 
 export default function AIMentorPage() {
   const { conversationId: paramId } = useParams<{ conversationId?: string }>();
@@ -46,8 +46,9 @@ export default function AIMentorPage() {
   const retryMutation = useRetryMentorMessage(conversationId);
   const createMutation = useCreateMentorConversation();
 
-  // Drawers UI state: profile sidebar defaults to collapsed so chat workspace dominates
+  // Drawers & Sidebars UI state
   const [showMobileConvSidebar, setShowMobileConvSidebar] = useState(false);
+  const [isDesktopConvSidebarCollapsed, setIsDesktopConvSidebarCollapsed] = useState(false);
   const [showProfileSidebar, setShowProfileSidebar] = useState(false);
 
   const isArchived = activeConversation?.status === "ARCHIVED";
@@ -100,7 +101,7 @@ export default function AIMentorPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-6.5rem)]">
+    <div className="flex flex-col h-[calc(100vh-5rem)] w-full">
       {/* Outer Card Container */}
       <div className="flex-1 flex flex-col overflow-hidden bg-bg border border-border rounded-2xl shadow-sm">
         {/* Mentor Workspace Navigation Tabs */}
@@ -135,30 +136,61 @@ export default function AIMentorPage() {
         )}
 
         {/* Main Work Area: Conversations Sidebar + Expanded Chat Workspace + Collapsible Profile Sidebar */}
-        <div className="flex-1 flex overflow-hidden relative">
-          {/* Slide-over / Desktop Conversations Sidebar */}
-          <div
-            className={`absolute lg:relative z-20 inset-y-0 left-0 bg-bg transition-transform duration-200 ${
-              showMobileConvSidebar ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-            }`}
-          >
-            <ConversationSidebar
-              activeConversationId={conversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewChatCreated={handleNewChatCreated}
-            />
-          </div>
-
-          {/* Mobile Overlay backdrop when conversation sidebar is open */}
+        <div className="flex-1 flex overflow-hidden relative w-full">
+          {/* Mobile Conversations Drawer Backdrop */}
           {showMobileConvSidebar && (
             <div
-              className="lg:hidden absolute inset-0 bg-black/40 z-10"
+              className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-30"
               onClick={() => setShowMobileConvSidebar(false)}
             />
           )}
 
-          {/* Central Chat Workspace (Takes full width when profile sidebar is collapsed) */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-bg-alt/30 min-w-0">
+          {/* Conversations Sidebar (Mobile Slide-over & Desktop Collapsible) */}
+          <div
+            className={`fixed lg:relative z-40 lg:z-10 inset-y-0 left-0 bg-bg transition-all duration-300 border-r border-border ${
+              showMobileConvSidebar ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"
+            } ${isDesktopConvSidebarCollapsed ? "lg:w-16" : "lg:w-72"}`}
+          >
+            {/* Desktop Collapse / Expand Control Bar */}
+            <div className="hidden lg:flex items-center justify-between p-2.5 border-b border-border bg-bg-alt/50">
+              {!isDesktopConvSidebarCollapsed && (
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider px-2">
+                  Threads
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsDesktopConvSidebarCollapsed(!isDesktopConvSidebarCollapsed)}
+                className="p-1.5 rounded-lg hover:bg-bg text-text-secondary hover:text-text cursor-pointer border border-border/50 mx-auto"
+                title={isDesktopConvSidebarCollapsed ? "Expand Conversations Sidebar" : "Collapse Conversations Sidebar"}
+              >
+                {isDesktopConvSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              </button>
+            </div>
+
+            {/* Sidebar Contents */}
+            {!isDesktopConvSidebarCollapsed ? (
+              <ConversationSidebar
+                activeConversationId={conversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewChatCreated={handleNewChatCreated}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 p-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopConvSidebarCollapsed(false)}
+                  className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center shadow-sm cursor-pointer hover:bg-accent-hover transition-colors"
+                  title="New Conversation"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Central Chat Workspace (Dominates width & scales dynamically) */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-bg-alt/30 min-w-0 w-full">
             {/* Grounded Knowledge Mode Banner */}
             {aiMode === "knowledge" && (
               <div className="px-4 py-2.5 bg-accent/10 border-b border-accent/20 text-accent text-xs flex items-center justify-between shrink-0">
@@ -181,7 +213,7 @@ export default function AIMentorPage() {
 
             {/* Read-Only Banner for Archived Conversation */}
             {isArchived && (
-              <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+              <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2 shrink-0">
                 <Lock className="w-4 h-4 shrink-0" />
                 <span>This conversation is archived. You can view message history, but cannot send new messages.</span>
               </div>
@@ -189,18 +221,18 @@ export default function AIMentorPage() {
 
             {/* Main Chat Stream */}
             {!conversationId && (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-y-auto">
                 <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center shadow-xs">
                   <Sparkles className="w-8 h-8" />
                 </div>
-                <div className="max-w-md space-y-2">
-                  <h2 className="text-xl font-bold text-text">Your AI Mentor Workspace</h2>
-                  <p className="text-xs text-text-secondary leading-relaxed">
+                <div className="max-w-xl space-y-2">
+                  <h2 className="text-2xl font-bold text-text tracking-tight">Your AI Mentor Workspace</h2>
+                  <p className="text-sm text-text-secondary leading-relaxed">
                     Select a conversation from the sidebar or start a brand new persistent thread to receive personalized, learner-aware guidance.
                   </p>
                 </div>
 
-                <div className="w-full max-w-lg pt-4">
+                <div className="w-full max-w-2xl pt-2">
                   <SuggestedPrompts
                     onSelectPrompt={(prompt) => handleSendMessage(prompt)}
                     disabled={createMutation.isPending || sendMutation.isPending}
@@ -210,7 +242,7 @@ export default function AIMentorPage() {
             )}
 
             {conversationId && (
-              <>
+              <div className="flex-1 flex flex-col overflow-hidden w-full max-w-5xl mx-auto">
                 <ConversationView
                   messages={messages}
                   isThinking={sendMutation.isPending || retryMutation.isPending}
@@ -239,23 +271,31 @@ export default function AIMentorPage() {
                       : "Ask your AI Mentor anything..."
                   }
                 />
-              </>
+              </div>
             )}
           </div>
 
-          {/* Learner Profile Context Panel (Collapsible) */}
+          {/* Learner Profile Context Panel (Mobile Modal / Desktop Slide-over) */}
           {showProfileSidebar && (
-            <div className="shrink-0 h-full animate-in slide-in-from-right duration-200">
-              <ProfileSidebar
-                context={context}
-                isLoading={isContextLoading}
-                onClose={() => setShowProfileSidebar(false)}
-                onTopicClick={(prompt) => {
-                  handleSendMessage(prompt);
-                  setShowProfileSidebar(false);
-                }}
+            <>
+              {/* Mobile Overlay */}
+              <div
+                className="lg:hidden fixed inset-0 bg-black/40 z-30"
+                onClick={() => setShowProfileSidebar(false)}
               />
-            </div>
+
+              <div className="fixed lg:relative z-40 lg:z-10 inset-y-0 right-0 h-full bg-bg border-l border-border w-80 shrink-0 shadow-lg lg:shadow-none animate-in slide-in-from-right duration-200">
+                <ProfileSidebar
+                  context={context}
+                  isLoading={isContextLoading}
+                  onClose={() => setShowProfileSidebar(false)}
+                  onTopicClick={(prompt) => {
+                    handleSendMessage(prompt);
+                    setShowProfileSidebar(false);
+                  }}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>

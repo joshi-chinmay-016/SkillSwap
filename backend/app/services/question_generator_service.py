@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from sqlalchemy.orm import Session
 from app.models.skill import Skill
 from app.models.assessment import AssessmentQuestion
@@ -23,6 +24,21 @@ SKILL_QUESTION_TEMPLATES = {
         ("How does the Global Interpreter Lock (GIL) impact CPython thread execution?", ["Prevents multiple native threads from executing Python bytecodes concurrently", "Disables memory management for multi-threading", "Accelerates multi-threaded matrix operations", "Automatically parallelizes for loops"], 0, "The GIL prevents multiple threads from executing Python bytecode simultaneously in CPython.", "HARD"),
         ("In Python's descriptor protocol, which method is invoked when accessing an attribute on an instance?", ["__get__", "__getattr__", "__setattr__", "__call__"], 0, "Descriptors define __get__, __set__, or __delete__ to override attribute access behavior.", "HARD"),
         ("What is the result of using metaclasses in Python?", ["They define how classes themselves are constructed", "They replace global variables with local scope", "They prevent inheritance", "They automatically convert code to C extensions"], 0, "Metaclasses are the 'classes of classes' that define how classes are constructed.", "HARD"),
+    ],
+    "java": [
+        # Easy
+        ("Which component of Java is responsible for executing Java bytecode?", ["Java Virtual Machine (JVM)", "Java Development Kit (JDK)", "Java Compiler (javac)", "Java Documenter (javadoc)"], 0, "The JVM compiles bytecode into machine code at runtime.", "EASY"),
+        ("What is the default initial value of an uninitialized boolean instance variable in Java?", ["false", "true", "null", "0"], 0, "Primitive boolean instance variables default to false in Java.", "EASY"),
+        ("Which Java keyword is used to prevent a method from being overridden by a subclass?", ["final", "static", "abstract", "private"], 0, "The final keyword prevents method overriding and class inheritance.", "EASY"),
+        # Medium
+        ("How does Java's HashMap handle key collisions internally in Java 8+?", ["Uses linked lists, converting to balanced red-black trees when a bucket exceeds 8 entries", "Uses open addressing with quadratic probing", "Throws a KeyCollisionException", "Overwrites the existing key-value pair"], 0, "Java 8 converts bucket linked lists to red-black trees when bucket size >= 8.", "INTERMEDIATE"),
+        ("What is the primary difference between String, StringBuilder, and StringBuffer in Java?", ["String is immutable; StringBuilder is mutable and not thread-safe; StringBuffer is mutable and thread-safe", "StringBuilder is immutable; String is mutable", "StringBuffer is deprecated in Java", "All three are completely identical"], 0, "String is immutable, StringBuilder is fast/unsynchronized, StringBuffer is synchronized.", "INTERMEDIATE"),
+        ("What is the purpose of the 'volatile' keyword in Java concurrency?", ["Guarantees visibility of variable updates across threads by reading directly from main memory", "Guarantees atomic execution of multi-step operations", "Prevents garbage collection of the variable", "Makes the variable immutable"], 0, "volatile ensures thread visibility of changes by bypassing CPU caches.", "INTERMEDIATE"),
+        ("Which exception type in Java must be either declared in a throws clause or caught in a try-catch block?", ["Checked Exceptions (subclasses of Exception excluding RuntimeException)", "Unchecked Exceptions (subclasses of RuntimeException)", "Errors (subclasses of Error)", "All exceptions in Java"], 0, "Checked exceptions require explicit handling or declaration in Java.", "INTERMEDIATE"),
+        # Hard
+        ("In Java Memory Management, what is the role of the G1 (Garbage-First) Garbage Collector?", ["Divides the heap into equal regions and prioritizes collecting regions with the most garbage to minimize pause times", "Uses single-threaded stop-the-world pauses only", "Performs reference counting garbage collection", "Completely eliminates garbage collection pauses"], 0, "G1 partitions the heap into equal regions and collects high-garbage regions first.", "HARD"),
+        ("How does Java's ForkJoinPool utilize the Work-Stealing algorithm?", ["Idle worker threads steal tasks from the deques of busy worker threads", "Worker threads steal CPU memory registers from each other", "Tasks are randomly assigned to OS threads", "The main thread executes all tasks sequentially"], 0, "Work-stealing allows idle worker threads to take pending tasks from busy threads' deques.", "HARD"),
+        ("What is the difference between PhantomReference and WeakReference in Java?", ["PhantomReference is enqueued only after the object has been physically finalized by GC", "WeakReference is never collected by GC", "PhantomReference allows accessing the original referent object via get()", "They are identical in garbage collection behavior"], 0, "PhantomReference's get() method always returns null and is used for post-mortem cleanup.", "HARD"),
     ],
     "react": [
         # Easy
@@ -57,23 +73,56 @@ SKILL_QUESTION_TEMPLATES = {
 }
 
 
+def find_matching_template_key(skill_name: str) -> str | None:
+    """
+    Universal token-boundary matching to prevent substring collisions across ALL technologies:
+    - 'Java' vs 'JavaScript'
+    - 'C' vs 'C++' vs 'C#'
+    - 'HTML' vs 'HTML5'
+    - 'SQL' vs 'PostgreSQL' / 'MySQL'
+    """
+    norm = skill_name.lower().strip()
+    tokens = set(re.findall(r'[a-z0-9+#]+', norm))
+
+    # Priority 1: Exact full-string match
+    if norm in SKILL_QUESTION_TEMPLATES:
+        return norm
+
+    # Priority 2: Universal Substring Collision Rules
+    if "javascript" in tokens or "js" in tokens:
+        return "javascript"
+    if "java" in tokens and "javascript" not in norm:
+        return "java"
+    if "python" in tokens:
+        return "python"
+    if "react" in tokens:
+        return "react"
+
+    # Priority 3: Exact Word Token Match
+    for key in SKILL_QUESTION_TEMPLATES.keys():
+        key_tokens = set(re.findall(r'[a-z0-9+#]+', key))
+        if key_tokens and key_tokens.issubset(tokens):
+            return key
+
+    return None
+
+
 def generate_fallback_questions_for_skill(skill_name: str) -> list[dict]:
-    normalized_name = skill_name.lower().strip()
-    
-    # Check exact/partial match in templates
-    for key, q_list in SKILL_QUESTION_TEMPLATES.items():
-        if key in normalized_name or normalized_name in key:
-            return [
-                {
-                    "question_text": text,
-                    "options": json.dumps(opts),
-                    "correct_option": correct,
-                    "explanation": exp,
-                    "difficulty": diff
-                }
-                for text, opts, correct, exp, diff in q_list
-            ]
-    
+    matched_key = find_matching_template_key(skill_name)
+
+    if matched_key and matched_key in SKILL_QUESTION_TEMPLATES:
+        q_list = SKILL_QUESTION_TEMPLATES[matched_key]
+        return [
+            {
+                "question_text": text,
+                "options": json.dumps(opts),
+                "correct_option": correct,
+                "explanation": exp,
+                "difficulty": diff
+            }
+            for text, opts, correct, exp, diff in q_list
+        ]
+
     # Generic high quality 10-question template for any domain skill
     return [
         # Easy (3)
@@ -90,21 +139,11 @@ def generate_fallback_questions_for_skill(skill_name: str) -> list[dict]:
         (f"In complex {skill_name} systems, what is the primary risk of tightly coupled state management?", ["Cascading side-effects, difficult regression testing, and poor scalability", "Excessive code comments", "Faster compilation times", "Automatic memory deallocation"], 0, "Tight coupling creates unexpected side effects and makes systems hard to scale and test.", "HARD"),
         (f"What is the recommended strategy for maintaining backwards compatibility in {skill_name} system upgrades?", ["Semantic versioning, deprecation warnings, and migration pathways", "Deleting old API endpoints immediately", "Changing function signatures without notice", "Removing version tags"], 0, "Semantic versioning and migration pathways prevent breaking downstream users.", "HARD")
     ]
-    return [
-        {
-            "question_text": text,
-            "options": json.dumps(opts),
-            "correct_option": correct,
-            "explanation": exp,
-            "difficulty": diff
-        }
-        for text, opts, correct, exp, diff in template_tuples
-    ]
 
 
 def ensure_ten_questions_for_skill(db: Session, skill: Skill) -> list[AssessmentQuestion]:
     existing = db.query(AssessmentQuestion).filter(AssessmentQuestion.skill_id == skill.id).all()
-    
+
     if len(existing) >= 10:
         return sort_questions_by_difficulty(existing[:10])
 
@@ -120,7 +159,6 @@ def ensure_ten_questions_for_skill(db: Session, skill: Skill) -> list[Assessment
         if len(existing) + len(added) >= 10:
             break
 
-        # Convert item if tuple or dict
         if isinstance(item, dict):
             q_text = item["question_text"]
             opts = item["options"]

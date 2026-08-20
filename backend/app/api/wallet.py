@@ -56,6 +56,8 @@ def my_wallet(
     ]
 )
 def my_transactions(
+    page: int = 1,
+    page_size: int = 20,
     current_user=Depends(
         get_current_user
     ),
@@ -66,5 +68,7 @@ def my_transactions(
 
     return transaction_history(
         db,
-        current_user.id
-    )
+        current_user.id,
+        page=page,
+        page_size=page_size
+    )

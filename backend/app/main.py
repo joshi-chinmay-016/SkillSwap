@@ -196,9 +196,10 @@ app.include_router(matches_router)
 app.include_router(request_router)
 app.include_router(notifications_router)
 
+app.include_router(session_router)
 app.include_router(learning_sessions_journey_router)
 app.include_router(learning_sessions_router)
-app.include_router(session_router)
+
 app.include_router(feedback_router)
 app.include_router(leaderboard_router)
 app.include_router(badge_router)

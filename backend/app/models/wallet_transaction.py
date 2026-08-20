@@ -1,6 +1,8 @@
+from datetime import datetime
 from sqlalchemy import (
     ForeignKey,
-    String
+    String,
+    DateTime
 )
 
 from sqlalchemy.orm import (
@@ -26,9 +28,21 @@ class WalletTransaction(Base):
     amount: Mapped[int]
 
     type: Mapped[str] = mapped_column(
-        String(20)
+        String(50)
     )
 
     reason: Mapped[str] = mapped_column(
         String(255)
+    )
+
+    reference_id: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        unique=True,
+        index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow
     )

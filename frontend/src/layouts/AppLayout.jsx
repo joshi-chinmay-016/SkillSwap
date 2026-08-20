@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
+import { Link, NavLink, useNavigate, Outlet, useLocation } from "react-router-dom";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import Avatar from "../components/common/Avatar";
@@ -44,6 +45,10 @@ export default function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isMentorWorkspace = location.pathname.startsWith("/mentor");
+
 
   // Fetch notifications
   const { data: notifications = [] } = useQuery({
@@ -328,17 +333,18 @@ export default function AppLayout() {
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar Navigation */}
         <aside
-          className={`hidden md:flex flex-col bg-bg border-r border-border p-4 gap-1.5 transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : 'w-64'
-            }`}
+          className={`hidden md:flex flex-col bg-bg border-r border-border gap-1.5 transition-all duration-300 ${
+            isSidebarCollapsed ? "w-16 px-2 py-4" : "w-64 p-4"
+          }`}
         >
           {/* Collapse Toggle Button */}
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text transition-colors mb-2"
+            className="flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-text-secondary hover:text-text transition-colors mb-2 cursor-pointer"
             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={18} />}
           </button>
 
           {navItems.map((item) => (
@@ -346,18 +352,20 @@ export default function AppLayout() {
               key={item.name}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${isActive
-                  ? "bg-accent/10 text-accent border border-accent/15"
-                  : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
-                } ${isSidebarCollapsed ? 'justify-center px-2 py-3' : ''}`
+                `flex items-center gap-3 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  isActive
+                    ? "bg-accent/15 text-accent border border-accent/20 shadow-xs"
+                    : "text-text-secondary border border-transparent hover:bg-bg-alt hover:text-text"
+                } ${isSidebarCollapsed ? "justify-center py-3 px-0 w-12 mx-auto" : "px-3 py-2.5"}`
               }
               title={isSidebarCollapsed ? item.name : undefined}
             >
-              <item.icon size={isSidebarCollapsed ? 20 : 16} />
-              {!isSidebarCollapsed && <span>{item.name}</span>}
+              <item.icon size={isSidebarCollapsed ? 22 : 18} className="shrink-0" />
+              {!isSidebarCollapsed && <span className="truncate">{item.name}</span>}
             </NavLink>
           ))}
         </aside>
+
 
         {/* Mobile Navigation Drawer Overlay */}
         {isMobileMenuOpen && (
@@ -388,11 +396,14 @@ export default function AppLayout() {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-bg-alt p-6 md:p-8 transition-colors duration-200">
-          <div className="max-w-6xl mx-auto pb-8">
+        <main className={`flex-1 overflow-y-auto bg-bg-alt transition-colors duration-200 ${
+          isMentorWorkspace ? "p-2 sm:p-4" : "p-6 md:p-8"
+        }`}>
+          <div className={`${isMentorWorkspace ? "w-full h-full" : "max-w-6xl mx-auto pb-8"}`}>
             <Outlet />
           </div>
         </main>
+
       </div>
 
       {/* Footer */}

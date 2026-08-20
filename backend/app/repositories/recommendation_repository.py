@@ -60,6 +60,25 @@ def get_candidate_mentors_for_skills(
     )
 
 
+def get_all_candidate_teach_skills(
+    db: Session,
+    current_user_id: int
+):
+    """
+    Retrieves all teaching skills across the platform excluding the current user.
+    Used for Hybrid BM25 + Semantic Search matching.
+    """
+    return (
+        db.query(UserSkill)
+        .options(joinedload(UserSkill.skill), joinedload(UserSkill.user))
+        .filter(
+            UserSkill.type == "teach",
+            UserSkill.user_id != current_user_id
+        )
+        .all()
+    )
+
+
 def get_profile_by_user_id(
     db: Session,
     user_id: int

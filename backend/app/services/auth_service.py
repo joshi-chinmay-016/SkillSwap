@@ -66,10 +66,15 @@ def register_user(
             profile
         )
 
+        # Grant exactly-once +5 Welcome Bonus to genuinely new account
+        from app.services.wallet_service import grant_welcome_bonus
+        grant_welcome_bonus(db, user.id)
+
         return user
     except Exception:
         db.rollback()
         raise
+
 
 
 
