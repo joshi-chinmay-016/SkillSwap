@@ -9,6 +9,8 @@ import Input from "../components/common/Input";
 import Avatar from "../components/common/Avatar";
 import { useToast } from "../components/common/Toast";
 import { Sparkles, User, Star, MapPin, BookOpen, ArrowRight, Lightbulb } from "lucide-react";
+import CredibilityBadge from "../components/verification/CredibilityBadge";
+
 
 export default function MentorRecommendation() {
   const toast = useToast();
@@ -190,7 +192,13 @@ export default function MentorRecommendation() {
                                 • {mentor.completed_sessions} sessions completed
                               </span>
                             ) : null}
+                            <CredibilityBadge
+                              status={mentor.verification_status || "CLAIMED"}
+                              score={mentor.credibility_score}
+                              size="sm"
+                            />
                           </div>
+
                         </div>
                         <Button 
                           variant="primary" 

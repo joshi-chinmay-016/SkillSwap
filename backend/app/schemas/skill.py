@@ -28,3 +28,22 @@ class UserSkillRequest(BaseModel):
     skill_id: int
 
     type: str
+
+
+class UserSkillResponse(BaseModel):
+
+    id: int
+
+    user_id: int
+
+    skill_id: int
+
+    type: str
+
+    verification_status: str = "CLAIMED"
+
+    score: float | None = None
+
+    skill: SkillResponse | None = None
+
+    model_config = ConfigDict(from_attributes=True)

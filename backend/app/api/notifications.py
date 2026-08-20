@@ -28,6 +28,22 @@ router = APIRouter(
 )
 
 
+@router.get("/unread/count")
+def unread(
+    current_user=Depends(
+        get_current_user
+    ),
+    db: Session = Depends(get_db)
+):
+
+    return {
+        "count": get_unread_count(
+            db,
+            current_user.id
+        )
+    }
+
+
 @router.get(
     "",
     response_model=list[
@@ -61,21 +77,6 @@ def mark_read(
         notification_id
     )
 
-
-@router.get("/unread/count")
-def unread(
-    current_user=Depends(
-        get_current_user
-    ),
-    db: Session = Depends(get_db)
-):
-
-    return {
-        "count": get_unread_count(
-            db,
-            current_user.id
-        )
-    }
 
 
 @router.patch("/read-all")

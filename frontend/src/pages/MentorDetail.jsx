@@ -18,6 +18,9 @@ import {
   AlertCircle,
   CheckCircle
 } from "lucide-react";
+import CredibilityBadge from "../components/verification/CredibilityBadge";
+import { verificationApi } from "../api/verificationApi";
+
 
 export default function MentorDetail() {
   const { id } = useParams();
@@ -207,16 +210,24 @@ export default function MentorDetail() {
                     {teachSkills.length === 0 ? (
                       <p className="text-xs text-text-secondary italic">No skills listed</p>
                     ) : (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-col gap-2">
                         {teachSkills.map((s) => (
-                          <span
+                          <div
                             key={s.id}
-                            className="px-2.5 py-1 text-xs font-semibold bg-green-500/10 text-green-600 rounded-md border border-green-500/10"
+                            className="flex items-center justify-between p-2 bg-green-500/5 rounded-md border border-green-500/10"
                           >
-                            {s.skill?.name}
-                          </span>
+                            <span className="text-xs font-semibold text-text">
+                              {s.skill?.name}
+                            </span>
+                            <CredibilityBadge
+                              status={s.verification_status || "CLAIMED"}
+                              score={s.score}
+                              size="sm"
+                            />
+                          </div>
                         ))}
                       </div>
+
                     )}
                   </div>
 
