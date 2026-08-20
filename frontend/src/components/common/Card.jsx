@@ -9,26 +9,36 @@ export default function Card({
   className = "",
   onClick,
   hoverable = false,
+  glass = false,
+  badge,
   ...props
 }) {
   const isClickable = !!onClick || hoverable;
 
-  const baseStyles = "rounded-lg border border-border bg-bg-alt text-text overflow-hidden shadow-sm transition-shadow";
-  const hoverStyles = isClickable ? "hover:shadow-md hover:border-accent/40 cursor-pointer" : "";
+  const baseStyles = glass
+    ? "rounded-2xl border border-glass-border bg-glass-bg backdrop-blur-md text-text overflow-hidden shadow-sm transition-all duration-200"
+    : "rounded-2xl border border-card-border bg-card-bg text-text overflow-hidden shadow-xs hover:border-accent/40 transition-all duration-200";
+
+  const hoverStyles = isClickable
+    ? "hover:shadow-md hover:border-accent/40 cursor-pointer"
+    : "";
 
   const containerStyles = `${baseStyles} ${hoverStyles} ${className}`;
 
   const content = (
     <div className="flex flex-col h-full">
-      {(title || subtitle) && (
-        <div className="px-5 py-4 border-b border-border bg-bg flex flex-col gap-0.5">
-          {title && <h3 className="font-semibold text-base text-text">{title}</h3>}
-          {subtitle && <p className="text-xs text-text-secondary">{subtitle}</p>}
+      {(title || subtitle || badge) && (
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-2">
+          <div>
+            {title && <h3 className="font-semibold text-base text-text tracking-tight">{title}</h3>}
+            {subtitle && <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>}
+          </div>
+          {badge && <div>{badge}</div>}
         </div>
       )}
       <div className="px-5 py-4 flex-grow text-sm">{children}</div>
       {footer && (
-        <div className="px-5 py-3 border-t border-border bg-bg text-xs">
+        <div className="px-5 py-3 border-t border-border bg-bg-alt/50 text-xs">
           {footer}
         </div>
       )}
@@ -39,8 +49,9 @@ export default function Card({
     return (
       <motion.article
         onClick={onClick}
-        whileHover={{ translateY: -3 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
+        whileHover={{ translateY: -3, scale: 1.005 }}
+        whileTap={{ translateY: 0, scale: 0.995 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         className={containerStyles}
         {...props}
       >

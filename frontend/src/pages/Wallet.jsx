@@ -1,8 +1,25 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import api from "../services/api";
 import Card from "../components/common/Card";
-import { Wallet as WalletIcon, ArrowUp, ArrowDown, History, Gift, ShieldCheck } from "lucide-react";
+import SectionHeader from "../components/common/SectionHeader";
+import EmptyState from "../components/common/EmptyState";
+import PageTransition from "../components/common/PageTransition";
+import { PushPin } from "../components/common/PinnedCard";
+import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
+import {
+  Wallet as WalletIcon,
+  ArrowUp,
+  ArrowDown,
+  History,
+  Gift,
+  ShieldCheck,
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+} from "lucide-react";
 
 export default function Wallet() {
   const { data: wallet, isLoading: isWalletLoading } = useQuery({
@@ -26,127 +43,179 @@ export default function Wallet() {
   const formatTransactionType = (type) => {
     switch (type) {
       case "WELCOME_BONUS":
-        return { label: "Welcome Bonus", color: "text-emerald-500", icon: <Gift size={16} /> };
+        return {
+          label: "Welcome Bonus",
+          color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+          icon: <Gift size={16} />,
+        };
       case "credit":
       case "earned":
-        return { label: "Earned Credit", color: "text-emerald-500", icon: <ArrowUp size={16} /> };
+        return {
+          label: "Earned (Teaching)",
+          color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+          icon: <ArrowUp size={16} />,
+        };
       case "debit":
       case "spent":
-        return { label: "Spent Credit", color: "text-rose-500", icon: <ArrowDown size={16} /> };
+        return {
+          label: "Spent (Learning)",
+          color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
+          icon: <ArrowDown size={16} />,
+        };
       case "bonus":
-        return { label: "Bonus", color: "text-accent", icon: <Gift size={16} /> };
+        return {
+          label: "Platform Bonus",
+          color: "text-accent bg-accent/10 border-accent/20",
+          icon: <Gift size={16} />,
+        };
       default:
-        return { label: type, color: "text-text-secondary", icon: <History size={16} /> };
+        return {
+          label: type || "Transaction",
+          color: "text-text-secondary bg-surface-elevated border-border",
+          icon: <History size={16} />,
+        };
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 text-left">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">Skill Coins Wallet</h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Internal platform credit ledger & transaction history
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-          <ShieldCheck size={14} /> Auditable Ledger
-        </div>
-      </div>
+    <PageTransition className="space-y-8 text-left max-w-6xl mx-auto">
+      {/* Section Header */}
+      <SectionHeader
+        badge="Skill Coin Economy"
+        badgeIcon={WalletIcon}
+        handwrittenNote="📌 Live Coin Ledger"
+        title="Skill Coins Wallet"
+        subtitle="Auditable internal credit ledger. Earn coins by teaching, spend coins to learn."
+        actions={
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold shadow-xs">
+            <ShieldCheck size={15} />
+            <span>Verified Peer Ledger</span>
+          </div>
+        }
+      />
 
-      {/* Balance Card */}
-      <Card className="bg-gradient-to-br from-accent to-accent-hover text-white border-0 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-white/80">Current Skill Coins Balance</p>
-            <p className="text-4xl font-extrabold mt-2 tracking-tight">
-              {isWalletLoading ? "..." : (wallet?.balance ?? "0")}
-              <span className="text-lg font-semibold text-white/80 ml-2">Coins</span>
+      {/* Balance Hero Card with Pushpin */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-visible rounded-3xl bg-gradient-to-r from-accent via-indigo-600 to-purple-700 text-white p-6 sm:p-10 shadow-xl"
+      >
+        <PushPin color="yellow" className="-top-3 left-10" />
+
+        {/* Hand-drawn badge */}
+        <div className="absolute -top-3 right-8 font-handwriting text-sm font-bold text-amber-900 bg-yellow-200 px-3 py-0.5 rounded-lg border border-yellow-400 rotate-2 shadow-sm">
+          Active Student Balance 📌
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10 pt-1">
+          <div className="space-y-1">
+            <p className="text-xs sm:text-sm font-bold text-white/80 uppercase tracking-wider">
+              Available Skill Coins Balance
+            </p>
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl sm:text-6xl font-black tracking-tight">
+                {isWalletLoading ? "..." : wallet?.balance ?? "0"}
+              </span>
+              <span className="text-lg sm:text-xl font-extrabold text-white/90">
+                Skill Coins
+              </span>
+            </div>
+            <p className="text-xs text-white/70 pt-1 font-handwriting text-base">
+              ✦ 1 Coin = 1 Peer Learning Credit
             </p>
           </div>
-          <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-md">
+
+          <div className="p-5 bg-white/15 rounded-3xl backdrop-blur-md border border-white/25 shadow-lg w-fit">
             <WalletIcon size={48} className="text-white" />
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs">
-            <p className="text-xs text-white/70">Total Earned Coins</p>
-            <p className="text-lg font-extrabold">
-              {isWalletLoading ? "..." : (wallet?.earned_coins ?? "0")}
+
+        {/* Total stats breakdown */}
+        <div className="mt-8 grid grid-cols-2 gap-4 relative z-10">
+          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-xs border border-white/15">
+            <div className="flex items-center gap-2 text-white/80 text-xs font-semibold">
+              <TrendingUp size={14} className="text-emerald-300" />
+              <span>Total Earned Coins</span>
+            </div>
+            <p className="text-2xl font-black text-white mt-1">
+              +{isWalletLoading ? "..." : wallet?.earned_coins ?? "0"}
             </p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 backdrop-blur-xs">
-            <p className="text-xs text-white/70">Total Spent Coins</p>
-            <p className="text-lg font-extrabold">
-              {isWalletLoading ? "..." : (wallet?.spent_coins ?? "0")}
+          <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-xs border border-white/15">
+            <div className="flex items-center gap-2 text-white/80 text-xs font-semibold">
+              <TrendingDown size={14} className="text-rose-300" />
+              <span>Total Spent Coins</span>
+            </div>
+            <p className="text-2xl font-black text-white mt-1">
+              -{isWalletLoading ? "..." : wallet?.spent_coins ?? "0"}
             </p>
           </div>
         </div>
-      </Card>
+      </motion.div>
 
       {/* Transaction History */}
-      <Card title="Transaction History" subtitle="Auditable ledger entries of your Skill Coin activity">
+      <Card
+        title="Transaction History"
+        subtitle="Auditable ledger entries of your peer teaching & learning activity"
+      >
         {isTransactionsLoading ? (
-          <div className="flex flex-col gap-3 py-4">
+          <div className="space-y-3 py-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 w-full bg-border/40 animate-pulse rounded-lg" />
+              <div key={i} className="h-16 w-full bg-border/40 animate-pulse rounded-2xl" />
             ))}
           </div>
         ) : transactions.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border mx-auto mb-3">
-              <History size={24} />
-            </div>
-            <p className="font-semibold text-sm">No transactions yet</p>
-            <p className="text-xs text-text-secondary mt-1">
-              Your welcome bonus and session transactions will appear here.
-            </p>
-          </div>
+          <EmptyState
+            icon={History}
+            title="No transactions yet"
+            description="Your Skill Coin balance ledger will record credits when you teach or spend coins for learning sessions."
+          />
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {transactions.map((txn) => {
-              const { label, color, icon } = formatTransactionType(txn.type);
+          <div className="divide-y divide-border/60">
+            {transactions.map((tx) => {
+              const meta = formatTransactionType(tx.transaction_type);
               const isPositive =
-                txn.type === "earned" ||
-                txn.type === "bonus" ||
-                txn.type === "credit" ||
-                txn.type === "WELCOME_BONUS";
+                tx.amount > 0 ||
+                tx.transaction_type === "WELCOME_BONUS" ||
+                tx.transaction_type === "credit" ||
+                tx.transaction_type === "earned";
 
               return (
                 <div
-                  key={txn.id}
-                  className="flex items-center justify-between p-4 bg-bg border border-border rounded-xl hover:border-accent/30 transition-colors shadow-xs"
+                  key={tx.id}
+                  className="py-4 flex items-center justify-between gap-4 hover:bg-bg-alt/40 px-2 rounded-xl transition-colors"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div
-                      className={`p-2.5 rounded-xl ${
-                        isPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-                      }`}
-                    >
-                      {icon}
+                    <div className={`p-2.5 rounded-xl border ${meta.color}`}>
+                      {meta.icon}
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-text">{txn.reason}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-xs font-semibold ${color}`}>{label}</span>
-                        {txn.created_at && (
-                          <span className="text-[11px] text-text-secondary">
-                            • {new Date(txn.created_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
+                      <h4 className="font-bold text-xs sm:text-sm text-text">
+                        {meta.label}
+                      </h4>
+                      <p className="text-[11px] text-text-secondary mt-0.5">
+                        {tx.description || "Peer Skill Swap Transaction"} •{" "}
+                        {new Date(tx.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p
-                      className={`font-black text-base ${
-                        isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+
+                  <div className="text-right shrink-0">
+                    <span
+                      className={`text-sm sm:text-base font-black ${
+                        isPositive
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-rose-500"
                       }`}
                     >
-                      {isPositive ? "+" : "-"}{txn.amount}
-                    </p>
-                    <p className="text-[11px] text-text-secondary font-medium">Coins</p>
+                      {isPositive ? `+${Math.abs(tx.amount)}` : `-${Math.abs(tx.amount)}`} Coins
+                    </span>
                   </div>
                 </div>
               );
@@ -154,39 +223,6 @@ export default function Wallet() {
           </div>
         )}
       </Card>
-
-      {/* How it Works */}
-      <Card title="Skill Coin Economy" subtitle="Internal peer-learning credits">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-bg border border-border rounded-xl">
-            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg w-fit mb-3">
-              <Gift size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-text mb-1">5 Welcome Coins</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Every genuinely new student registration receives 5 free platform coins to start booking peer sessions.
-            </p>
-          </div>
-          <div className="p-4 bg-bg border border-border rounded-xl">
-            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg w-fit mb-3">
-              <ArrowUp size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-text mb-1">Earn by Teaching</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Host peer learning sessions and share your verified skills to earn internal platform credits.
-            </p>
-          </div>
-          <div className="p-4 bg-bg border border-border rounded-xl">
-            <div className="p-2 bg-rose-500/10 text-rose-500 rounded-lg w-fit mb-3">
-              <ArrowDown size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-text mb-1">Spend by Learning</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Use your accumulated Skill Coins to book 1-on-1 sessions with top verified mentors.
-            </p>
-          </div>
-        </div>
-      </Card>
-    </div>
+    </PageTransition>
   );
 }
