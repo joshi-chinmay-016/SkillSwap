@@ -19,10 +19,12 @@ from app.schemas.feedback import (
 from app.services.feedback_service import (
     submit_feedback,
     user_feedback,
+    get_feedback_for_session,
     my_rating,
     feedback_stats,
     review_summary
 )
+from app.core.rate_limiter import enforce_action_rate_limit
 
 from app.schemas.feedback_stats import (
     FeedbackStatsResponse
@@ -35,7 +37,8 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=FeedbackResponse
+    response_model=FeedbackResponse,
+    status_code=201
 )
 def create_feedback(
     request: FeedbackCreate,
@@ -44,7 +47,7 @@ def create_feedback(
     ),
     db: Session = Depends(get_db)
 ):
-
+    enforce_action_rate_limit("submit_feedback", current_user.id, limit=20, window_seconds=60)
     return submit_feedback(
         db,
         request.session_id,
@@ -52,6 +55,25 @@ def create_feedback(
         request.reviewee_id,
         request.rating,
         request.comment
+    )
+
+
+@router.get(
+    "/session/{session_id}",
+    response_model=list[FeedbackResponse]
+)
+def get_session_feedback(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns feedback submitted for a specific completed session by authorized participants.
+    """
+    return get_feedback_for_session(
+        db,
+        session_id=session_id,
+        current_user_id=current_user.id
     )
 
 

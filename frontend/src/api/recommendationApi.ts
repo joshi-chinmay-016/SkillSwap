@@ -2,7 +2,7 @@ import api from "../services/api";
 
 export interface RecommendationMentor {
   mentor_id: number;
-  mentor_name: str;
+  mentor_name: string;
   avatar_url?: string | null;
   department?: string | null;
   year?: number | null;

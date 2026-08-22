@@ -100,6 +100,12 @@ class Session(Base):
         backref="sessions"
     )
 
+    feedbacks = relationship(
+        "Feedback",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         Index(
             "idx_sessions_mentor_status_scheduled",
@@ -108,5 +114,9 @@ class Session(Base):
         Index(
             "idx_sessions_requester_status_scheduled",
             "requester_id", "status", "scheduled_at"
+        ),
+        Index(
+            "idx_sessions_status_scheduled_at",
+            "status", "scheduled_at"
         ),
     )

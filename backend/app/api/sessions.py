@@ -18,8 +18,13 @@ from app.schemas.session import (
 from app.services.session_service import (
     schedule_session,
     my_sessions,
+    start_session as start_peer_session,
     complete_session as complete_peer_session,
     cancel_session as cancel_peer_session,
+    join_session as join_peer_session,
+    leave_session as leave_peer_session,
+    get_session_presence as get_peer_session_presence,
+    get_session_participants as get_peer_session_participants,
     upcoming_sessions,
     completed_sessions_list,
     cancelled_sessions_list,
@@ -149,6 +154,98 @@ def get_session_counts(
 
 
 @router.get(
+    "/{session_id}/participants"
+)
+def get_participants(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns structured mentor & learner details with credibility badges and profile cards.
+    """
+    return get_peer_session_participants(
+        db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.post(
+    "/{session_id}/join"
+)
+def join(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Authoritative join event. Emits real-time notification to other participant.
+    """
+    enforce_action_rate_limit("join_session", current_user.id, limit=30, window_seconds=60)
+    return join_peer_session(
+        db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.post(
+    "/{session_id}/leave"
+)
+def leave(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cleans up ephemeral presence on exit.
+    """
+    return leave_peer_session(
+        db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.get(
+    "/{session_id}/presence"
+)
+def presence(
+    session_id: int,
+    current_user=Depends(get_current_user)
+):
+    """
+    Ephemeral active room presence from Redis.
+    """
+    return get_peer_session_presence(session_id)
+
+
+@router.post(
+    "/{session_id}/start",
+    response_model=None
+)
+@router.patch(
+    "/{session_id}/start",
+    response_model=None
+)
+def start(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Transitions session status to in_progress (LIVE).
+    """
+    enforce_action_rate_limit("start_session", current_user.id, limit=20, window_seconds=60)
+    return start_peer_session(
+        db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.get(
     "/{session_id}",
     response_model=None
 )
@@ -175,6 +272,10 @@ def get_session_detail(
     )
 
 
+@router.post(
+    "/{session_id}/complete",
+    response_model=None
+)
 @router.patch(
     "/{session_id}/complete",
     response_model=None
@@ -201,6 +302,10 @@ def complete(
     )
 
 
+@router.post(
+    "/{session_id}/cancel",
+    response_model=None
+)
 @router.patch(
     "/{session_id}/cancel",
     response_model=None

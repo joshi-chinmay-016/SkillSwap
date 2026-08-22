@@ -53,10 +53,18 @@ def assign_skill_to_user(
         verification_status="CLAIMED"
     )
 
-    return add_user_skill(
+    result = add_user_skill(
         db,
         user_skill
     )
+
+    try:
+        from app.services.recommendation_service import invalidate_user_recommendations_cache
+        invalidate_user_recommendations_cache(user_id)
+    except Exception:
+        pass
+
+    return result
 
 
 

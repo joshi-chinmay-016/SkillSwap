@@ -121,4 +121,9 @@ def remove_my_skill(
 ):
     from app.repositories.skill_repository import remove_user_skill
     remove_user_skill(db, user_skill_id, current_user.id)
+    try:
+        from app.services.recommendation_service import invalidate_user_recommendations_cache
+        invalidate_user_recommendations_cache(current_user.id)
+    except Exception:
+        pass
     return {"message": "Skill removed successfully"}

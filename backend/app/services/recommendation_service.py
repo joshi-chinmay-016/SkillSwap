@@ -260,13 +260,26 @@ def calculate_candidate_score_and_reasons(
     }
 
 
+def invalidate_user_recommendations_cache(user_id: int):
+    """
+    Invalidates cached recommendations for a specific user.
+    """
+    try:
+        keys = redis_client.keys(f"recommendations:*:user:{user_id}:*")
+        for k in keys:
+            redis_client.delete(k)
+    except Exception:
+        pass
+
+
 def get_recommendations(
     db: Session,
     current_user_id: int,
     limit: int = 10
 ) -> list[dict]:
     """
-    Generate explainable peer mentor recommendations using Hybrid BM25 + Semantic Vector Search.
+    Generate explainable peer mentor recommendations using Hybrid BM25 + Semantic Vector Search
+    with intelligent fallback to top verified mentors when the user hasn't specified learn skills yet.
     """
     cache_key = f"recommendations:v3:user:{current_user_id}:limit:{limit}"
     try:
@@ -282,15 +295,14 @@ def get_recommendations(
         return []
 
     user_learn_map = {s.skill_id: s.skill.name if s.skill else "" for s in user_learn_skills}
-
     user_teach_skills = get_user_skills_by_type(db, current_user_id, "teach")
-    user_teach_ids = {s.skill_id for s in user_teach_skills}
+    user_teach_ids = {s.skill_id for s in user_teach_skills} if user_teach_skills else set()
 
     # 2. Fetch active learning journey targets
     active_journeys = get_user_active_journeys(db, current_user_id)
     journey_targets = [j.title for j in active_journeys]
 
-    # 3. Retrieve all candidate teach skills for Hybrid BM25 + Semantic Search
+    # 3. Retrieve all candidate teach skills
     all_candidates = get_all_candidate_teach_skills(db, current_user_id)
     if not all_candidates:
         return []
@@ -313,31 +325,90 @@ def get_recommendations(
     recommendations = []
     seen_mentor_ids = set()
 
-    for cand_skill in all_candidates:
-        mentor_id = cand_skill.user_id
-        if mentor_id in seen_mentor_ids or mentor_id == current_user_id:
-            continue
+    # Priority 1: Match with learn skills & active journeys
+    if user_learn_map:
+        for cand_skill in all_candidates:
+            mentor_id = cand_skill.user_id
+            if mentor_id in seen_mentor_ids or mentor_id == current_user_id:
+                continue
 
-        item = calculate_candidate_score_and_reasons(
-            db=db,
-            current_user_id=current_user_id,
-            candidate_id=mentor_id,
-            candidate_user_skill=cand_skill,
-            user_learn_skills_map=user_learn_map,
-            user_teach_skill_ids=user_teach_ids,
-            active_journey_targets=journey_targets,
-            avg_doc_len=avg_doc_len,
-            doc_freqs=doc_freqs,
-            total_docs=total_docs
-        )
+            item = calculate_candidate_score_and_reasons(
+                db=db,
+                current_user_id=current_user_id,
+                candidate_id=mentor_id,
+                candidate_user_skill=cand_skill,
+                user_learn_skills_map=user_learn_map,
+                user_teach_skill_ids=user_teach_ids,
+                active_journey_targets=journey_targets,
+                avg_doc_len=avg_doc_len,
+                doc_freqs=doc_freqs,
+                total_docs=total_docs
+            )
 
-        if item is not None:
+            if item is not None:
+                profile = get_profile_by_user_id(db, mentor_id)
+                item["avatar_url"] = profile.avatar_url if profile else None
+                item["department"] = profile.department if profile else None
+                item["year"] = profile.year if profile else None
+
+                recommendations.append(item)
+                seen_mentor_ids.add(mentor_id)
+
+    # Priority 2: Fallback / Populate remaining slots with Top Verified Community Mentors
+    if len(recommendations) < limit:
+        for cand_skill in all_candidates:
+            mentor_id = cand_skill.user_id
+            if mentor_id in seen_mentor_ids or mentor_id == current_user_id:
+                continue
+
+            skill = cand_skill.skill
+            skill_name = skill.name if skill else "Peer Mentoring"
+            credibility_info = get_skill_credibility_breakdown(db, mentor_id, cand_skill.skill_id)
+            v_status = credibility_info.get("verification_status", "CLAIMED")
+            c_score = credibility_info.get("credibility_score", 0.0)
+            avg_rating = get_average_rating(db, mentor_id)
+            feedback_cnt = get_feedback_count(db, mentor_id)
+            avail = has_availability(db, mentor_id)
+            completed_sess = get_completed_sessions(db, mentor_id)
+
+            # Calculate baseline popularity/credibility score
+            base_score = 50.0
+            if v_status == "TRUSTED":
+                base_score += 25.0
+            elif v_status == "VERIFIED":
+                base_score += 20.0
+            elif v_status == "ASSESSED":
+                base_score += 10.0
+
+            if avail:
+                base_score += 10.0
+            if feedback_cnt > 0:
+                base_score += (avg_rating / 5.0) * 10.0
+
+            reasons = [f"Teaches {skill_name} on SkillSwap Arena."]
+            if v_status in ("VERIFIED", "TRUSTED"):
+                reasons.append(f"Verified expertise in {skill_name}.")
+            if avail:
+                reasons.append("Open availability for peer sessions.")
+
             profile = get_profile_by_user_id(db, mentor_id)
-            item["avatar_url"] = profile.avatar_url if profile else None
-            item["department"] = profile.department if profile else None
-            item["year"] = profile.year if profile else None
-
-            recommendations.append(item)
+            recommendations.append({
+                "mentor_id": mentor_id,
+                "mentor_name": cand_skill.user.name if cand_skill.user else get_user_name(db, mentor_id),
+                "compatibility_score": round(min(base_score, 100.0), 1),
+                "mentor_score": round(c_score, 1),
+                "availability": avail,
+                "average_rating": round(avg_rating, 2),
+                "completed_sessions": completed_sess,
+                "feedback_count": feedback_cnt,
+                "verification_status": v_status,
+                "credibility_score": c_score,
+                "matched_skills": [skill_name],
+                "reasons": reasons,
+                "avatar_url": profile.avatar_url if profile else None,
+                "department": profile.department if profile else None,
+                "year": profile.year if profile else None,
+            })
             seen_mentor_ids.add(mentor_id)
 
     # Sort deterministically by compatibility_score (descending)
@@ -345,7 +416,7 @@ def get_recommendations(
     results = recommendations[:limit]
 
     try:
-        redis_client.set(cache_key, json.dumps(results), ex=300)
+        redis_client.set(cache_key, json.dumps(results), ex=120)
     except Exception:
         pass
 

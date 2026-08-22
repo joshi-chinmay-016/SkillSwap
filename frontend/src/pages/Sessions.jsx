@@ -3,13 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import api from "../services/api";
+import { startPeerSession, completePeerSession, cancelPeerSession, joinPeerSession } from "../api/sessionApi";
 import Button from "../components/common/Button";
 import SectionHeader from "../components/common/SectionHeader";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import PageTransition from "../components/common/PageTransition";
 import { PushPin } from "../components/common/PinnedCard";
-import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
 import {
   Calendar,
   Video,
@@ -23,6 +23,8 @@ import {
   ExternalLink,
   UserCheck,
   CheckCircle2,
+  Play,
+  Radio,
 } from "lucide-react";
 
 export default function Sessions() {
@@ -73,12 +75,21 @@ export default function Sessions() {
     },
   });
 
+  // Start session mutation
+  const startMutation = useMutation({
+    mutationFn: (sessionId) => startPeerSession(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
+      setActionError("");
+    },
+    onError: (err) => {
+      setActionError(err.response?.data?.detail || "Failed to start session.");
+    },
+  });
+
   // Complete session mutation
   const completeMutation = useMutation({
-    mutationFn: async (sessionId) => {
-      const res = await api.patch(`/sessions/${sessionId}/complete`);
-      return res.data;
-    },
+    mutationFn: (sessionId) => completePeerSession(sessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
       queryClient.invalidateQueries({ queryKey: ["completedSessions"] });
@@ -97,10 +108,7 @@ export default function Sessions() {
 
   // Cancel session mutation
   const cancelMutation = useMutation({
-    mutationFn: async (sessionId) => {
-      const res = await api.patch(`/sessions/${sessionId}/cancel`);
-      return res.data;
-    },
+    mutationFn: (sessionId) => cancelPeerSession(sessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
       queryClient.invalidateQueries({ queryKey: ["cancelledSessions"] });
@@ -111,6 +119,17 @@ export default function Sessions() {
       setActionError(err.response?.data?.detail || "Failed to cancel session.");
     },
   });
+
+  const handleJoinCall = async (session) => {
+    try {
+      await joinPeerSession(session.id);
+    } catch {
+      // Non-blocking
+    }
+    if (session.meeting_link) {
+      window.open(session.meeting_link, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const isLoading =
     activeTab === "upcoming"
@@ -132,7 +151,6 @@ export default function Sessions() {
       : activeTab === "completed"
       ? completed
       : cancelled;
-
 
   return (
     <PageTransition className="space-y-8 text-left max-w-6xl mx-auto">
@@ -187,7 +205,7 @@ export default function Sessions() {
               : "text-text-secondary hover:text-text"
           }`}
         >
-          Upcoming ({upcoming.length})
+          Upcoming / Active ({upcoming.length})
         </button>
         <button
           type="button"
@@ -219,7 +237,6 @@ export default function Sessions() {
         </button>
       </div>
 
-
       {/* Sessions Content */}
       <div>
         {isLoading ? (
@@ -237,13 +254,17 @@ export default function Sessions() {
         ) : sessionsList.length === 0 ? (
           <EmptyState
             icon={Calendar}
-            title={activeTab === "upcoming" ? "No upcoming sessions scheduled" : "No completed sessions yet"}
+            title={
+              activeTab === "upcoming"
+                ? "You don't have any upcoming peer-learning sessions."
+                : "No completed sessions yet"
+            }
             description={
               activeTab === "upcoming"
-                ? "You don't have any pending peer learning sessions. Browse our verified student mentors to schedule one."
+                ? "Browse our verified student mentors to schedule your next 1-on-1 peer exchange session."
                 : "You haven't completed any sessions yet. Once you complete a session with a peer, it will appear here."
             }
-            actionLabel={activeTab === "upcoming" ? "Browse Peer Mentors" : undefined}
+            actionLabel={activeTab === "upcoming" ? "Find a Mentor" : undefined}
             onAction={() => navigate("/mentors")}
           />
         ) : (
@@ -251,13 +272,19 @@ export default function Sessions() {
             {sessionsList.map((session, index) => {
               const pinColors = ["cyan", "yellow", "purple", "green", "red"];
               const selectedColor = pinColors[index % pinColors.length];
+              const isLive = session.status === "in_progress";
+              const isScheduled = session.status === "scheduled";
 
               return (
                 <motion.div
                   key={session.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative p-6 sm:p-7 bg-card-bg border border-card-border hover:border-accent/50 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-200 space-y-4"
+                  className={`relative p-6 sm:p-7 bg-card-bg border rounded-3xl shadow-sm hover:shadow-xl transition-all duration-200 space-y-4 ${
+                    isLive
+                      ? "border-rose-500/40 ring-1 ring-rose-500/20"
+                      : "border-card-border hover:border-accent/50"
+                  }`}
                 >
                   <PushPin color={selectedColor} className="-top-3 left-10" />
 
@@ -272,15 +299,18 @@ export default function Sessions() {
                             {session.skill_name || "Peer Mentoring Session"}
                           </h3>
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
-                              session.status === "completed"
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border flex items-center gap-1 ${
+                              isLive
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse"
+                                : session.status === "completed"
                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                 : session.status === "cancelled"
                                 ? "bg-danger/10 text-danger border-danger/20"
                                 : "bg-accent/10 text-accent border-accent/20"
                             }`}
                           >
-                            {session.status || "Scheduled"}
+                            {isLive && <Radio size={10} className="animate-spin" />}
+                            <span>{isLive ? "LIVE" : session.status || "Scheduled"}</span>
                           </span>
                         </div>
                         <p className="text-xs text-text-secondary font-medium">
@@ -315,38 +345,61 @@ export default function Sessions() {
                           >
                             Session Details
                           </Link>
+
+                          {isScheduled && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startMutation.mutate(session.id)}
+                              isLoading={startMutation.isPending}
+                              leftIcon={Play}
+                              className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 font-bold"
+                            >
+                              Start
+                            </Button>
+                          )}
+
                           {session.meeting_link && (
-                            <a
-                              href={session.meeting_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-4 py-2 text-xs font-bold rounded-xl bg-accent text-white hover:bg-accent-hover shadow-glow flex items-center gap-1.5 transition-colors"
+                            <button
+                              type="button"
+                              onClick={() => handleJoinCall(session)}
+                              className={`px-4 py-2 text-xs font-bold rounded-xl text-white shadow-glow flex items-center gap-1.5 transition-colors cursor-pointer ${
+                                isLive
+                                  ? "bg-rose-600 hover:bg-rose-700 animate-pulse"
+                                  : "bg-accent hover:bg-accent-hover"
+                              }`}
                             >
                               <Video size={14} />
-                              <span>Join Meeting</span>
+                              <span>Join Call</span>
                               <ExternalLink size={12} />
-                            </a>
+                            </button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => completeMutation.mutate(session.id)}
-                            isLoading={completeMutation.isPending}
-                            leftIcon={CheckCircle}
-                            className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 font-bold"
-                          >
-                            Mark Complete
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => cancelMutation.mutate(session.id)}
-                            isLoading={cancelMutation.isPending}
-                            leftIcon={XCircle}
-                            className="text-danger hover:bg-danger/10 font-bold"
-                          >
-                            Cancel
-                          </Button>
+
+                          {isLive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => completeMutation.mutate(session.id)}
+                              isLoading={completeMutation.isPending}
+                              leftIcon={CheckCircle}
+                              className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 font-bold"
+                            >
+                              Mark Complete
+                            </Button>
+                          )}
+
+                          {isScheduled && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => cancelMutation.mutate(session.id)}
+                              isLoading={cancelMutation.isPending}
+                              leftIcon={XCircle}
+                              className="text-danger hover:bg-danger/10 font-bold"
+                            >
+                              Cancel
+                            </Button>
+                          )}
                         </>
                       )}
 
@@ -356,7 +409,7 @@ export default function Sessions() {
                           className="px-4 py-2 text-xs font-bold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border text-text transition-colors flex items-center gap-1.5"
                         >
                           <MessageSquare size={14} />
-                          <span>View Details</span>
+                          <span>View Details & Feedback</span>
                         </Link>
                       )}
                     </div>
