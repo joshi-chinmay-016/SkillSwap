@@ -4,15 +4,15 @@ import Button from "../common/Button";
 import Skeleton from "../common/Skeleton";
 import useHeatmap from "../../hooks/useHeatmap";
 import ContributionGrid from "./ContributionGrid";
-import { Activity, AlertCircle, RefreshCw } from "lucide-react";
+import { Activity, AlertCircle, RefreshCw, Calendar } from "lucide-react";
 
 /**
- * HeatmapCard Component (Day 55 Part B2)
+ * HeatmapCard Component
  *
  * Responsibilities:
- * - Fetches aggregated learning activity heatmap via `useHeatmap()`
- * - Handles loading, error (with retry), and empty states
- * - Renders ContributionGrid calendar when activity data is available
+ * - Fetches authenticated user's real daily activity heatmap via `useHeatmap()`
+ * - Always displays the authoritative 365-day GitHub-style Contribution Grid
+ * - Handles loading, error (with retry), and shows true totals
  */
 export default function HeatmapCard({ className = "" }) {
   const { data, isLoading, isError, refetch } = useHeatmap();
@@ -23,9 +23,9 @@ export default function HeatmapCard({ className = "" }) {
 
   return (
     <Card
-      title="Learning Activity"
-      subtitle="Your daily activity heatmap"
-      className={`min-h-[180px] flex flex-col justify-between ${className}`}
+      title="Learning Activity & Daily Contributions"
+      subtitle="Your personal 365-day skill progression heatmap"
+      className={`min-h-[180px] flex flex-col justify-between text-left ${className}`}
     >
       {/* 1. Loading State */}
       {isLoading && (
@@ -36,7 +36,7 @@ export default function HeatmapCard({ className = "" }) {
         >
           <div className="flex items-center gap-2 text-text-secondary text-sm">
             <RefreshCw size={16} className="animate-spin text-accent" />
-            <span>Loading learning activity...</span>
+            <span>Loading personal learning activity...</span>
           </div>
           <Skeleton variant="rectangular" className="w-full h-24 mt-2 rounded-lg" />
         </div>
@@ -65,40 +65,25 @@ export default function HeatmapCard({ className = "" }) {
         </div>
       )}
 
-      {/* 3. Empty State (No Data from Backend) */}
-      {!isLoading && !isError && activityList.length === 0 && (
-        <div className="py-6 flex flex-col items-center justify-center text-center gap-2 min-h-[110px]">
-          <div className="w-9 h-9 rounded-full bg-bg-alt flex items-center justify-center text-text-secondary border border-border">
-            <Activity size={18} />
-          </div>
-          <div>
-            <p className="font-semibold text-sm text-text">No learning activity yet.</p>
-            <p className="text-xs text-text-secondary mt-1 max-w-sm">
-              Complete your first learning task to begin building your contribution graph.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Loaded State: Summary Header & 365-Day Contribution Grid */}
-      {!isLoading && !isError && activityList.length > 0 && (
+      {/* 3. Loaded State: Summary Header & 365-Day Contribution Grid */}
+      {!isLoading && !isError && (
         <div className="py-2 flex flex-col gap-3">
-          <div className="flex items-center justify-between bg-bg p-3 rounded-lg border border-border text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-accent/10 text-accent flex items-center justify-center font-bold">
-                <Activity size={14} />
+          <div className="flex items-center justify-between bg-bg p-3 rounded-xl border border-border text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold">
+                <Activity size={16} />
               </div>
               <div className="text-left">
-                <span className="font-bold text-text text-sm">{totalActivities}</span>
-                <span className="text-text-secondary ml-1">total activities</span>
+                <span className="font-extrabold text-text text-sm">{totalActivities}</span>
+                <span className="text-text-secondary ml-1">total activities logged</span>
               </div>
             </div>
             <div className="text-right text-text-secondary">
-              <span className="font-bold text-text">{totalActiveDays}</span> active {totalActiveDays === 1 ? "day" : "days"}
+              <span className="font-extrabold text-text">{totalActiveDays}</span> active {totalActiveDays === 1 ? "day" : "days"} (last 365 days)
             </div>
           </div>
 
-          {/* 365-Day GitHub Contribution Calendar Grid */}
+          {/* 365-Day Contribution Calendar Grid */}
           <ContributionGrid activity={activityList} />
         </div>
       )}

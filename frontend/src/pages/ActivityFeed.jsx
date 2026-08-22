@@ -30,6 +30,7 @@ const ACTIVITY_TYPES = [
   { value: "task_completed", label: "Tasks Completed" },
   { value: "milestone_completed", label: "Milestones Completed" },
   { value: "journey_completed", label: "Journeys Completed" },
+  { value: "session_completed", label: "Sessions Completed" },
 ];
 
 const ACTIVITY_CONFIG = {
@@ -39,7 +40,7 @@ const ACTIVITY_CONFIG = {
     bg: "bg-accent/10",
     border: "border-accent/20",
     label: "Task Completed",
-    description: () => "Completed a task in your learning roadmap",
+    description: (data) => data?.task_title || data?.title || "Completed a task in your learning roadmap",
   },
   milestone_completed: {
     icon: Award,
@@ -47,7 +48,7 @@ const ACTIVITY_CONFIG = {
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
     label: "Milestone Completed",
-    description: () => "Completed a weekly milestone — outstanding progress!",
+    description: (data) => (data?.milestone_topic || data?.title) ? `Completed: ${data.milestone_topic || data.title}` : "Completed a weekly milestone — outstanding progress!",
   },
   journey_completed: {
     icon: Trophy,
@@ -55,7 +56,15 @@ const ACTIVITY_CONFIG = {
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
     label: "Journey Completed",
-    description: () => "Completed an entire learning journey — fantastic achievement! 🎉",
+    description: (data) => data?.title ? `Finished Journey: ${data.title}` : "Completed an entire learning journey — fantastic achievement! 🎉",
+  },
+  session_completed: {
+    icon: Sparkles,
+    color: "text-purple-500",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/20",
+    label: "Session Completed",
+    description: (data) => data?.title || "Completed a live 1-on-1 peer session",
   },
 };
 

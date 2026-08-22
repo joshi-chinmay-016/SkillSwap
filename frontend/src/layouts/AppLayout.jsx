@@ -6,6 +6,7 @@ import { useAuthStore } from "../store/authStore";
 import Avatar from "../components/common/Avatar";
 import Footer from "../components/common/Footer";
 import api from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 import {
   LayoutDashboard,
   Users,
@@ -47,6 +48,9 @@ export default function AppLayout() {
 
   const isMentorWorkspace = location.pathname.startsWith("/mentor");
 
+  // Mount real-time WebSocket connection for live session and notification events
+  useWebSocket();
+
   // Fetch notifications
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -73,8 +77,8 @@ export default function AppLayout() {
       await api.patch(`/notifications/${notificationId}/read`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications"]);
-      queryClient.invalidateQueries(["notifications", "unread"]);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] });
     },
   });
 
@@ -84,8 +88,8 @@ export default function AppLayout() {
       await api.patch("/notifications/read-all");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications"]);
-      queryClient.invalidateQueries(["notifications", "unread"]);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] });
     },
   });
 

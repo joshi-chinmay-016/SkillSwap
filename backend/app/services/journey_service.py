@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.journey import LearningJourney, JourneyMilestone, JourneyTask
 from app.schemas.journey import LearningJourneyCreate, LearningJourneyUpdate
@@ -61,6 +61,24 @@ def create_journey(db: Session, user_id: int, journey_data: LearningJourneyCreat
                 )
                 db.add(db_task)
             
+        # Record learning activity
+        try:
+            from app.repositories.learning_activity_repository import create_learning_activity
+            create_learning_activity(
+                db=db,
+                user_id=user_id,
+                activity_type="journey_started",
+                entity_type="journey",
+                entity_id=db_journey.id,
+                activity_data={
+                    "title": f"Started Learning Journey: {db_journey.title}",
+                    "journey_title": db_journey.title,
+                    "target_role": getattr(journey_data, "target_role", None)
+                }
+            )
+        except Exception:
+            pass
+
         db.commit()
         db.refresh(db_journey)
         return db_journey
@@ -179,8 +197,9 @@ def toggle_task_completion(
 
     # Update task state
     task.is_completed = is_completed
+    now_dt = datetime.now(timezone.utc)
     if is_completed:
-        task.completed_at = datetime.utcnow()
+        task.completed_at = now_dt
     else:
         task.completed_at = None
 
@@ -247,8 +266,14 @@ def toggle_task_completion(
             entity_id=task.id,
             activity_data={
                 "journey_id": journey.id,
-                "milestone_id": milestone.id
-            }
+                "journey_title": journey.title,
+                "milestone_id": milestone.id,
+                "milestone_topic": milestone.topic,
+                "task_id": task.id,
+                "title": task.title,
+                "task_title": task.title
+            },
+            created_at=task.completed_at
         )
 
     # Milestone completion transition
@@ -260,19 +285,31 @@ def toggle_task_completion(
             entity_type="journey_milestone",
             entity_id=milestone.id,
             activity_data={
-                "journey_id": journey.id
-            }
+                "journey_id": journey.id,
+                "journey_title": journey.title,
+                "milestone_id": milestone.id,
+                "title": milestone.topic,
+                "milestone_topic": milestone.topic,
+                "week_number": milestone.week_number
+            },
+            created_at=task.completed_at or now_dt
         )
 
     # Journey completion transition
     if previous_journey_progress < 100.0 and new_journey_progress >= 100.0:
+        journey.status = "completed"
         record_learning_activity(
             db,
             user_id=user_id,
             activity_type="journey_completed",
             entity_type="learning_journey",
             entity_id=journey.id,
-            activity_data={}
+            activity_data={
+                "journey_id": journey.id,
+                "title": journey.title,
+                "target_role": journey.target_role
+            },
+            created_at=now_dt
         )
 
     db.commit()

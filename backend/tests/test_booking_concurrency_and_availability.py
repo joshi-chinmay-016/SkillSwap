@@ -36,6 +36,8 @@ test_engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
+from app.models.learning_activity import LearningActivity
+
 TABLES = [
     User.__table__,
     Skill.__table__,
@@ -45,6 +47,7 @@ TABLES = [
     Notification.__table__,
     Wallet.__table__,
     WalletTransaction.__table__,
+    LearningActivity.__table__,
 ]
 
 

@@ -9,7 +9,7 @@ import Input from "../components/common/Input";
 import Textarea from "../components/common/Textarea";
 import { useToast } from "../components/common/Toast";
 import { BookOpen, AlertTriangle, CheckCircle, XCircle, TrendingUp, Target, Sparkles } from "lucide-react";
-import SkillGapLoadingScreen from "../components/skill-gap/SkillGapLoadingScreen";
+import AILoadingScreen from "../components/common/AILoadingScreen";
 
 export default function SkillGap() {
   const toast = useToast();
@@ -115,7 +115,12 @@ export default function SkillGap() {
 
       {/* Loading state */}
       {skillGapMutation.isPending && (
-        <SkillGapLoadingScreen isOpen={true} onCancel={() => skillGapMutation.reset()} />
+        <AILoadingScreen
+          isOpen={true}
+          type="skill-gap"
+          title="Analyzing Skill Gaps"
+          onCancel={() => skillGapMutation.reset()}
+        />
       )}
 
       {/* Analysis Results */}

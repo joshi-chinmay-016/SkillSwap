@@ -52,6 +52,11 @@ class Session(Base):
         nullable=False
     )
 
+    meeting_room_id: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True
+    )
+
     meeting_link: Mapped[str] = mapped_column(
         String(255),
         nullable=False

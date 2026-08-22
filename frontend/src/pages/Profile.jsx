@@ -106,7 +106,8 @@ export default function Profile() {
     onSuccess: () => {
       toast.success("Skill added successfully", "Success");
       refetchUserSkills();
-      queryClient.invalidateQueries(["userSkills"]);
+      queryClient.invalidateQueries({ queryKey: ["userSkills"] });
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
       setIsSkillsModalOpen(false);
       setNewSkillName("");
       setSelectedSkillId("");
@@ -123,7 +124,8 @@ export default function Profile() {
     onSuccess: () => {
       toast.success("Skill removed successfully", "Success");
       refetchUserSkills();
-      queryClient.invalidateQueries(["userSkills"]);
+      queryClient.invalidateQueries({ queryKey: ["userSkills"] });
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || "Failed to remove skill", "Error");
@@ -192,7 +194,7 @@ export default function Profile() {
         updateUser({ avatar_url: data.avatar_url });
       }
       toast.success("Profile updated successfully", "Success");
-      queryClient.invalidateQueries(["profile"]);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       setActiveTab("overview");
     },
     onError: (error) => {

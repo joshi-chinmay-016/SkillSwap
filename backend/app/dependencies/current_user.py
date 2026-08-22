@@ -24,6 +24,11 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
 )
 
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/auth/login",
+    auto_error=False
+)
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -56,3 +61,21 @@ def get_current_user(
         )
 
     return user
+
+
+def get_optional_current_user(
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db)
+):
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    try:
+        return get_user_by_id(db, int(user_id))
+    except Exception:
+        return None

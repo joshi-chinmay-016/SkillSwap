@@ -8,6 +8,7 @@ import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import Avatar from "../components/common/Avatar";
 import { useToast } from "../components/common/Toast";
+import AILoadingScreen from "../components/common/AILoadingScreen";
 import { Sparkles, User, Star, MapPin, BookOpen, ArrowRight, Lightbulb } from "lucide-react";
 import CredibilityBadge from "../components/verification/CredibilityBadge";
 
@@ -96,11 +97,12 @@ export default function MentorRecommendation() {
 
       {/* Loading state */}
       {recommendationMutation.isPending && (
-        <div className="flex flex-col gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 w-full bg-border/40 animate-pulse rounded-xl" />
-          ))}
-        </div>
+        <AILoadingScreen
+          isOpen={true}
+          type="mentor-match"
+          title="Matching Peer Mentors"
+          onCancel={() => recommendationMutation.reset()}
+        />
       )}
 
       {/* Recommendations Display */}

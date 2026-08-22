@@ -11,10 +11,12 @@ from app.dependencies.current_user import get_current_user
 from app.schemas.availability import (
     AvailabilityCreate,
     AvailabilityResponse,
+    AllTimeAvailabilityRequest,
     MentorAvailabilitySlotsResponse
 )
 from app.services.availability_service import (
     add_availability,
+    add_all_time_availability,
     my_availability,
     mentor_availability_list,
     get_mentor_available_slots,
@@ -40,9 +42,34 @@ def create_availability_slot(
     return add_availability(
         db,
         current_user.id,
-        request.day_of_week,
-        request.start_time,
-        request.end_time,
+        start_time=request.start_time,
+        end_time=request.end_time,
+        day_of_week=request.day_of_week,
+        specific_date=request.specific_date,
+        all_days=request.all_days,
+        timezone=request.timezone,
+        is_active=request.is_active
+    )
+
+
+@router.post(
+    "/all-time",
+    response_model=list[AvailabilityResponse],
+    status_code=status.HTTP_201_CREATED
+)
+def create_all_time_slots(
+    request: AllTimeAvailabilityRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sets up all-time / full-week recurring availability for the authenticated mentor across all 7 days.
+    """
+    return add_all_time_availability(
+        db,
+        current_user.id,
+        start_time=request.start_time,
+        end_time=request.end_time,
         timezone=request.timezone,
         is_active=request.is_active
     )
@@ -115,4 +142,4 @@ def delete_slot(
         current_user.id,
         slot_id
     )
-    return {"message": "Availability slot deleted successfully"}
+    return {"message": "Availability slot deleted successfully"}

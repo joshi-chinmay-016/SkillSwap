@@ -73,10 +73,10 @@ export const getContributionLevel = (count = 0) => {
  * Works seamlessly in both Light Mode and Dark Mode using design tokens.
  */
 export const LEVEL_CLASSES = {
-  0: "bg-border/30 border border-border/20 hover:border-border",
-  1: "bg-emerald-500/25 border border-emerald-500/35 hover:border-emerald-500/60 dark:bg-emerald-500/30",
-  2: "bg-emerald-500/50 border border-emerald-500/60 hover:border-emerald-500/80 dark:bg-emerald-500/55",
-  3: "bg-emerald-500/80 border border-emerald-500/90 hover:border-emerald-500 dark:bg-emerald-500/85",
+  0: "bg-slate-200/80 border border-slate-300/70 hover:border-slate-400 dark:bg-slate-800/80 dark:border-slate-700/80 dark:hover:border-slate-500",
+  1: "bg-emerald-500/30 border border-emerald-500/40 hover:border-emerald-500/70 dark:bg-emerald-500/35 dark:border-emerald-500/45",
+  2: "bg-emerald-500/60 border border-emerald-500/70 hover:border-emerald-500/90 dark:bg-emerald-500/65 dark:border-emerald-500/75",
+  3: "bg-emerald-500/85 border border-emerald-500/90 hover:border-emerald-400 dark:bg-emerald-500/90 dark:border-emerald-400",
   4: "bg-emerald-500 border border-emerald-400 shadow-xs hover:border-emerald-300 dark:bg-emerald-400 dark:border-emerald-300",
 };
 

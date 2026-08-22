@@ -35,8 +35,14 @@ export default function LearningJourney() {
       return res.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries(["journey", id]);
-      queryClient.invalidateQueries(["activities"]); // Invalidate activities so the feed/dashboard updates
+      queryClient.invalidateQueries({ queryKey: ["journey", id] });
+      queryClient.invalidateQueries({ queryKey: ["journeys"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["streak"] });
+      queryClient.invalidateQueries({ queryKey: ["heatmap"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.show(
         data.is_completed ? "Task completed! 🎉" : "Task marked incomplete",
         "success"

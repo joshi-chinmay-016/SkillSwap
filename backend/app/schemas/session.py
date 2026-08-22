@@ -17,6 +17,7 @@ class SessionResponse(BaseModel):
     skill_id: int
     scheduled_at: datetime
     duration_minutes: int = 60
+    meeting_room_id: str | None = None
     meeting_link: str
     status: str
     mentor_name: str | None = None

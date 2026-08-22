@@ -80,8 +80,14 @@ export default function Sessions() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["upcomingSessions"]);
-      queryClient.invalidateQueries(["completedSessions"]);
+      queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["completedSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["streak"] });
+      queryClient.invalidateQueries({ queryKey: ["heatmap"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
       setActionError("");
     },
     onError: (err) => {
@@ -96,8 +102,9 @@ export default function Sessions() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["upcomingSessions"]);
-      queryClient.invalidateQueries(["cancelledSessions"]);
+      queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["cancelledSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
       setActionError("");
     },
     onError: (err) => {
@@ -303,10 +310,10 @@ export default function Sessions() {
                       {activeTab === "upcoming" && (
                         <>
                           <Link
-                            to={`/learning-sessions/${session.id}`}
+                            to={`/sessions/${session.id}`}
                             className="px-3.5 py-2 text-xs font-bold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border text-text transition-colors"
                           >
-                            Session Room
+                            Session Details
                           </Link>
                           {session.meeting_link && (
                             <a
@@ -345,11 +352,11 @@ export default function Sessions() {
 
                       {activeTab === "completed" && (
                         <Link
-                          to={`/learning-sessions/${session.id}`}
+                          to={`/sessions/${session.id}`}
                           className="px-4 py-2 text-xs font-bold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border text-text transition-colors flex items-center gap-1.5"
                         >
                           <MessageSquare size={14} />
-                          <span>View Notes & Reflection</span>
+                          <span>View Details</span>
                         </Link>
                       )}
                     </div>

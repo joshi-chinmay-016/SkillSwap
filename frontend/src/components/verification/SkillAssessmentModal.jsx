@@ -91,9 +91,9 @@ export default function SkillAssessmentModal({ isOpen, onClose, skillId, skillNa
     },
     onSuccess: (data) => {
       setAssessmentResult(data);
-      queryClient.invalidateQueries(["userSkills"]);
-      queryClient.invalidateQueries(["myCredibility"]);
-      queryClient.invalidateQueries(["profile"]);
+      queryClient.invalidateQueries({ queryKey: ["userSkills"] });
+      queryClient.invalidateQueries({ queryKey: ["myCredibility"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       if (data.passed) {
         toast.success(`Verified! Score: ${data.score}% (${data.correct_answers}/10 correct)`, "Assessment Passed");
       } else {
