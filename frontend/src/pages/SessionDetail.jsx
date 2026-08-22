@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,6 +13,16 @@ import {
   getSessionPresence,
   submitSessionFeedback,
   getSessionFeedbackList,
+  saveSessionNotes,
+  getSessionNotes,
+  addSessionTopic,
+  getSessionTopics,
+  createSessionActionItem,
+  getSessionActionItems,
+  updateSessionActionItem,
+  deleteSessionActionItem,
+  generateSessionIntelligence,
+  getSessionIntelligence,
 } from "../api/sessionApi";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -41,6 +51,16 @@ import {
   Award,
   Radio,
   Share2,
+  Plus,
+  Trash2,
+  Tag,
+  CheckSquare,
+  Square,
+  HelpCircle,
+  Lightbulb,
+  FileText,
+  RefreshCw,
+  Cpu,
 } from "lucide-react";
 
 export default function SessionDetail() {
@@ -55,6 +75,13 @@ export default function SessionDetail() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
+
+  // Live notes capture state
+  const [activeNotesTab, setActiveNotesTab] = useState("questions");
+  const [noteInput, setNoteInput] = useState("");
+  const [newTopic, setNewTopic] = useState("");
+  const [newActionItem, setNewActionItem] = useState("");
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // 1. Fetch Session Detail
   const {
@@ -89,6 +116,62 @@ export default function SessionDetail() {
     enabled: session?.status === "completed",
   });
 
+  // 4. Phase 4: Fetch Session Notes
+  const {
+    data: sessionNotes = [],
+    refetch: refetchNotes,
+  } = useQuery({
+    queryKey: ["sessionNotes", sessionId],
+    queryFn: () => getSessionNotes(sessionId),
+    enabled: !isNaN(sessionId) && !!session,
+  });
+
+  // 5. Phase 4: Fetch Session Topics
+  const {
+    data: sessionTopics = [],
+    refetch: refetchTopics,
+  } = useQuery({
+    queryKey: ["sessionTopics", sessionId],
+    queryFn: () => getSessionTopics(sessionId),
+    enabled: !isNaN(sessionId) && !!session,
+  });
+
+  // 6. Phase 4: Fetch Action Items
+  const {
+    data: sessionActionItems = [],
+    refetch: refetchActionItems,
+  } = useQuery({
+    queryKey: ["sessionActionItems", sessionId],
+    queryFn: () => getSessionActionItems(sessionId),
+    enabled: !isNaN(sessionId) && !!session,
+  });
+
+  // 7. Phase 4: Fetch Session Intelligence (AI Summary & Post-Session Insights)
+  const {
+    data: sessionIntelligence,
+    isLoading: intelLoading,
+    refetch: refetchIntelligence,
+  } = useQuery({
+    queryKey: ["sessionIntelligence", sessionId],
+    queryFn: () => getSessionIntelligence(sessionId),
+    enabled: session?.status === "completed",
+    retry: false,
+  });
+
+  // Determine current user's role
+  const isMentor = participantsData?.current_user_role === "mentor";
+  const userRole = isMentor ? "mentor" : "learner";
+
+  // Find my saved note
+  const myNote = sessionNotes.find((n) => n.role === userRole)?.notes_data || {
+    questions: [],
+    concepts: [],
+    struggles: [],
+    takeaways: [],
+    resources: [],
+    next_steps: [],
+  };
+
   // Mutations
   const startMutation = useMutation({
     mutationFn: () => startPeerSession(sessionId),
@@ -107,6 +190,7 @@ export default function SessionDetail() {
     onSuccess: () => {
       toast.success("Session marked as COMPLETED! 🎉", "Session Completed");
       queryClient.invalidateQueries({ queryKey: ["sessionDetail", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionIntelligence", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
       queryClient.invalidateQueries({ queryKey: ["completedSessions"] });
       queryClient.invalidateQueries({ queryKey: ["activities"] });
@@ -150,555 +234,845 @@ export default function SessionDetail() {
     },
   });
 
-  const handleJoinCall = async () => {
-    try {
-      await joinPeerSession(sessionId);
-    } catch {
-      // Non-blocking presence tracking
-    }
-    if (session?.meeting_link) {
-      window.open(session.meeting_link, "_blank", "noopener,noreferrer");
-    }
+  // Notes Mutation
+  const saveNotesMutation = useMutation({
+    mutationFn: (notesData) => saveSessionNotes(sessionId, notesData),
+    onSuccess: () => {
+      setIsAutoSaving(false);
+      refetchNotes();
+    },
+    onError: (err) => {
+      setIsAutoSaving(false);
+      toast.error(err.response?.data?.detail || "Failed to save note.");
+    },
+  });
+
+  // Add Topic Mutation
+  const addTopicMutation = useMutation({
+    mutationFn: (topicName) => addSessionTopic(sessionId, { topic_name: topicName }),
+    onSuccess: () => {
+      setNewTopic("");
+      refetchTopics();
+      toast.success("Discussion topic tagged!");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.detail || "Failed to tag topic.");
+    },
+  });
+
+  // Action Items Mutations
+  const addActionItemMutation = useMutation({
+    mutationFn: (title) => createSessionActionItem(sessionId, { title }),
+    onSuccess: () => {
+      setNewActionItem("");
+      refetchActionItems();
+      toast.success("Action item created!");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.detail || "Failed to add action item.");
+    },
+  });
+
+  const toggleActionItemMutation = useMutation({
+    mutationFn: ({ itemId, status }) => updateSessionActionItem(sessionId, itemId, { status }),
+    onSuccess: () => {
+      refetchActionItems();
+    },
+  });
+
+  const deleteActionItemMutation = useMutation({
+    mutationFn: (itemId) => deleteSessionActionItem(sessionId, itemId),
+    onSuccess: () => {
+      refetchActionItems();
+      toast.info("Action item deleted.");
+    },
+  });
+
+  // Generate Intelligence Mutation
+  const generateIntelMutation = useMutation({
+    mutationFn: () => generateSessionIntelligence(sessionId),
+    onSuccess: () => {
+      toast.success("Session Intelligence updated! ✨", "Analysis Complete");
+      refetchIntelligence();
+      refetchActionItems();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.detail || "Intelligence generation failed.");
+    },
+  });
+
+  const handleAddNoteItem = (e) => {
+    e.preventDefault();
+    if (!noteInput.trim()) return;
+
+    setIsAutoSaving(true);
+    const updatedNotes = {
+      ...myNote,
+      [activeNotesTab]: [...(myNote[activeNotesTab] || []), noteInput.trim()],
+    };
+
+    setNoteInput("");
+    saveNotesMutation.mutate(updatedNotes);
   };
 
-  const handleFeedbackSubmit = (e) => {
+  const handleRemoveNoteItem = (tabKey, index) => {
+    setIsAutoSaving(true);
+    const updatedList = [...(myNote[tabKey] || [])];
+    updatedList.splice(index, 1);
+    const updatedNotes = {
+      ...myNote,
+      [tabKey]: updatedList,
+    };
+    saveNotesMutation.mutate(updatedNotes);
+  };
+
+  const handleAddTopic = (e) => {
     e.preventDefault();
-    setFeedbackError("");
+    if (!newTopic.trim()) return;
+    addTopicMutation.mutate(newTopic.trim());
+  };
 
-    if (!comment.trim()) {
-      setFeedbackError("Please provide a short comment about your session.");
-      return;
+  const handleAddActionItem = (e) => {
+    e.preventDefault();
+    if (!newActionItem.trim()) return;
+    addActionItemMutation.mutate(newActionItem.trim());
+  };
+
+  // Render Status Badge
+  const renderStatusBadge = (status) => {
+    switch (status) {
+      case "in_progress":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse">
+            <Radio className="w-3.5 h-3.5" /> LIVE SESSION
+          </span>
+        );
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+            <CheckCircle className="w-3.5 h-3.5" /> Completed
+          </span>
+        );
+      case "cancelled":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
+            <XCircle className="w-3.5 h-3.5" /> Cancelled
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <Clock className="w-3.5 h-3.5" /> Scheduled
+          </span>
+        );
     }
-
-    const revieweeId =
-      participantsData?.current_user_role === "mentor"
-        ? participantsData?.learner?.id
-        : participantsData?.mentor?.id;
-
-    if (!revieweeId) {
-      setFeedbackError("Unable to identify the reviewee.");
-      return;
-    }
-
-    feedbackMutation.mutate({
-      session_id: sessionId,
-      reviewee_id: revieweeId,
-      rating: parseInt(rating),
-      comment: comment.trim(),
-    });
   };
 
   if (sessionLoading || participantsLoading) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto p-4 text-left">
-        <div className="h-8 w-32 bg-border/40 animate-pulse rounded-xl" />
-        <div className="h-64 bg-border/40 animate-pulse rounded-3xl" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-44 bg-border/40 animate-pulse rounded-3xl" />
-          <div className="h-44 bg-border/40 animate-pulse rounded-3xl" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm text-text-secondary font-medium">Loading session workspace...</p>
         </div>
       </div>
     );
   }
 
-  const httpStatus = sessionError?.response?.status;
-
-  if (httpStatus === 403) {
+  if (sessionError) {
     return (
-      <div className="max-w-md mx-auto mt-16 text-center">
-        <Card className="p-8 space-y-4">
-          <div className="p-3.5 bg-danger/10 text-danger rounded-2xl w-fit mx-auto border border-danger/20">
-            <ShieldAlert size={36} />
-          </div>
-          <h2 className="text-xl font-bold text-text">Access Restricted</h2>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            You are not authorized to view this session. Only confirmed participants (mentor and learner) can access private room details.
+      <div className="max-w-4xl mx-auto py-12 px-4">
+        <Card className="text-center py-12">
+          <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Unauthorized or Not Found</h2>
+          <p className="text-text-secondary mb-6 max-w-md mx-auto">
+            {sessionError.response?.data?.detail || "You do not have permission to view this peer-learning session."}
           </p>
-          <div className="pt-2">
-            <Button variant="primary" size="sm" onClick={() => navigate("/sessions")}>
-              <ArrowLeft size={14} className="mr-1.5" />
-              Back to My Sessions
-            </Button>
-          </div>
+          <Button onClick={() => navigate("/sessions")}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to My Sessions
+          </Button>
         </Card>
       </div>
     );
   }
-
-  if (sessionError || !session) {
-    return (
-      <div className="max-w-md mx-auto mt-16 text-center">
-        <Card className="p-8 space-y-4">
-          <div className="p-3.5 bg-danger/10 text-danger rounded-2xl w-fit mx-auto border border-danger/20">
-            <AlertCircle size={36} />
-          </div>
-          <h2 className="text-xl font-bold text-text">Session Not Found</h2>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            The requested mentoring session could not be retrieved or does not exist.
-          </p>
-          <div className="pt-2">
-            <Button variant="primary" size="sm" onClick={() => navigate("/sessions")}>
-              <ArrowLeft size={14} className="mr-1.5" />
-              Back to Sessions
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  const isScheduled = session.status === "scheduled";
-  const isLive = session.status === "in_progress";
-  const isCompleted = session.status === "completed";
-  const isCancelled = session.status === "cancelled";
 
   const mentor = participantsData?.mentor;
   const learner = participantsData?.learner;
-  const isMentor = participantsData?.current_user_role === "mentor";
+  const skill = participantsData?.skill;
+  const isLive = session.status === "in_progress";
+  const isCompleted = session.status === "completed";
+  const isScheduled = session.status === "scheduled";
 
   return (
-    <PageTransition className="space-y-6 max-w-4xl mx-auto text-left">
-      {/* Back Button */}
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate("/sessions")}
-          className="inline-flex items-center gap-2 text-xs font-bold text-text-secondary hover:text-accent cursor-pointer transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Sessions</span>
-        </button>
-      </div>
+    <PageTransition>
+      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+        {/* Top Navigation */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate("/sessions")}
+            className="inline-flex items-center text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Sessions
+          </button>
+          <div className="flex items-center gap-3">
+            {renderStatusBadge(session.status)}
+            <span className="text-xs text-text-muted font-mono">ID: #{session.id}</span>
+          </div>
+        </div>
 
-      {/* Main Session Header Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative p-6 sm:p-8 bg-card-bg border border-card-border rounded-3xl shadow-md overflow-hidden space-y-5"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-text">
-                {session.skill_name || "1-on-1 Peer Mentoring"}
+        {/* Hero Banner / Workspace Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-surface-hover border border-border/60 p-6 md:p-8 shadow-sm">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                  {skill?.name || "Peer Mentoring"}
+                </span>
+                <span className="text-xs text-text-muted font-medium">
+                  {session.duration_minutes || 60} min session
+                </span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+                Peer Learning: {skill?.name || "Mentoring Session"}
               </h1>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wide border flex items-center gap-1.5 ${
-                  isLive
-                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse"
-                    : isCompleted
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    : isCancelled
-                    ? "bg-danger/10 text-danger border-danger/20"
-                    : "bg-accent/10 text-accent border-accent/20"
-                }`}
-              >
-                {isLive && <Radio size={12} className="animate-spin" />}
-                <span>{isLive ? "LIVE SESSION" : session.status}</span>
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary font-medium">
-              Session Workspace #{session.id} • {session.duration_minutes || 60} Minutes
-            </p>
-          </div>
-
-          {/* Quick Action Badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {isScheduled && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => startMutation.mutate()}
-                isLoading={startMutation.isPending}
-                leftIcon={Play}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-glow"
-              >
-                Start Session
-              </Button>
-            )}
-
-            {isLive && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleJoinCall}
-                leftIcon={Video}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-glow animate-pulse"
-              >
-                Join Live Classroom
-              </Button>
-            )}
-
-            {isCompleted && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsFeedbackModalOpen(true)}
-                leftIcon={Star}
-                className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-glow"
-              >
-                Leave Feedback
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Timing Information Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          <div className="p-3.5 bg-bg-alt/90 rounded-2xl border border-border/80 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
-              <Calendar size={18} />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-text-secondary">Scheduled Date</p>
-              <p className="text-xs font-extrabold text-text">
-                {new Date(session.scheduled_at).toLocaleDateString(undefined, {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-bg-alt/90 rounded-2xl border border-border/80 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
-              <Clock size={18} />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-text-secondary">Time Slot</p>
-              <p className="text-xs font-extrabold text-text">
-                {new Date(session.scheduled_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-bg-alt/90 rounded-2xl border border-border/80 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
-              <CheckCircle size={18} />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-text-secondary">Your Role</p>
-              <p className="text-xs font-extrabold text-text uppercase">
-                {isMentor ? "Mentor (Teaching)" : "Learner (Learning)"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Participant Relationship Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Mentor Card */}
-        <Card
-          title={isMentor ? "You (Mentor)" : "Your Mentor"}
-          subtitle="Teaching participant"
-        >
-          <div className="flex items-start gap-4 pt-1">
-            <Avatar
-              src={mentor?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${mentor?.name || "Mentor"}`}
-              alt={mentor?.name || "Mentor"}
-              size="lg"
-              className="ring-2 ring-accent/20 shrink-0"
-            />
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-extrabold text-base text-text truncate">
-                  {mentor?.name || "Mentor"}
-                </h3>
-                {mentor?.average_rating > 0 && (
-                  <span className="flex items-center gap-1 text-xs font-extrabold text-amber-500">
-                    <Star size={13} className="fill-amber-500" />
-                    <span>{Number(mentor.average_rating).toFixed(1)}</span>
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-text-secondary">
-                {mentor?.department ? `${mentor.department} Student` : "Peer Mentor"} • Year {mentor?.year || 1}
-              </p>
-              {mentor?.bio && (
-                <p className="text-xs text-text-secondary line-clamp-2 italic pt-1">
-                  "{mentor.bio}"
-                </p>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Learner Card */}
-        <Card
-          title={!isMentor ? "You (Learner)" : "Your Student"}
-          subtitle="Learning participant"
-        >
-          <div className="flex items-start gap-4 pt-1">
-            <Avatar
-              src={learner?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${learner?.name || "Learner"}`}
-              alt={learner?.name || "Learner"}
-              size="lg"
-              className="ring-2 ring-accent/20 shrink-0"
-            />
-            <div className="space-y-1 min-w-0">
-              <h3 className="font-extrabold text-base text-text truncate">
-                {learner?.name || "Learner"}
-              </h3>
-              <p className="text-xs text-text-secondary">
-                {learner?.department ? `${learner.department} Student` : "Peer Learner"} • Year {learner?.year || 1}
-              </p>
-              {learner?.bio && (
-                <p className="text-xs text-text-secondary line-clamp-2 italic pt-1">
-                  "{learner.bio}"
-                </p>
-              )}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Jitsi Meeting Room Card */}
-      {!isCancelled ? (
-        <Card title="Jitsi Video Meeting Room" subtitle="Authoritative secure classroom URL">
-          <div className="p-5 rounded-2xl bg-accent/5 border border-accent/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5 text-left">
-              <div className="p-3 rounded-xl bg-accent/15 text-accent">
-                <Video size={24} />
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="font-extrabold text-sm text-text">Private Meeting Room</h4>
-                <p className="text-xs text-text-secondary font-mono">
-                  Room: {session.meeting_room_id || "skillswap-room"}
-                </p>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  {new Date(session.scheduled_at).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-primary" />
+                  {new Date(session.scheduled_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {(isScheduled || isLive) && (
+            {/* Lifecycle Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
+              {isScheduled && isMentor && (
                 <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleJoinCall}
-                  leftIcon={Video}
-                  rightIcon={ExternalLink}
-                  className="font-bold text-xs shadow-glow bg-accent hover:bg-accent-hover"
+                  onClick={() => startMutation.mutate()}
+                  loading={startMutation.isPending}
+                  className="bg-green-600 hover:bg-green-500 text-white font-semibold shadow-lg shadow-green-600/20"
                 >
-                  Join Jitsi Call
+                  <Play className="w-4 h-4 mr-2" /> Start Live Session
                 </Button>
               )}
 
               {isLive && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => completeMutation.mutate()}
-                  isLoading={completeMutation.isPending}
-                  leftIcon={CheckCircle2}
-                  className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 font-bold text-xs"
+                <a
+                  href={session.meeting_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/25 transition-all"
                 >
-                  Mark Completed
+                  <Video className="w-4 h-4 mr-2" /> Open Jitsi Room
+                  <ExternalLink className="w-3.5 h-3.5 ml-1.5 opacity-70" />
+                </a>
+              )}
+
+              {(isLive || isScheduled) && (
+                <Button
+                  onClick={() => completeMutation.mutate()}
+                  loading={completeMutation.isPending}
+                  variant="outline"
+                  className="border-green-500/30 text-green-500 hover:bg-green-500/10 font-medium"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Mark Completed
                 </Button>
               )}
 
-              {isScheduled && (
+              {(isScheduled || isLive) && (
                 <Button
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setIsCancelModalOpen(true)}
-                  leftIcon={XCircle}
-                  className="text-danger hover:bg-danger/10 font-bold text-xs"
+                  variant="outline"
+                  className="border-red-500/30 text-red-500 hover:bg-red-500/10 font-medium"
                 >
                   Cancel Session
                 </Button>
               )}
+
+              {isCompleted && (
+                <Button
+                  onClick={() => setIsFeedbackModalOpen(true)}
+                  className="bg-amber-500 hover:bg-amber-400 text-black font-semibold shadow-lg shadow-amber-500/20"
+                >
+                  <Star className="w-4 h-4 mr-1.5 fill-current" /> Leave Feedback
+                </Button>
+              )}
             </div>
           </div>
-        </Card>
-      ) : (
-        <div className="p-5 rounded-2xl bg-danger/10 border border-danger/20 text-danger text-center space-y-1.5">
-          <XCircle size={24} className="mx-auto" />
-          <h4 className="font-extrabold text-sm">Session Cancelled</h4>
-          <p className="text-xs text-danger/80">
-            This session was cancelled. Meeting room access has been closed and coins have been refunded.
-          </p>
         </div>
-      )}
 
-      {/* Reviews & Feedback Section for Completed Sessions */}
-      {isCompleted && (
-        <Card
-          title="Session Reviews & Outcomes"
-          subtitle="Qualitative feedback recorded for this peer exchange"
-          actions={
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() => setIsFeedbackModalOpen(true)}
-              leftIcon={Star}
-              className="text-xs font-bold"
-            >
-              Add Review
-            </Button>
-          }
-        >
-          {sessionFeedbacks.length === 0 ? (
-            <div className="p-6 text-center bg-bg-alt rounded-2xl border border-border space-y-2">
-              <MessageSquare size={24} className="mx-auto text-text-muted opacity-60" />
-              <p className="text-xs font-bold text-text">No feedback submitted yet</p>
-              <p className="text-[11px] text-text-secondary max-w-xs mx-auto">
-                Share your rating and feedback to help build your peer mentor's credibility.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sessionFeedbacks.map((fb) => (
-                <div
-                  key={fb.id}
-                  className="p-4 bg-bg-alt rounded-2xl border border-border/80 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={14}
-                          className={i < fb.rating ? "fill-amber-500" : "text-border"}
-                        />
-                      ))}
-                      <span className="text-xs font-extrabold text-text ml-1.5">
-                        {fb.rating} / 5
-                      </span>
-                    </div>
+        {/* 2-Column Workspace Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column (2 Cols on lg): Learning Capture / Post-Session Intelligence */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Live Video Call Frame when Live */}
+            {isLive && (
+              <Card className="p-6 border-red-500/20 bg-gradient-to-b from-red-500/5 to-transparent">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                    <h3 className="font-bold text-text-primary">Live Jitsi Classroom</h3>
                   </div>
-                  <p className="text-xs text-text-secondary whitespace-pre-line leading-relaxed">
-                    "{fb.comment}"
+                  <span className="text-xs text-text-muted">Room: {session.meeting_room_id}</span>
+                </div>
+                <div className="rounded-xl overflow-hidden bg-black/80 aspect-video flex flex-col items-center justify-center text-center p-6 border border-border/40">
+                  <Video className="w-12 h-12 text-primary mb-3 animate-pulse" />
+                  <h4 className="text-lg font-semibold text-white mb-2">Video Classroom Active</h4>
+                  <p className="text-sm text-gray-300 max-w-md mb-6">
+                    Connect directly with your peer in the secure Jitsi meeting room. Use the collaborative notes panel below to record questions, takeaways, and topics.
+                  </p>
+                  <a
+                    href={session.meeting_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-6 py-3 rounded-xl bg-primary text-white font-bold text-base hover:bg-primary-hover shadow-xl shadow-primary/30 transition-all transform hover:-translate-y-0.5"
+                  >
+                    <Video className="w-5 h-5 mr-2" /> Launch Meeting Room
+                    <ExternalLink className="w-4 h-4 ml-2 opacity-75" />
+                  </a>
+                </div>
+              </Card>
+            )}
+
+            {/* PHASE 4 POST-SESSION INTELLIGENCE (When Completed) */}
+            {isCompleted && (
+              <div className="space-y-6">
+                <Card className="p-6 border-primary/20 bg-gradient-to-br from-primary/5 via-surface to-surface">
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-text-primary">AI Session Intelligence</h3>
+                        <p className="text-xs text-text-muted">
+                          {sessionIntelligence?.provenance?.provider
+                            ? `Grounded analysis • ${sessionIntelligence.provenance.provider}`
+                            : "Grounded in participant notes & discussion topics"}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => generateIntelMutation.mutate()}
+                      loading={generateIntelMutation.isPending}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh Analysis
+                    </Button>
+                  </div>
+
+                  {/* Insufficient Data State */}
+                  {sessionIntelligence?.status === "insufficient_data" ? (
+                    <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                      <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+                      <h4 className="font-semibold text-amber-400 text-sm">Notice: Insufficient Session Signals</h4>
+                      <p className="text-xs text-text-secondary max-w-md mx-auto">
+                        This session did not have enough captured notes or discussion topics to generate a reliable AI summary. SkillSwap does not fabricate transcripts.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* AI Executive Summary */}
+                      <div className="p-4 rounded-xl bg-surface-hover/60 border border-border/50">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
+                          <Cpu className="w-3.5 h-3.5" /> Executive Summary
+                        </h4>
+                        <p className="text-sm text-text-primary leading-relaxed">
+                          {sessionIntelligence?.summary || "Session completed successfully."}
+                        </p>
+                      </div>
+
+                      {/* Topics Discussed & Skills Covered */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5" /> Topics & Skills Covered
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(sessionIntelligence?.topics_covered || []).map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 rounded-lg text-xs font-medium bg-surface-hover text-text-primary border border-border"
+                            >
+                              {typeof t === "string" ? t : t.name || skill?.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 2-Column Takeaways: Learner vs Mentor */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl bg-surface-hover/40 border border-border/40 space-y-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5 text-blue-400">
+                            <BookOpen className="w-3.5 h-3.5" /> Learner Insights
+                          </h4>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {sessionIntelligence?.learner_notes_summary ||
+                              (sessionIntelligence?.key_takeaways?.length
+                                ? sessionIntelligence.key_takeaways.join("; ")
+                                : "Learner reviewed foundational concepts with mentor.")}
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-surface-hover/40 border border-border/40 space-y-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5 text-emerald-400">
+                            <Award className="w-3.5 h-3.5" /> Mentor Guidance
+                          </h4>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {sessionIntelligence?.mentor_notes_summary ||
+                              "Mentor provided architectural guidance and recommended practice exercises."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Recommended Next Steps */}
+                      {sessionIntelligence?.recommended_next_steps?.length > 0 && (
+                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/15 space-y-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                            <Lightbulb className="w-3.5 h-3.5" /> Recommended Next Steps
+                          </h4>
+                          <ul className="space-y-1.5">
+                            {sessionIntelligence.recommended_next_steps.map((step, idx) => (
+                              <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
+                                <span className="text-primary font-bold">•</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+
+            {/* PHASE 4: COLLABORATIVE NOTES & LEARNING CAPTURE (Active During Live or Pre-Session) */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-text-primary">
+                    {isMentor ? "Mentor Teaching Notes" : "Learner Notes & Questions"}
+                  </h3>
+                </div>
+                <span className="text-xs text-text-muted flex items-center gap-1">
+                  {isAutoSaving ? "Saving..." : "✓ Saved to cloud"}
+                </span>
+              </div>
+
+              {/* Note Category Tabs */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {(isMentor
+                  ? [
+                      { key: "concepts", label: "Concepts Taught" },
+                      { key: "resources", label: "Resources Shared" },
+                      { key: "struggles", label: "Struggles Observed" },
+                      { key: "next_steps", label: "Recommended Practice" },
+                    ]
+                  : [
+                      { key: "questions", label: "Questions Asked" },
+                      { key: "concepts", label: "Concepts Learned" },
+                      { key: "struggles", label: "Difficult Topics" },
+                      { key: "takeaways", label: "Key Takeaways" },
+                    ]
+                ).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveNotesTab(tab.key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      activeNotesTab === tab.key
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-surface-hover text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {tab.label} ({(myNote[tab.key] || []).length})
+                  </button>
+                ))}
+              </div>
+
+              {/* Note Items List */}
+              <div className="space-y-2 mb-4 min-h-[100px] max-h-[220px] overflow-y-auto">
+                {(myNote[activeNotesTab] || []).length === 0 ? (
+                  <div className="py-6 text-center text-xs text-text-muted">
+                    No items added under this category yet. Type below to record notes.
+                  </div>
+                ) : (
+                  (myNote[activeNotesTab] || []).map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-surface-hover/70 border border-border/50 text-xs text-text-primary group"
+                    >
+                      <span>{item}</span>
+                      <button
+                        onClick={() => handleRemoveNoteItem(activeNotesTab, index)}
+                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add Note Input */}
+              <form onSubmit={handleAddNoteItem} className="flex gap-2">
+                <input
+                  type="text"
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  placeholder={`Add a note under ${activeNotesTab}...`}
+                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+                />
+                <Button type="submit" size="sm" className="text-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                </Button>
+              </form>
+            </Card>
+
+            {/* PHASE 4: ACTION ITEMS & HOMEWORK TRACKER */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5 text-emerald-500" />
+                  <h3 className="font-bold text-text-primary">Action Items & Next Steps</h3>
+                </div>
+                <span className="text-xs text-text-muted">
+                  {sessionActionItems.filter((a) => a.status === "completed").length} / {sessionActionItems.length} completed
+                </span>
+              </div>
+
+              {/* Action Items List */}
+              <div className="space-y-2 mb-4">
+                {sessionActionItems.length === 0 ? (
+                  <p className="text-xs text-text-muted py-3 text-center">
+                    No action items created yet. Add practical tasks to reinforce your learning.
+                  </p>
+                ) : (
+                  sessionActionItems.map((item) => {
+                    const isDone = item.status === "completed";
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                          isDone
+                            ? "bg-green-500/5 border-green-500/20 text-text-muted"
+                            : "bg-surface-hover/70 border-border text-text-primary"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <button
+                            onClick={() =>
+                              toggleActionItemMutation.mutate({
+                                itemId: item.id,
+                                status: isDone ? "pending" : "completed",
+                              })
+                            }
+                            className="text-text-muted hover:text-primary transition-colors flex-shrink-0"
+                          >
+                            {isDone ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500 fill-green-500/20" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                          <div className="min-w-0">
+                            <p className={`text-xs font-medium ${isDone ? "line-through text-text-muted" : ""}`}>
+                              {item.title}
+                            </p>
+                            {item.description && (
+                              <p className="text-[11px] text-text-muted truncate">{item.description}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {item.source === "ai_extracted" && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
+                              AI
+                            </span>
+                          )}
+                          <button
+                            onClick={() => deleteActionItemMutation.mutate(item.id)}
+                            className="text-text-muted hover:text-red-400 transition-colors p-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Add Action Item Form */}
+              <form onSubmit={handleAddActionItem} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newActionItem}
+                  onChange={(e) => setNewActionItem(e.target.value)}
+                  placeholder="e.g. Build JWT auth example in FastAPI..."
+                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+                />
+                <Button type="submit" size="sm" className="text-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
+                </Button>
+              </form>
+            </Card>
+          </div>
+
+          {/* Right Column: Participant Profiles & Live Topics */}
+          <div className="space-y-6">
+            {/* Live Discussion Topics Card */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-text-primary">Discussion Topics</h3>
+                </div>
+                <span className="text-xs text-text-muted">{sessionTopics.length} tags</span>
+              </div>
+
+              {/* Topic Pills */}
+              <div className="flex flex-wrap gap-2 mb-4 min-h-[48px]">
+                {sessionTopics.length === 0 ? (
+                  <p className="text-xs text-text-muted py-2">Tag topics covered during your talk.</p>
+                ) : (
+                  sessionTopics.map((top) => (
+                    <span
+                      key={top.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20"
+                    >
+                      #{top.topic_name}
+                    </span>
+                  ))
+                )}
+              </div>
+
+              {/* Add Topic Form */}
+              <form onSubmit={handleAddTopic} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTopic}
+                  onChange={(e) => setNewTopic(e.target.value)}
+                  placeholder="Tag a topic (e.g. Redis)..."
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+                />
+                <Button type="submit" size="sm" className="text-xs">
+                  Tag
+                </Button>
+              </form>
+            </Card>
+
+            {/* Mentor Card */}
+            <Card className="p-6">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-4 flex items-center justify-between">
+                <span>Peer Mentor</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400">
+                  TEACHER
+                </span>
+              </div>
+
+              <div className="flex items-start gap-3.5 mb-4">
+                <Avatar
+                  src={mentor?.avatar_url}
+                  name={mentor?.name || "Mentor"}
+                  size="lg"
+                  className="border-2 border-primary/30"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-text-primary text-base truncate">
+                    {mentor?.name || "Mentor"}
+                  </h4>
+                  <p className="text-xs text-text-muted truncate">
+                    {mentor?.department ? `${mentor.department} • Year ${mentor.year || 1}` : "Peer Mentor"}
+                  </p>
+                  {mentor?.average_rating > 0 && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-amber-400 font-semibold">
+                      <Star className="w-3.5 h-3.5 fill-current" />
+                      <span>{mentor.average_rating.toFixed(1)} / 5.0</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {mentor?.bio && (
+                <p className="text-xs text-text-secondary line-clamp-3 bg-surface-hover/50 p-3 rounded-lg border border-border/40">
+                  "{mentor.bio}"
+                </p>
+              )}
+            </Card>
+
+            {/* Learner Card */}
+            <Card className="p-6">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-4 flex items-center justify-between">
+                <span>Peer Learner</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400">
+                  STUDENT
+                </span>
+              </div>
+
+              <div className="flex items-start gap-3.5">
+                <Avatar
+                  src={learner?.avatar_url}
+                  name={learner?.name || "Learner"}
+                  size="lg"
+                  className="border-2 border-blue-500/30"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-text-primary text-base truncate">
+                    {learner?.name || "Learner"}
+                  </h4>
+                  <p className="text-xs text-text-muted truncate">
+                    {learner?.department ? `${learner.department} • Year ${learner.year || 1}` : "Peer Student"}
                   </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+              </div>
+            </Card>
 
-      {/* Cancellation Confirmation Modal */}
-      <Modal
-        isOpen={isCancelModalOpen}
-        onClose={() => !cancelMutation.isPending && setIsCancelModalOpen(false)}
-        title="Cancel Mentoring Session"
-        size="sm"
-      >
-        <div className="space-y-4 text-left">
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Are you sure you want to cancel this session? The slot will be released back to the mentor's availability, and the learner's 5 Skill Coins will be refunded automatically.
-          </p>
-
-          <div className="flex justify-end gap-2.5 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCancelModalOpen(false)}
-              disabled={cancelMutation.isPending}
-              className="text-xs font-semibold"
-            >
-              Keep Session
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => cancelMutation.mutate()}
-              isLoading={cancelMutation.isPending}
-              className="bg-danger hover:bg-danger/90 text-white font-bold text-xs"
-            >
-              Confirm Cancellation
-            </Button>
+            {/* Existing Feedback Display */}
+            {sessionFeedbacks.length > 0 && (
+              <Card className="p-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-3 flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-amber-400 fill-current" /> Session Reviews ({sessionFeedbacks.length})
+                </h4>
+                <div className="space-y-3">
+                  {sessionFeedbacks.map((fb) => (
+                    <div key={fb.id} className="p-3 rounded-lg bg-surface-hover/60 border border-border/40 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-text-primary">
+                          {fb.reviewer?.name || "Peer"}
+                        </span>
+                        <div className="flex items-center text-amber-400 text-xs">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3 h-3 ${i < fb.rating ? "fill-current" : "text-gray-600"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {fb.comment && <p className="text-xs text-text-secondary italic">"{fb.comment}"</p>}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
         </div>
-      </Modal>
 
-      {/* Feedback Submission Modal */}
-      <Modal
-        isOpen={isFeedbackModalOpen}
-        onClose={() => !feedbackMutation.isPending && setIsFeedbackModalOpen(false)}
-        title="Leave Session Feedback"
-        size="md"
-      >
-        <form onSubmit={handleFeedbackSubmit} className="space-y-4 text-left">
-          {feedbackError && (
-            <div className="p-3 text-xs bg-danger/10 border border-danger/20 text-danger rounded-xl font-medium flex items-center gap-2">
-              <AlertCircle size={15} className="shrink-0" />
-              <span>{feedbackError}</span>
-            </div>
-          )}
-
-          {/* 1-5 Star Rating Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text-secondary">
-              Rating (1 to 5 Stars)
-            </label>
-            <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="p-1 text-amber-500 hover:scale-110 transition-transform cursor-pointer"
-                >
-                  <Star
-                    size={24}
-                    className={star <= rating ? "fill-amber-500 text-amber-500" : "text-border"}
-                  />
-                </button>
-              ))}
-              <span className="text-xs font-extrabold text-text ml-2">
-                {rating} / 5 Stars
-              </span>
-            </div>
-          </div>
-
-          {/* Comment Box */}
-          <div className="space-y-1.5">
-            <label htmlFor="feedback-comment" className="text-xs font-bold text-text-secondary">
-              Feedback & Discussion Notes
-            </label>
-            <textarea
-              id="feedback-comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="What did you learn? What was helpful during the session? (Max 500 characters)"
-              rows={4}
-              maxLength={500}
-              disabled={feedbackMutation.isPending}
-              className="w-full p-3.5 text-xs rounded-xl border border-border bg-bg text-text focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent leading-relaxed"
-            />
-            <p className="text-[10px] text-text-muted text-right">
-              {comment.length} / 500 characters
+        {/* Feedback Modal */}
+        <Modal
+          isOpen={isFeedbackModalOpen}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          title="Rate Your Peer Learning Session"
+        >
+          <div className="space-y-5">
+            <p className="text-sm text-text-secondary">
+              How was your session with {isMentor ? learner?.name : mentor?.name}? Your feedback builds community trust.
             </p>
-          </div>
 
-          <div className="flex justify-end gap-2.5 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsFeedbackModalOpen(false)}
-              disabled={feedbackMutation.isPending}
-              className="text-xs font-semibold"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              isLoading={feedbackMutation.isPending}
-              className="font-bold text-xs shadow-glow bg-accent"
-            >
-              Submit Feedback
-            </Button>
+            {feedbackError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                {feedbackError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase">
+                Rating (1 - 5 Stars)
+              </label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    className="p-1.5 transition-transform hover:scale-110 focus:outline-none"
+                  >
+                    <Star
+                      className={`w-8 h-8 ${
+                        star <= rating ? "text-amber-400 fill-current" : "text-gray-600 hover:text-amber-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-2 uppercase">
+                Comments & Observations
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="What did you learn? How helpful was your peer partner?"
+                rows={4}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface-hover border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setIsFeedbackModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() =>
+                  feedbackMutation.mutate({
+                    session_id: sessionId,
+                    rating: parseFloat(rating),
+                    comment: comment.trim() || undefined,
+                  })
+                }
+                loading={feedbackMutation.isPending}
+                className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+              >
+                Submit Feedback
+              </Button>
+            </div>
           </div>
-        </form>
-      </Modal>
+        </Modal>
+
+        {/* Cancel Confirmation Modal */}
+        <Modal
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          title="Cancel Peer Session?"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Are you sure you want to cancel this booking? If you are the learner, your 5 coins will be refunded immediately and the mentor's calendar slot will be released.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
+                Keep Session
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => cancelMutation.mutate()}
+                loading={cancelMutation.isPending}
+              >
+                Confirm Cancellation
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      </div>
     </PageTransition>
   );
 }

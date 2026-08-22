@@ -4,6 +4,7 @@ import { Sparkles, BarChart2, BookOpen, Map, UserCheck, Wrench } from "lucide-re
 interface SuggestedPromptsProps {
   onSelectPrompt: (prompt: string) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = [
@@ -15,9 +16,9 @@ const DEFAULT_SUGGESTIONS = [
   { label: "What to learn next?", icon: Sparkles, prompt: "Based on my learning profile, what topic should I learn next?" },
 ];
 
-export default function SuggestedPrompts({ onSelectPrompt, disabled }: SuggestedPromptsProps) {
+export default function SuggestedPrompts({ onSelectPrompt, disabled, compact = false }: SuggestedPromptsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={`flex ${compact ? "flex-nowrap overflow-x-auto py-0.5 gap-2 items-center w-full no-scrollbar" : "flex-wrap gap-2"}`}>
       {DEFAULT_SUGGESTIONS.map((item, i) => {
         const Icon = item.icon;
         return (
@@ -26,9 +27,11 @@ export default function SuggestedPrompts({ onSelectPrompt, disabled }: Suggested
             type="button"
             disabled={disabled}
             onClick={() => onSelectPrompt(item.prompt)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 hover:bg-accent/5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 hover:bg-accent/5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 shadow-2xs ${
+              compact ? "text-[11px] py-1 px-2.5" : "text-xs py-1.5 px-3"
+            }`}
           >
-            <Icon className="w-3.5 h-3.5 text-accent" />
+            <Icon className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>{item.label}</span>
           </button>
         );

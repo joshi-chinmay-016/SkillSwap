@@ -50,7 +50,7 @@ export default function MentorResponseCard({
       )}
 
       {/* Markdown Body */}
-      <div className="text-sm text-text prose prose-sm max-w-none prose-headings:text-text prose-headings:font-bold prose-p:text-text prose-p:leading-relaxed prose-li:text-text prose-strong:text-text prose-ul:text-text prose-ol:text-text">
+      <div className="text-sm sm:text-[15px] text-text prose prose-sm sm:prose-base max-w-none prose-headings:text-text prose-headings:font-bold prose-p:text-text prose-p:leading-relaxed prose-li:text-text prose-strong:text-text prose-ul:text-text prose-ol:text-text">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

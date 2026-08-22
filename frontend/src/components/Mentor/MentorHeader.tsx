@@ -1,10 +1,7 @@
-// src/components/Mentor/MentorHeader.tsx
-
 import React from "react";
 import { Link } from "react-router-dom";
-import { Bot, Sparkles, Layers, Menu, Lock, Brain } from "lucide-react";
+import { Bot, Sparkles, Layers, Menu, Lock, Brain, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { MentorConversation } from "../../types/mentor";
-
 
 interface MentorHeaderProps {
   conversation?: MentorConversation | null;
@@ -14,6 +11,7 @@ interface MentorHeaderProps {
   onToggleAiMode?: (mode: "general" | "knowledge") => void;
   onToggleSidebar?: () => void;
   onToggleProfileSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export default function MentorHeader({
@@ -24,19 +22,29 @@ export default function MentorHeader({
   onToggleAiMode,
   onToggleSidebar,
   onToggleProfileSidebar,
+  isSidebarCollapsed = false,
 }: MentorHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-3 p-3.5 bg-bg border-b border-border shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Mobile Sidebar Toggle Button */}
+    <div className="flex items-center justify-between gap-3 p-3 sm:px-4 bg-bg border-b border-border shrink-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        {/* Sidebar Toggle Button (Desktop & Mobile) */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-xl border border-border text-text-secondary hover:text-text hover:bg-bg-alt cursor-pointer"
-            title="Toggle Conversations"
+            className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs flex items-center justify-center group shrink-0 ${
+              isSidebarCollapsed
+                ? "bg-accent/10 border-accent/30 text-accent hover:bg-accent/20"
+                : "bg-bg-alt/60 hover:bg-bg border-border text-text-secondary hover:text-text"
+            }`}
+            title={isSidebarCollapsed ? "Show Chat History" : "Hide Chat History"}
+            aria-label="Toggle chat history sidebar"
           >
-            <Menu className="w-4 h-4" />
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-accent group-hover:scale-105 transition-transform" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-text-secondary group-hover:text-accent transition-colors" />
+            )}
           </button>
         )}
 

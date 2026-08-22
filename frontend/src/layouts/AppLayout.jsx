@@ -553,18 +553,26 @@ export default function AppLayout() {
 
         {/* Main Content Area */}
         <main
-          className={`flex-1 overflow-y-auto bg-bg-alt/40 transition-colors duration-200 ${
-            isMentorWorkspace ? "p-2 sm:p-4" : "p-4 sm:p-6 md:p-8"
+          className={`flex-1 transition-colors duration-200 ${
+            isMentorWorkspace
+              ? "p-1.5 sm:p-2.5 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-bg-alt/20"
+              : "overflow-y-auto bg-bg-alt/40 flex flex-col min-h-0"
           }`}
         >
-          <div className={`${isMentorWorkspace ? "w-full h-full" : "max-w-7xl mx-auto pb-10"}`}>
-            <Outlet />
-          </div>
+          {isMentorWorkspace ? (
+            <div className="w-full h-full flex flex-col min-h-0">
+              <Outlet />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-full justify-between">
+              <div className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto pb-10">
+                <Outlet />
+              </div>
+              <Footer />
+            </div>
+          )}
         </main>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

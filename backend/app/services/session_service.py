@@ -657,6 +657,13 @@ def complete_session(
 
     invalidate_mentor_availability_cache(session.mentor_id)
 
+    # Automatically generate grounded AI session intelligence from captured notes/topics
+    try:
+        from app.services.session_intelligence_service import generate_session_intelligence
+        generate_session_intelligence(db, session.id, current_user_id)
+    except Exception as e:
+        logger.warning(f"Could not auto-generate session intelligence on completion: {e}")
+
     log_structured_event(
         "session_completed",
         session_id=session.id,

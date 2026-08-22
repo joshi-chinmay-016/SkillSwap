@@ -112,3 +112,55 @@ export const archiveSession = async (sessionId) => {
   const res = await api.patch(`/sessions/${sessionId}/archive`);
   return res.data;
 };
+
+// Phase 4: Session Intelligence & Learning Capture APIs
+export const saveSessionNotes = async (sessionId, notesData) => {
+  const res = await api.post(`/sessions/${sessionId}/notes`, notesData);
+  return res.data;
+};
+
+export const getSessionNotes = async (sessionId) => {
+  const res = await api.get(`/sessions/${sessionId}/notes`);
+  return res.data;
+};
+
+export const addSessionTopic = async (sessionId, topicData) => {
+  const res = await api.post(`/sessions/${sessionId}/topics`, topicData);
+  return res.data;
+};
+
+export const getSessionTopics = async (sessionId) => {
+  const res = await api.get(`/sessions/${sessionId}/topics`);
+  return res.data;
+};
+
+export const createSessionActionItem = async (sessionId, itemData) => {
+  const res = await api.post(`/sessions/${sessionId}/action-items`, itemData);
+  return res.data;
+};
+
+export const getSessionActionItems = async (sessionId) => {
+  const res = await api.get(`/sessions/${sessionId}/action-items`);
+  return res.data;
+};
+
+export const updateSessionActionItem = async (sessionId, itemId, updateData) => {
+  const res = await api.patch(`/sessions/${sessionId}/action-items/${itemId}`, updateData);
+  return res.data;
+};
+
+export const deleteSessionActionItem = async (sessionId, itemId) => {
+  const res = await api.delete(`/sessions/${sessionId}/action-items/${itemId}`);
+  return res.data;
+};
+
+export const generateSessionIntelligence = async (sessionId) => {
+  const res = await api.post(`/sessions/${sessionId}/intelligence/generate`);
+  return res.data;
+};
+
+export const getSessionIntelligence = async (sessionId) => {
+  const res = await api.get(`/sessions/${sessionId}/intelligence`);
+  return res.data;
+};
+

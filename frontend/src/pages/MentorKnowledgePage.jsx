@@ -23,9 +23,9 @@ export default function MentorKnowledgePage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-6.5rem)]">
+    <div className="flex flex-col h-full w-full min-h-0">
       {/* Outer Card Container */}
-      <div className="flex-1 flex flex-col bg-bg border border-border rounded-2xl shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col bg-bg border border-border rounded-2xl shadow-xs overflow-hidden min-h-0">
         {/* Mentor Workspace Navigation Bar */}
         <MentorNavTabs />
 
