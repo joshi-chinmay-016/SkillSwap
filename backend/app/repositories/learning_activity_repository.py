@@ -1,8 +1,29 @@
+from datetime import datetime, date, timedelta, timezone as dt_timezone
+import zoneinfo
+from collections import Counter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.learning_activity import LearningActivity
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+
+
+def get_safe_timezone(timezone_str: Optional[str] = None):
+    """
+    Safely resolves a timezone object. Never crashes on invalid names,
+    empty strings, non-string inputs (e.g. '[object Object]'), or Windows tzdata issues.
+    Defaults cleanly to UTC (datetime.timezone.utc).
+    """
+    if not timezone_str or not isinstance(timezone_str, str) or timezone_str.strip() in ("", "UTC", "Etc/UTC", "[object Object]"):
+        return dt_timezone.utc
+    cleaned = timezone_str.strip()
+    try:
+        return zoneinfo.ZoneInfo(cleaned)
+    except Exception:
+        try:
+            import pytz
+            return pytz.timezone(cleaned)
+        except Exception:
+            return dt_timezone.utc
 
 
 def create_learning_activity(
@@ -11,14 +32,21 @@ def create_learning_activity(
     activity_type: str,
     entity_type: str,
     entity_id: int,
-    activity_data: Optional[dict] = None
+    activity_data: Optional[dict] = None,
+    created_at: Optional[datetime] = None
 ) -> LearningActivity:
+    if created_at is None:
+        created_at = datetime.now(dt_timezone.utc)
+    elif created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=dt_timezone.utc)
+
     activity = LearningActivity(
         user_id=user_id,
         activity_type=activity_type,
         entity_type=entity_type,
         entity_id=entity_id,
-        activity_data=activity_data
+        activity_data=activity_data,
+        created_at=created_at
     )
     db.add(activity)
     db.flush()
@@ -43,7 +71,7 @@ def get_user_activities(
 
     activities = (
         query
-        .order_by(LearningActivity.created_at.desc(), LearningActivity.id.desc())
+        .order_by(LearningActivity.created_at.desc())
         .offset((page - 1) * size)
         .limit(size)
         .all()
@@ -54,54 +82,71 @@ def get_user_activities(
 
 def get_user_heatmap_data(
     db: Session,
-    user_id: int
+    user_id: int,
+    timezone_str: str = "UTC"
 ) -> List[dict]:
-    date_col = func.date(LearningActivity.created_at)
-    results = (
-        db.query(
-            date_col.label("date"),
-            func.count().label("count")
-        )
+    """
+    Retrieves user-scoped daily activity counts aggregated in the user's localized timezone.
+    Strictly queries LearningActivity for user_id == user_id.
+    """
+    user_tz = get_safe_timezone(timezone_str)
+
+    activities = (
+        db.query(LearningActivity.created_at)
         .filter(LearningActivity.user_id == user_id)
-        .group_by(date_col)
-        .order_by(date_col.asc())
+        .order_by(LearningActivity.created_at.asc())
         .all()
     )
 
+    if not activities:
+        return []
+
+    day_counts = Counter()
+    for row in activities:
+        dt = row.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=dt_timezone.utc)
+        local_dt = dt.astimezone(user_tz)
+        date_str = local_dt.strftime("%Y-%m-%d")
+        day_counts[date_str] += 1
+
+    sorted_dates = sorted(day_counts.keys())
     return [
         {
-            "date": str(row.date),
-            "count": int(row.count)
+            "date": d,
+            "count": day_counts[d]
         }
-        for row in results
+        for d in sorted_dates
     ]
 
 
 def get_user_distinct_activity_dates(
     db: Session,
-    user_id: int
+    user_id: int,
+    timezone_str: str = "UTC"
 ) -> List[date]:
     """
-    Retrieves distinct activity dates for the given user ordered chronologically ascending.
+    Retrieves distinct activity dates for the given user ordered chronologically ascending in target timezone.
     """
-    date_col = func.date(LearningActivity.created_at)
-    results = (
-        db.query(date_col.label("date"))
+    user_tz = get_safe_timezone(timezone_str)
+
+    activities = (
+        db.query(LearningActivity.created_at)
         .filter(LearningActivity.user_id == user_id)
-        .group_by(date_col)
-        .order_by(date_col.asc())
+        .order_by(LearningActivity.created_at.asc())
         .all()
     )
 
     distinct_dates = []
-    for row in results:
-        d = row.date
-        if isinstance(d, str):
-            d = datetime.strptime(d, "%Y-%m-%d").date()
-        elif isinstance(d, datetime):
-            d = d.date()
-        if d and d not in distinct_dates:
-            distinct_dates.append(d)
+    seen = set()
+    for row in activities:
+        dt = row.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=dt_timezone.utc)
+        local_date = dt.astimezone(user_tz).date()
+        if local_date not in seen:
+            seen.add(local_date)
+            distinct_dates.append(local_date)
 
     return distinct_dates
 

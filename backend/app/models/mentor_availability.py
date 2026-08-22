@@ -2,6 +2,7 @@ from sqlalchemy import (
     ForeignKey,
     String,
     Time,
+    Date,
     Boolean,
     DateTime,
     Index
@@ -13,7 +14,8 @@ from sqlalchemy.orm import (
     relationship
 )
 
-from datetime import time, datetime
+from datetime import time, datetime, date
+from typing import Optional
 
 from app.models.base import Base
 
@@ -31,8 +33,16 @@ class MentorAvailability(Base):
         index=True
     )
 
+    # Day of week (e.g. "Monday", "Tuesday", etc.) - auto-derived if specific_date is provided
     day_of_week: Mapped[str] = mapped_column(
         String(20),
+        index=True
+    )
+
+    # Optional specific calendar date (NULL for recurring weekly schedule)
+    specific_date: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
         index=True
     )
 
@@ -80,4 +90,8 @@ class MentorAvailability(Base):
             "idx_mentor_availability_lookup",
             "mentor_id", "day_of_week", "is_active"
         ),
-    )
+        Index(
+            "idx_mentor_avail_date_lookup",
+            "mentor_id", "specific_date", "is_active"
+        ),
+    )

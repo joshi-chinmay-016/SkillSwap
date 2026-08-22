@@ -6,14 +6,15 @@ from app.ai.schemas.roadmap import (
 def build_roadmap_prompt(
     request: RoadmapRequest
 ) -> str:
+    skills_str = ", ".join(request.current_skills) if request.current_skills else "Beginner (no previous skills listed)"
 
     return f"""
-You are an expert software engineering mentor.
+You are an expert technical mentor.
 
-Generate a personalized learning roadmap.
+Generate a comprehensive, actionable learning roadmap.
 
 Current Skills:
-{", ".join(request.current_skills)}
+{skills_str}
 
 Target Role:
 {request.target_role}
@@ -25,65 +26,31 @@ Duration:
 {request.duration_months} months
 
 Requirements:
+1. Divide the roadmap week by week ({request.duration_months * 4} weeks total).
+2. Every week MUST have:
+   - "week": integer week number
+   - "topic": concise subject matter
+   - "goal": clear learning objective for the week
+   - "tasks": list of 2-3 specific hands-on tasks, each with "title", "description", and optional "resources" (list of URLs or search queries)
+3. Focus heavily on practical projects and building real applications.
+4. Return ONLY valid JSON following the schema below. No markdown backticks, no explanations.
 
-1. Divide the roadmap week by week.
-
-2. Every week should have
-
-- week
-- topic
-- goal
-
-3. Focus on practical learning.
-
-4. Include projects whenever appropriate.
-
-5. Return ONLY valid JSON.
-
-6. Do not repeat topics.
-
-7. Keep the roadmap realistic for the specified duration.
-
-8. Prefer hands-on learning over theory.
-
-9. Ensure each week builds naturally on the previous one.
-
-Use this schema exactly:
-
-The response MUST strictly follow this schema:
-
+Schema:
 {{
-  "title": "...",
+  "title": "{request.target_role} Learning Roadmap",
   "weeks": [
-      {{
-          "week": 1,
-          "topic": "...",
-          "goal": "...",
-          "tasks": [
-              {{
-                  "title": "...",
-                  "description": "...",
-                  "resources": []
-              }},
-              // additional tasks
-          ]
-      }}
+    {{
+      "week": 1,
+      "topic": "Fundamentals",
+      "goal": "Master core concepts",
+      "tasks": [
+        {{
+          "title": "Set up development environment",
+          "description": "Install required tools and build a hello-world project.",
+          "resources": []
+        }}
+      ]
+    }}
   ]
 }}
-
-The JSON must be parseable using Python's json.loads().
-
-Do not include explanations.
-
-Do not include markdown.
-
-Do not include comments.
-
-Do not wrap the JSON inside triple backticks.
-
-Do not add markdown.
-
-Do not wrap inside ```.
-
-Return JSON only.
 """

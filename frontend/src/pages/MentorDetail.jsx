@@ -91,14 +91,16 @@ export default function MentorDetail() {
 
   // Booking Mutation
   const bookSessionMutation = useMutation({
-    mutationFn: async (payload) => {
-      const res = await api.post("/sessions", payload);
+    mutationFn: async ({ payload, idempotencyKey }) => {
+      const headers = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {};
+      const res = await api.post("/sessions", payload, { headers });
       return res.data;
     },
     onSuccess: () => {
       setBookingSuccess(true);
-      queryClient.invalidateQueries(["upcomingSessions"]);
-      queryClient.invalidateQueries(["mentorBookableSlots", mentorId, selectedDate]);
+      queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["mentorBookableSlots", mentorId, selectedDate] });
       setTimeout(() => {
         setIsBookModalOpen(false);
         setBookingSuccess(false);
@@ -113,9 +115,9 @@ export default function MentorDetail() {
         setBookingError("⚠️ This slot was just booked by another learner. Please select another time.");
         refetchSlots();
       } else if (status === 429) {
-        setBookingError("⚠️ Rate limit reached. You can only make 10 booking requests per minute.");
+        setBookingError("⚠️ Too many requests. Please try again shortly.");
       } else {
-        setBookingError(msg || "Booking failed. Please ensure you have sufficient Skill Coins (5 required).");
+        setBookingError(msg || "We couldn't complete the booking. Your booking was not confirmed.");
       }
     },
   });
@@ -150,15 +152,16 @@ export default function MentorDetail() {
       return;
     }
 
-    const roomName = `skillswap-${mentorId}-${Date.now().toString().slice(-6)}`;
-    const meetingLink = `https://meet.jit.si/${roomName}`;
+    const idempotencyKey = `book-${mentorId}-${selectedSlot.slot_start}-${Date.now()}`;
 
     bookSessionMutation.mutate({
-      mentor_id: mentorId,
-      skill_id: parseInt(selectedSkillId),
-      scheduled_at: selectedSlot.slot_start,
-      duration_minutes: selectedSlot.duration_minutes || 60,
-      meeting_link: meetingLink,
+      payload: {
+        mentor_id: mentorId,
+        skill_id: parseInt(selectedSkillId),
+        scheduled_at: selectedSlot.slot_start,
+        duration_minutes: selectedSlot.duration_minutes || 60,
+      },
+      idempotencyKey,
     });
   };
 

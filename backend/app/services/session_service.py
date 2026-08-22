@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, time
+import uuid
+from datetime import datetime, timedelta, time, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
@@ -25,6 +26,7 @@ from app.services.notification_service import create_user_notification
 from app.services.wallet_service import debit_wallet, credit_wallet
 from app.core.logging import log_structured_event
 from app.core.websocket_manager import manager
+from app.core.distributed_lock import distributed_booking_lock
 
 logger = logging.getLogger("skillswap.sessions")
 
@@ -43,7 +45,6 @@ def _enrich_session(db: Session, session: SessionModel) -> SessionModel:
 def _enrich_sessions_list(db: Session, sessions: list[SessionModel]) -> list[SessionModel]:
     if not sessions:
         return []
-    # Collect unique user & skill IDs to optimize lookups
     user_ids = {s.mentor_id for s in sessions} | {s.requester_id for s in sessions}
     skill_ids = {s.skill_id for s in sessions}
 
@@ -67,10 +68,19 @@ def schedule_session(
     meeting_link: str | None = None
 ) -> SessionModel:
     """
-    Authoritative, concurrency-safe session scheduling in PostgreSQL.
-    Enforces row locks, future timestamps, strict availability windows,
-    conflict detection, wallet coin deduction, persistent notifications,
-    and Redis cache invalidation.
+    Authoritative, concurrency-safe session scheduling.
+    Flow:
+      1. Validation (self-booking, future date, duration bounds).
+      2. Distributed Redis Lock per mentor slot.
+      3. PostgreSQL transaction with row locks.
+      4. Authoritative mentor availability check.
+      5. Authoritative conflict check (mentor & learner).
+      6. Atomic wallet debit (5 coins).
+      7. Persistent meeting room generation.
+      8. Persist session & notification in PostgreSQL.
+      9. Release Redis lock on exit.
+      10. Invalidate Redis availability cache.
+      11. Broadcast real-time WebSocket event to mentor.
     """
     log_structured_event(
         "booking_attempt",
@@ -88,8 +98,8 @@ def schedule_session(
             detail="You cannot book a mentoring session with yourself."
         )
 
-    # 2. Validation: Future time check
-    now_utc = datetime.utcnow()
+    # 2. Validation: Future time check (timezone-safe)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     naive_scheduled_at = scheduled_at.replace(tzinfo=None) if scheduled_at.tzinfo is not None else scheduled_at
     if naive_scheduled_at <= now_utc:
         raise HTTPException(
@@ -103,156 +113,179 @@ def schedule_session(
             detail="Invalid session duration. Must be between 15 and 180 minutes."
         )
 
-    # 3. Enter safe database transaction & lock mentor and requester rows
-    try:
-        # SQLite does not support SELECT FOR UPDATE, so we guard against dialect
-        if db.bind and db.bind.dialect.name == "postgresql":
-            db.query(User).filter(User.id == mentor_id).with_for_update().first()
-            db.query(User).filter(User.id == requester_id).with_for_update().first()
+    session_end_dt = naive_scheduled_at + timedelta(minutes=duration_minutes)
 
-        # Verify mentor exists
-        mentor = db.query(User).filter(User.id == mentor_id).first()
-        if not mentor:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Selected mentor does not exist."
+    # 3. Enter Distributed Lock and PostgreSQL Transaction
+    with distributed_booking_lock(mentor_id, naive_scheduled_at, session_end_dt):
+        try:
+            # SQLite does not support SELECT FOR UPDATE, guard by dialect
+            if db.bind and db.bind.dialect.name == "postgresql":
+                db.query(User).filter(User.id == mentor_id).with_for_update().first()
+                db.query(User).filter(User.id == requester_id).with_for_update().first()
+
+            # Verify mentor exists
+            mentor = db.query(User).filter(User.id == mentor_id).first()
+            if not mentor:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Selected mentor does not exist."
+                )
+
+            # Verify skill exists
+            skill = db.query(Skill).filter(Skill.id == skill_id).first()
+            if not skill:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Selected skill does not exist."
+                )
+
+            # 4. Authoritative Availability Window Verification
+            target_date = naive_scheduled_at.date()
+            day_of_week = naive_scheduled_at.strftime("%A")
+            from app.repositories.availability_repository import get_availability_for_date_or_day
+            availability_windows = get_availability_for_date_or_day(db, mentor_id, target_date, day_of_week, active_only=True)
+
+            if not availability_windows:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Mentor has not configured availability for {target_date} ({day_of_week})."
+                )
+
+            session_start_time = naive_scheduled_at.time()
+            session_end_time = session_end_dt.time()
+
+            fits_in_window = False
+            for window in availability_windows:
+                if session_start_time >= window.start_time and session_end_time <= window.end_time:
+                    fits_in_window = True
+                    break
+
+            if not fits_in_window:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Requested time falls outside the mentor's active availability hours."
+                )
+
+            # 5. Authoritative Conflict Check: Mentor double-booking check
+            conflicting_mentor = find_conflicting_mentor_session(
+                db,
+                mentor_id,
+                naive_scheduled_at,
+                duration_minutes
+            )
+            if conflicting_mentor:
+                log_structured_event(
+                    "booking_conflict",
+                    requester_id=requester_id,
+                    mentor_id=mentor_id,
+                    scheduled_at=naive_scheduled_at,
+                    reason="mentor_slot_occupied"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This slot was just booked by another learner. Please choose another time."
+                )
+
+            # 6. Authoritative Conflict Check: Requester overlapping session check
+            conflicting_requester = find_conflicting_requester_session(
+                db,
+                requester_id,
+                naive_scheduled_at,
+                duration_minutes
+            )
+            if conflicting_requester:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="You already have an active session scheduled during this time slot."
+                )
+
+            # 7. Wallet Deduction (Atomic within booking transaction)
+            debit_wallet(
+                db,
+                requester_id,
+                5,
+                f"Session Booking with {mentor.name}"
             )
 
-        # Verify skill exists
-        skill = db.query(Skill).filter(Skill.id == skill_id).first()
-        if not skill:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Selected skill does not exist."
+            # 8. Stable meeting room ID and link generation
+            room_id = f"skillswap-room-{mentor_id}-{requester_id}-{uuid.uuid4().hex[:8]}"
+            if not meeting_link:
+                meeting_link = f"https://meet.jit.si/{room_id}"
+
+            # 9. Create Session
+            new_session = SessionModel(
+                requester_id=requester_id,
+                mentor_id=mentor_id,
+                skill_id=skill_id,
+                scheduled_at=naive_scheduled_at,
+                duration_minutes=duration_minutes,
+                meeting_room_id=room_id,
+                meeting_link=meeting_link,
+                status="scheduled"
+            )
+            db.add(new_session)
+            db.flush()
+
+            # 10. Create Persistent Notification for Mentor
+            requester = db.query(User).filter(User.id == requester_id).first()
+            learner_name = requester.name if requester else f"Learner #{requester_id}"
+            formatted_dt = naive_scheduled_at.strftime("%a, %b %d at %I:%M %p")
+
+            create_user_notification(
+                db=db,
+                user_id=mentor_id,
+                title="New Session Booked 📌",
+                message=f"{learner_name} booked a {skill.name} session with you for {formatted_dt}.",
+                type="SESSION_BOOKED",
+                related_session_id=new_session.id
             )
 
-        # 4. Authoritative Availability Window Verification
-        day_of_week = naive_scheduled_at.strftime("%A")
-        availability_windows = get_availability_for_day(db, mentor_id, day_of_week, active_only=True)
+            # Record learning activity for requester
+            try:
+                from app.repositories.learning_activity_repository import create_learning_activity
+                create_learning_activity(
+                    db=db,
+                    user_id=requester_id,
+                    activity_type="session_booked",
+                    entity_type="session",
+                    entity_id=new_session.id,
+                    activity_data={
+                        "title": f"Booked Mentoring: {skill.name} with {mentor.name}",
+                        "skill_name": skill.name,
+                        "mentor_name": mentor.name,
+                        "scheduled_at": naive_scheduled_at.isoformat()
+                    }
+                )
+            except Exception:
+                pass
 
-        if not availability_windows:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Mentor has not configured availability for {day_of_week}s."
-            )
+            # Commit everything atomically
+            db.commit()
+            db.refresh(new_session)
 
-        session_start_time = naive_scheduled_at.time()
-        session_end_dt = naive_scheduled_at + timedelta(minutes=duration_minutes)
-        session_end_time = session_end_dt.time()
-
-        # Check if session fits entirely inside at least one active window
-        fits_in_window = False
-        for window in availability_windows:
-            if session_start_time >= window.start_time and session_end_time <= window.end_time:
-                fits_in_window = True
-                break
-
-        if not fits_in_window:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Requested time falls outside the mentor's active availability hours."
-            )
-
-        # 5. Authoritative Conflict Check: Mentor double-booking check
-        conflicting_mentor = find_conflicting_mentor_session(
-            db,
-            mentor_id,
-            naive_scheduled_at,
-            duration_minutes
-        )
-        if conflicting_mentor:
+        except IntegrityError as ie:
+            db.rollback()
             log_structured_event(
                 "booking_conflict",
                 requester_id=requester_id,
                 mentor_id=mentor_id,
                 scheduled_at=naive_scheduled_at,
-                reason="mentor_slot_occupied"
+                reason="db_unique_constraint_violation"
             )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="This slot was just booked by another learner. Please choose another time."
             )
-
-        # 6. Authoritative Conflict Check: Requester overlapping session check
-        conflicting_requester = find_conflicting_requester_session(
-            db,
-            requester_id,
-            naive_scheduled_at,
-            duration_minutes
-        )
-        if conflicting_requester:
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Unexpected error scheduling session: {e}", exc_info=True)
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have an active session scheduled during this time slot."
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An error occurred while booking the session. Please try again."
             )
-
-        # 7. Wallet Deduction (Atomic within booking transaction)
-        debit_wallet(
-            db,
-            requester_id,
-            5,
-            f"Session Booking with {mentor.name}"
-        )
-
-        # 8. Meeting link generation
-        if not meeting_link:
-            room_id = f"skillswap-{mentor_id}-{requester_id}-{int(naive_scheduled_at.timestamp())}"
-            meeting_link = f"https://meet.jit.si/{room_id}"
-
-        # 9. Create Session
-        new_session = SessionModel(
-            requester_id=requester_id,
-            mentor_id=mentor_id,
-            skill_id=skill_id,
-            scheduled_at=naive_scheduled_at,
-            duration_minutes=duration_minutes,
-            meeting_link=meeting_link,
-            status="scheduled"
-        )
-        db.add(new_session)
-        db.flush()
-
-        # 10. Create Persistent Notification for Mentor
-        requester = db.query(User).filter(User.id == requester_id).first()
-        learner_name = requester.name if requester else f"Learner #{requester_id}"
-        formatted_dt = naive_scheduled_at.strftime("%a, %b %d at %I:%M %p")
-
-        create_user_notification(
-            db=db,
-            user_id=mentor_id,
-            title="New Session Booked 📌",
-            message=f"{learner_name} booked a {skill.name} session with you for {formatted_dt}.",
-            type="SESSION_BOOKED",
-            related_session_id=new_session.id
-        )
-
-        # Commit everything atomically
-        db.commit()
-        db.refresh(new_session)
-
-    except IntegrityError as ie:
-        db.rollback()
-        log_structured_event(
-            "booking_conflict",
-            requester_id=requester_id,
-            mentor_id=mentor_id,
-            scheduled_at=naive_scheduled_at,
-            reason="db_unique_constraint_violation"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This slot was just booked by another learner. Please choose another time."
-        )
-    except HTTPException:
-        db.rollback()
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error scheduling session: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while booking the session. Please try again."
-        )
 
     # 11. Invalidate Redis Availability Cache
     invalidate_mentor_availability_cache(mentor_id)
@@ -268,25 +301,54 @@ def schedule_session(
         duration_minutes=new_session.duration_minutes
     )
 
-    # 13. Async WebSocket Notification delivery if online
+    # 13. Async WebSocket Notification delivery to mentor
     try:
         loop = asyncio.get_running_loop()
         loop.create_task(
             manager.send_notification_payload(
                 mentor_id,
                 {
-                    "type": "SESSION_BOOKED",
+                    "type": "BOOKING_CREATED",
                     "session_id": new_session.id,
+                    "learner_id": requester_id,
+                    "learner_name": learner_name,
+                    "skill_name": skill.name,
+                    "scheduled_at": new_session.scheduled_at.isoformat(),
                     "message": f"New session booked by {learner_name} for {formatted_dt}"
                 }
             )
         )
     except RuntimeError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Could not dispatch real-time ws event: {e}")
 
     return _enrich_session(db, new_session)
+
+
+def get_session_by_id_authorized(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> SessionModel:
+    """
+    Authoritatively fetches a session by ID and verifies participation.
+    Returns 404 if not found, 403 if user is not a participant.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this session."
+        )
+
+    return _enrich_session(db, session)
 
 
 def my_sessions(
@@ -348,7 +410,7 @@ def cancel_session(
 
     session.status = "cancelled"
 
-    # Refund coins to requester if cancelled by mentor or advance cancellation
+    # Refund coins to requester if cancelled
     try:
         credit_wallet(
             db,
@@ -388,6 +450,25 @@ def cancel_session(
         requester_id=session.requester_id
     )
 
+    # Real-time WebSocket event
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            manager.send_notification_payload(
+                recipient_id,
+                {
+                    "type": "BOOKING_CANCELLED",
+                    "session_id": session.id,
+                    "cancelled_by": current_user_id,
+                    "message": f"Session was cancelled by {cancelled_by_role}."
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
     return _enrich_session(db, session)
 
 
@@ -410,7 +491,7 @@ def complete_session(
             detail="You are not authorized to complete this session."
         )
 
-    if session.status != "scheduled":
+    if session.status not in ("scheduled", "in_progress"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot complete a session that is already {session.status}."
@@ -423,6 +504,42 @@ def complete_session(
         db,
         session.mentor_id
     )
+
+    # Record learning activity for learner & mentor
+    try:
+        from app.services.learning_activity_service import record_learning_activity
+        from app.models.skill import Skill
+        skill_obj = db.query(Skill).filter(Skill.id == session.skill_id).first() if session.skill_id else None
+        skill_name = skill_obj.name if skill_obj else "Peer Mentoring"
+
+        record_learning_activity(
+            db,
+            user_id=session.requester_id,
+            activity_type="session_completed",
+            entity_type="session",
+            entity_id=session.id,
+            activity_data={
+                "session_id": session.id,
+                "title": f"Mentoring Session ({skill_name})",
+                "skill_name": skill_name,
+                "role": "learner"
+            }
+        )
+        record_learning_activity(
+            db,
+            user_id=session.mentor_id,
+            activity_type="session_completed",
+            entity_type="session",
+            entity_id=session.id,
+            activity_data={
+                "session_id": session.id,
+                "title": f"Peer Teaching Session ({skill_name})",
+                "skill_name": skill_name,
+                "role": "mentor"
+            }
+        )
+    except Exception as e:
+        logger.warning(f"Failed to record learning activities for completed session {session.id}: {e}")
 
     # Notify participants
     create_user_notification(
@@ -447,6 +564,25 @@ def complete_session(
         requester_id=session.requester_id
     )
 
+    # Real-time WebSocket event
+    try:
+        loop = asyncio.get_running_loop()
+        other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user,
+                {
+                    "type": "SESSION_COMPLETED",
+                    "session_id": session.id,
+                    "message": "Session has been marked completed."
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
     return _enrich_session(db, session)
 
 
@@ -458,4 +594,4 @@ def session_dashboard(
         "upcoming_sessions": count_sessions_by_status(db, user_id, "scheduled"),
         "completed_sessions": count_sessions_by_status(db, user_id, "completed"),
         "cancelled_sessions": count_sessions_by_status(db, user_id, "cancelled")
-    }
+    }

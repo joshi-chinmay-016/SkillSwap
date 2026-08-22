@@ -223,15 +223,33 @@ class Settings(BaseSettings):
 
     # Textual overlap threshold (Jaccard similarity 0.0 - 1.0) above which redundant chunks are reduced
     # ----------------------------
-    # Booking & Availability Infrastructure (Phase 1)
+    # Booking, Redis & Coordination Infrastructure (Phase 1 & 2)
     # ----------------------------
 
-    BOOKING_RATE_LIMIT: int = 10
-    BOOKING_RATE_WINDOW_SECONDS: int = 60
-    AVAILABILITY_CACHE_TTL_SECONDS: int = 120
+    REDIS_URL: str = ""
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+
+    RATE_LIMIT_ENABLED: bool = True
+    BOOKING_RATE_LIMIT: int = 10
+    BOOKING_RATE_WINDOW_SECONDS: int = 60
+    AUTH_RATE_LIMIT: int = 20
+    AUTH_RATE_WINDOW_SECONDS: int = 60
+    WS_RATE_LIMIT: int = 30
+    WS_RATE_WINDOW_SECONDS: int = 60
+    ACTION_RATE_LIMIT: int = 30
+    ACTION_RATE_WINDOW_SECONDS: int = 60
+
+    IDEMPOTENCY_ENABLED: bool = True
+    IDEMPOTENCY_TTL_SECONDS: int = 300
+
+    DISTRIBUTED_LOCK_ENABLED: bool = True
+    DISTRIBUTED_LOCK_TTL_SECONDS: int = 10
+    DISTRIBUTED_LOCK_TIMEOUT_SECONDS: float = 2.0
+
+    AVAILABILITY_CACHE_TTL_SECONDS: int = 120
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

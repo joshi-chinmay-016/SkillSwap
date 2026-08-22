@@ -21,8 +21,16 @@ import api from "../services/api";
  *
  * @returns {Promise<HeatmapResponse>} Resolves with the heatmap response object.
  */
-export const fetchHeatmap = async () => {
-  const response = await api.get("/activities/heatmap");
+export const fetchHeatmap = async (timezoneOrContext) => {
+  const tz =
+    typeof timezoneOrContext === "string" && timezoneOrContext
+      ? timezoneOrContext
+      : typeof Intl !== "undefined" && Intl.DateTimeFormat
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "UTC";
+  const response = await api.get("/activities/heatmap", {
+    params: { timezone: tz },
+  });
   return response.data;
 };
 

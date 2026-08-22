@@ -143,6 +143,29 @@ def evaluate_and_submit_assessment(
         verified_at=verified_at
     )
 
+    # 5. Record Real Learning Activity for Dashboard & Streak
+    try:
+        from app.repositories.learning_activity_repository import create_learning_activity
+        skill_obj = get_skill_by_id(db, skill_id)
+        skill_name = skill_obj.name if skill_obj else "Skill Assessment"
+        create_learning_activity(
+            db=db,
+            user_id=user_id,
+            activity_type="skill_verified" if passed else "skill_assessment",
+            entity_type="assessment",
+            entity_id=saved_result.id,
+            activity_data={
+                "title": f"{'Verified' if passed else 'Evaluated'}: {skill_name} ({score}%)",
+                "skill_name": skill_name,
+                "score": score,
+                "passed": passed,
+                "total_questions": total_questions,
+                "correct_answers": correct_answers,
+            }
+        )
+    except Exception as e:
+        pass
+
     return {
         "assessment_id": saved_result.id,
         "user_id": user_id,

@@ -14,6 +14,11 @@ export const createAvailability = async (payload) => {
   return res.data;
 };
 
+export const createAllTimeAvailability = async (payload = {}) => {
+  const res = await api.post("/availability/all-time", payload);
+  return res.data;
+};
+
 export const deleteAvailability = async (slotId) => {
   const res = await api.delete(`/availability/${slotId}`);
   return res.data;

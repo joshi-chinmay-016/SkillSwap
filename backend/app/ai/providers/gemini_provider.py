@@ -54,17 +54,26 @@ class GeminiProvider:
         else:
             self.client = None
 
+    def _resolve_model_name(self) -> str:
+        model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+        model = model.removeprefix("models/").strip()
+        if model in ("gemini-pro", "gemini-1.0-pro"):
+            return "gemini-2.5-flash"
+        return model or "gemini-2.5-flash"
+
     def generate_text(
         self,
         prompt: str,
         system_instruction: str | None = None,
         temperature: float = 0.7,
     ) -> str:
+        model_name = self._resolve_model_name()
+
         # Strategy 1: google.generativeai SDK (Most stable on Windows)
         if GENERATIVEAI_SDK and genai_legacy:
             try:
                 model = genai_legacy.GenerativeModel(
-                    model_name=settings.GEMINI_MODEL,
+                    model_name=model_name,
                     system_instruction=system_instruction,
                 )
                 response = model.generate_content(
@@ -84,7 +93,7 @@ class GeminiProvider:
                     system_instruction=system_instruction,
                 )
                 response = self.client.models.generate_content(
-                    model=settings.GEMINI_MODEL,
+                    model=model_name,
                     contents=prompt,
                     config=config,
                 )
@@ -105,8 +114,7 @@ class GeminiProvider:
         if not settings.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY is not configured in settings.")
 
-        # Clean model name (ensure no duplicate 'models/' prefix)
-        model_name = settings.GEMINI_MODEL.removeprefix("models/")
+        model_name = self._resolve_model_name()
 
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"

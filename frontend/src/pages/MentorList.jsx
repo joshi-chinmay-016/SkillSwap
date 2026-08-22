@@ -27,7 +27,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import SkillGapLoadingScreen from "../components/skill-gap/SkillGapLoadingScreen";
 
 export default function MentorList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -247,7 +246,13 @@ export default function MentorList() {
           </h2>
         </div>
 
-        {isLoading && <SkillGapLoadingScreen isOpen={true} onCancel={() => refetch()} />}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-64 bg-border/40 animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        )}
 
         {isError ? (
           <ErrorState

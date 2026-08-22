@@ -24,3 +24,4 @@ export { default as Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 export { default as Toast, useToast } from "./Toast";
 export { default as Skeleton, SkeletonCard, SkeletonAvatar, SkeletonTable } from "./Skeleton";
 export { default as SearchBar } from "./SearchBar";
+export { default as AILoadingScreen } from "./AILoadingScreen";

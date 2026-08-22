@@ -308,10 +308,10 @@ export default function Dashboard() {
 
                     <div className="flex items-center gap-2">
                       <Link
-                        to={`/learning-sessions/${session.id}`}
+                        to={`/sessions/${session.id}`}
                         className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-surface-elevated hover:bg-bg-alt border border-border transition-colors text-text"
                       >
-                        Session Room
+                        Session Details
                       </Link>
                       {session.meeting_link && (
                         <a
@@ -536,24 +536,40 @@ export default function Dashboard() {
                 {activityData.activities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-center gap-3 p-2.5 bg-bg border border-border rounded-xl text-left"
+                    className="flex items-center gap-3 p-2.5 bg-bg border border-border rounded-xl text-left hover:border-accent/40 transition-colors"
                   >
-                    <span className="text-sm shrink-0">
+                    <span className="text-base shrink-0">
                       {activity.activity_type === "task_completed"
                         ? "✅"
                         : activity.activity_type === "milestone_completed"
                         ? "🏆"
+                        : activity.activity_type === "session_completed"
+                        ? "🤝"
                         : "🎯"}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-xs text-text truncate">
-                        {activity.activity_type === "task_completed"
-                          ? "Task Completed"
-                          : activity.activity_type === "milestone_completed"
-                          ? "Milestone Achieved"
-                          : "Learning Action"}
+                        {activity.activity_data?.task_title ||
+                          activity.activity_data?.title ||
+                          (activity.activity_type === "task_completed"
+                            ? "Task Completed"
+                            : activity.activity_type === "milestone_completed"
+                            ? "Milestone Achieved"
+                            : activity.activity_type === "session_completed"
+                            ? "Session Completed"
+                            : "Learning Action")}
                       </p>
-                      <p className="text-[10px] text-text-secondary mt-0.5">
+                      <p className="text-[10px] text-text-secondary mt-0.5 truncate">
+                        {activity.activity_data?.journey_title ||
+                          activity.activity_data?.milestone_topic ||
+                          (activity.activity_type === "task_completed"
+                            ? "Roadmap task completed"
+                            : activity.activity_type === "milestone_completed"
+                            ? "Weekly milestone reached"
+                            : activity.activity_type === "session_completed"
+                            ? "Peer mentoring session"
+                            : "Learning action")}{" "}
+                        •{" "}
                         {new Date(activity.created_at).toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",

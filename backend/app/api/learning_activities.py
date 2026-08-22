@@ -68,11 +68,12 @@ def get_my_activities(
     response_model=HeatmapResponse
 )
 def get_heatmap(
+    timezone: Optional[str] = Query(default="UTC"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     try:
-        return get_user_activity_heatmap(db, current_user.id)
+        return get_user_activity_heatmap(db, current_user.id, timezone_str=timezone or "UTC")
     except SQLAlchemyError as e:
         logger.error(f"Database error while generating heatmap for user_id={current_user.id}: {str(e)}", exc_info=True)
         raise HTTPException(

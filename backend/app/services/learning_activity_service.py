@@ -1,7 +1,7 @@
 import logging
 import time
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 from typing import Optional, Dict, Any, List
 logger = logging.getLogger(__name__)
 from app.repositories.learning_activity_repository import (
@@ -174,13 +174,29 @@ from typing import Optional, Dict, Any, List
 
 
 
+def invalidate_user_learning_cache(user_id: int):
+    """
+    Invalidates all Redis-cached analytics, heatmaps, and streak records for the user.
+    Scoped strictly by user_id to prevent cross-user interference.
+    """
+    try:
+        from app.core.redis import redis_client
+        redis_client.delete_pattern(f"*:user:{user_id}*")
+        redis_client.delete_pattern(f"heatmap:user:{user_id}:*")
+        redis_client.delete_pattern(f"streak:user:{user_id}*")
+        redis_client.delete_pattern(f"analytics:user:{user_id}:*")
+    except Exception as e:
+        logger.debug(f"Redis cache invalidation for user {user_id} skipped: {e}")
+
+
 def record_learning_activity(
     db: Session,
     user_id: int,
     activity_type: str,
     entity_type: str,
     entity_id: int,
-    activity_data: Optional[dict] = None
+    activity_data: Optional[dict] = None,
+    created_at: Optional[datetime] = None
 ):
     activity = create_learning_activity(
         db,
@@ -188,15 +204,18 @@ def record_learning_activity(
         activity_type,
         entity_type,
         entity_id,
-        activity_data
+        activity_data,
+        created_at=created_at
     )
+    # Invalidate user-scoped cache immediately
+    invalidate_user_learning_cache(user_id)
+
     try:
         from app.services.achievement_engine import evaluate_user_achievements
         evaluate_user_achievements(db, user_id)
     except Exception as e:
         logger.error(f"Achievement evaluation failed after activity creation for user_id={user_id}: {str(e)}")
     return activity
-
 
 
 def get_user_activity_history(
@@ -217,16 +236,17 @@ def get_user_activity_history(
 
 def get_user_activity_heatmap(
     db: Session,
-    user_id: int
+    user_id: int,
+    timezone_str: str = "UTC"
 ) -> HeatmapResponse:
     """
-    Computes aggregated learning activity heatmap DTO for an authenticated user.
-    Reads pre-aggregated SQL daily counts without modifying data.
+    Computes aggregated learning activity heatmap DTO for an authenticated user in their timezone.
+    Derives real data from persisted LearningActivity records.
     Logs authenticated user ID, execution time, number of active days, and total activities.
     """
     start_time = time.perf_counter()
 
-    raw_data = get_user_heatmap_data(db, user_id)
+    raw_data = get_user_heatmap_data(db, user_id, timezone_str=timezone_str)
 
     if not raw_data:
         execution_time_ms = (time.perf_counter() - start_time) * 1000

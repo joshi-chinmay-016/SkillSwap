@@ -11,7 +11,7 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column
 )
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.base import Base
 
@@ -54,6 +54,7 @@ class LearningActivity(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         server_default=sa.func.now(),
         nullable=False
     )

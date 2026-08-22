@@ -126,6 +126,9 @@ def rag_query(
     The answer is grounded in the user's own indexed documents.
     Source metadata is backend-controlled and traceable to retrieved chunks.
     """
+    from app.core.rate_limiter import enforce_action_rate_limit
+    enforce_action_rate_limit("rag_query", current_user.id, limit=20, window_seconds=60)
+
     try:
         service = RAGService.create()
         result = service.query(

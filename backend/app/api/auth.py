@@ -1,7 +1,8 @@
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException
+    HTTPException,
+    Request
 )
 from app.dependencies.current_user import (
     get_current_user
@@ -22,6 +23,7 @@ from app.services.auth_service import (
 )
 
 from app.core.database import get_db
+from app.core.rate_limiter import enforce_auth_rate_limit, get_client_ip
 
 router = APIRouter(
     prefix="/auth",
@@ -35,11 +37,13 @@ router = APIRouter(
 )
 def register(
     request: RegisterRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
+    client_ip = get_client_ip(http_request)
+    enforce_auth_rate_limit(f"{client_ip}:{request.email}")
 
     try:
-
         register_user(
             db,
             request.name,
@@ -53,7 +57,6 @@ def register(
         )
 
     except ValueError as e:
-
         raise HTTPException(
             status_code=400,
             detail=str(e)
@@ -66,11 +69,13 @@ def register(
 )
 def login(
     request: LoginRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
+    client_ip = get_client_ip(http_request)
+    enforce_auth_rate_limit(f"{client_ip}:{request.email}")
 
     try:
-
         token = login_user(
             db,
             request.email,
@@ -83,7 +88,6 @@ def login(
         )
 
     except ValueError as e:
-
         raise HTTPException(
             status_code=401,
             detail=str(e)
