@@ -31,5 +31,9 @@ from app.models.parsed_document import ParsedDocument, ParsedDocumentStatus
 from app.models.chunk import Chunk, ChunkStatus
 from app.models.embedding import Embedding, EmbeddingStatus
 from app.models.assessment import AssessmentQuestion, SkillAssessmentResult
+from app.models.session_note import SessionNote
+from app.models.session_topic import SessionTopic
+from app.models.session_action_item import SessionActionItem
+from app.models.session_intelligence import SessionIntelligence
 
 

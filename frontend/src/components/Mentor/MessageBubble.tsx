@@ -29,20 +29,20 @@ export default function MessageBubble({ message, onTopicClick, onRetryMessage }:
 
   if (message.isError) {
     return (
-      <div className="flex gap-3 justify-start items-start">
-        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-danger/10 border border-danger/20 text-danger flex items-center justify-center shadow-xs">
-          <AlertTriangle className="w-4 h-4" />
+      <div className="flex gap-3 justify-start items-start w-full">
+        <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-danger/10 border border-danger/20 text-danger flex items-center justify-center shadow-xs">
+          <AlertTriangle className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </div>
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-3 bg-danger/10 border border-danger/20 text-danger text-xs space-y-2">
+        <div className="max-w-[90%] sm:max-w-[80%] rounded-2xl rounded-tl-sm px-4 py-3 bg-danger/10 border border-danger/20 text-danger text-xs sm:text-sm space-y-2">
           <p className="font-semibold">Response Error</p>
           <p>{message.content}</p>
           {onRetryMessage && message.id && (
             <button
               type="button"
               onClick={() => onRetryMessage(message.id)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-danger hover:underline cursor-pointer pt-1"
+              className="flex items-center gap-1 text-xs font-semibold text-danger hover:underline cursor-pointer pt-1"
             >
-              <RefreshCw className="w-3 h-3" /> Retry Generation
+              <RefreshCw className="w-3.5 h-3.5" /> Retry Generation
             </button>
           )}
         </div>
@@ -51,25 +51,25 @@ export default function MessageBubble({ message, onTopicClick, onRetryMessage }:
   }
 
   return (
-    <div className={`flex gap-3 items-start ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex gap-3 items-start w-full ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center shadow-xs">
-          <Bot className="w-4 h-4" />
+        <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center shadow-xs mt-0.5">
+          <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       )}
 
       <div
-        className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-3 shadow-xs ${
+        className={`shadow-xs transition-all ${
           isUser
-            ? "bg-accent text-white rounded-tr-sm"
-            : "bg-bg border border-border rounded-tl-sm"
+            ? "max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-3 bg-accent text-white"
+            : "w-full max-w-[96%] sm:max-w-[94%] lg:max-w-[92%] rounded-2xl rounded-tl-sm px-4 sm:px-6 py-4 bg-bg border border-border"
         }`}
       >
         {isUser ? (
           <div>
-            <p className="text-xs leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
             {timeLabel && (
-              <span className="block text-[10px] text-white/70 text-right mt-1 font-mono">
+              <span className="block text-[10px] text-white/70 text-right mt-1.5 font-mono">
                 {timeLabel}
               </span>
             )}
@@ -87,7 +87,7 @@ export default function MessageBubble({ message, onTopicClick, onRetryMessage }:
               onTopicClick={onTopicClick}
             />
             {timeLabel && (
-              <span className="block text-[10px] text-text-secondary text-right mt-2 font-mono">
+              <span className="block text-[10px] sm:text-[11px] text-text-secondary text-right mt-2 font-mono">
                 {timeLabel}
               </span>
             )}
@@ -96,8 +96,8 @@ export default function MessageBubble({ message, onTopicClick, onRetryMessage }:
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center shadow-xs font-bold text-xs">
-          <User className="w-4 h-4" />
+        <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-accent text-white flex items-center justify-center shadow-xs font-bold text-xs mt-0.5">
+          <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </div>
       )}
     </div>

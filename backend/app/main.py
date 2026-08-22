@@ -151,6 +151,10 @@ from app.api.verification import (
     router as verification_router
 )
 
+from app.api.session_intelligence import (
+    router as session_intelligence_router
+)
+
 
 # Optional RAG router — guarded to avoid import errors when RAG deps are missing
 try:
@@ -220,6 +224,7 @@ app.include_router(mentor_memory_router)
 app.include_router(document_router)
 app.include_router(retrieval_router)
 app.include_router(verification_router)
+app.include_router(session_intelligence_router)
 
 if rag_router:
     app.include_router(rag_router)

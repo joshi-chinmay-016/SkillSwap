@@ -108,10 +108,10 @@ function highlightCode(code: string, language: string = ""): React.ReactNode[] {
 
     return (
       <div key={lineIdx} className="table-row">
-        <span className="table-cell text-right pr-4 select-none text-[#484f58] font-mono text-[11px] w-8">
+        <span className="table-cell text-right pr-4 select-none text-[#484f58] font-mono text-xs sm:text-[13px] w-8">
           {lineIdx + 1}
         </span>
-        <span className="table-cell whitespace-pre font-mono text-xs leading-relaxed text-[#c9d1d9]">
+        <span className="table-cell whitespace-pre font-mono text-xs sm:text-[13.5px] leading-relaxed text-[#c9d1d9]">
           {lineElements}
         </span>
       </div>
@@ -136,10 +136,10 @@ export default function CodeBlock({ code, language = "code" }: CodeBlockProps) {
   );
 
   return (
-    <div className="my-4 rounded-xl overflow-hidden border border-[#30363d] bg-[#0d1117] shadow-lg text-[#c9d1d9] font-mono text-xs max-w-full">
+    <div className="my-3.5 rounded-xl overflow-hidden border border-[#30363d] bg-[#0d1117] shadow-md text-[#c9d1d9] font-mono text-xs sm:text-[13.5px] w-full">
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-[#30363d] text-xs">
-        <div className="flex items-center gap-2 text-[#8b949e] font-sans text-[11px] font-medium">
+        <div className="flex items-center gap-2 text-[#8b949e] font-sans text-[11px] sm:text-xs font-medium">
           <CodeIcon className="w-3.5 h-3.5 text-[#58a6ff]" />
           <span className="uppercase tracking-wider font-semibold text-[#c9d1d9]">
             {language || "CODE"}
@@ -167,7 +167,7 @@ export default function CodeBlock({ code, language = "code" }: CodeBlockProps) {
       </div>
 
       {/* Code Container */}
-      <div className="p-4 overflow-x-auto bg-[#0d1117] selection:bg-[#1f6feb] selection:text-white">
+      <div className="p-4 sm:p-5 overflow-x-auto bg-[#0d1117] selection:bg-[#1f6feb] selection:text-white">
         <div className="table w-full border-collapse">
           {highlightedLines}
         </div>

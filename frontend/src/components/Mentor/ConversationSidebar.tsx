@@ -1,7 +1,5 @@
-// src/components/Mentor/ConversationSidebar.tsx
-
 import React, { useState } from "react";
-import { Plus, MessageSquare, Search, Archive, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, MessageSquare, Search, Archive, AlertCircle, Loader2, PanelLeftClose } from "lucide-react";
 import ConversationItem from "./ConversationItem";
 import RenameConversationDialog from "./RenameConversationDialog";
 import DeleteConversationDialog from "./DeleteConversationDialog";
@@ -18,12 +16,14 @@ interface ConversationSidebarProps {
   activeConversationId: number | null;
   onSelectConversation: (id: number) => void;
   onNewChatCreated: (id: number) => void;
+  onCollapse?: () => void;
 }
 
 export default function ConversationSidebar({
   activeConversationId,
   onSelectConversation,
   onNewChatCreated,
+  onCollapse,
 }: ConversationSidebarProps) {
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,22 +79,35 @@ export default function ConversationSidebar({
   );
 
   return (
-    <div className="w-full lg:w-72 border-r border-border bg-bg-alt/40 flex flex-col h-full shrink-0">
+    <div className="w-full bg-bg-alt/40 flex flex-col h-full shrink-0 overflow-hidden">
       {/* Sidebar Header & New Chat Button */}
       <div className="p-3 border-b border-border space-y-2">
-        <button
-          type="button"
-          onClick={handleNewChat}
-          disabled={createMutation.isPending}
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-accent text-white font-semibold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
-        >
-          {createMutation.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Plus className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleNewChat}
+            disabled={createMutation.isPending}
+            className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-accent text-white font-semibold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+          >
+            {createMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            <span>New Chat</span>
+          </button>
+
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="p-2 rounded-xl border border-border bg-bg hover:bg-bg-alt text-text-secondary hover:text-text cursor-pointer transition-colors shadow-2xs shrink-0"
+              title="Collapse chat history"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
           )}
-          <span>New Chat</span>
-        </button>
+        </div>
 
         {/* Search input */}
         <div className="relative">

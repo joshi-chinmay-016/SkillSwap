@@ -106,6 +106,31 @@ class Session(Base):
         cascade="all, delete-orphan"
     )
 
+    notes = relationship(
+        "SessionNote",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+
+    topics = relationship(
+        "SessionTopic",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+
+    action_items = relationship(
+        "SessionActionItem",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+
+    intelligence = relationship(
+        "SessionIntelligence",
+        back_populates="session",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         Index(
             "idx_sessions_mentor_status_scheduled",
