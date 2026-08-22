@@ -108,6 +108,7 @@ export default function Profile() {
       refetchUserSkills();
       queryClient.invalidateQueries({ queryKey: ["userSkills"] });
       queryClient.invalidateQueries({ queryKey: ["skills"] });
+      queryClient.invalidateQueries({ queryKey: ["myRecommendations"] });
       setIsSkillsModalOpen(false);
       setNewSkillName("");
       setSelectedSkillId("");
@@ -126,6 +127,7 @@ export default function Profile() {
       refetchUserSkills();
       queryClient.invalidateQueries({ queryKey: ["userSkills"] });
       queryClient.invalidateQueries({ queryKey: ["skills"] });
+      queryClient.invalidateQueries({ queryKey: ["myRecommendations"] });
     },
     onError: (error) => {
       toast.error(error.response?.data?.detail || "Failed to remove skill", "Error");

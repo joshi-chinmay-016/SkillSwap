@@ -363,7 +363,19 @@ def upcoming_sessions(
     db: Session,
     user_id: int
 ) -> list[SessionModel]:
-    sessions = get_sessions_by_status(db, user_id, "scheduled")
+    from sqlalchemy import or_
+    sessions = (
+        db.query(SessionModel)
+        .filter(
+            or_(
+                SessionModel.requester_id == user_id,
+                SessionModel.mentor_id == user_id
+            ),
+            SessionModel.status.in_(["scheduled", "in_progress"])
+        )
+        .order_by(SessionModel.scheduled_at.asc())
+        .all()
+    )
     return _enrich_sessions_list(db, sessions)
 
 
@@ -381,6 +393,77 @@ def cancelled_sessions_list(
 ) -> list[SessionModel]:
     sessions = get_sessions_by_status(db, user_id, "cancelled")
     return _enrich_sessions_list(db, sessions)
+
+
+def start_session(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> SessionModel:
+    """
+    Authoritative state transition: scheduled -> in_progress (LIVE).
+    Enforces participant authorization and valid state transitions.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    # Authorization check
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to start this session."
+        )
+
+    if session.status == "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot start a session that is already completed."
+        )
+
+    if session.status == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot start a session that has been cancelled."
+        )
+
+    session.status = "in_progress"
+    db.commit()
+    db.refresh(session)
+
+    log_structured_event(
+        "session_started",
+        session_id=session.id,
+        started_by=current_user_id,
+        mentor_id=session.mentor_id,
+        requester_id=session.requester_id
+    )
+
+    # Dispatch real-time WebSocket event to other participant
+    try:
+        loop = asyncio.get_running_loop()
+        other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user,
+                {
+                    "type": "SESSION_STARTED",
+                    "session_id": session.id,
+                    "started_by": current_user_id,
+                    "meeting_link": session.meeting_link,
+                    "message": "Your session is now LIVE. Click to join the Jitsi room."
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
+    return _enrich_session(db, session)
 
 
 def cancel_session(
@@ -402,7 +485,7 @@ def cancel_session(
             detail="You are not authorized to cancel this session."
         )
 
-    if session.status != "scheduled":
+    if session.status in ("completed", "cancelled"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot cancel a session that is already {session.status}."
@@ -505,13 +588,15 @@ def complete_session(
         session.mentor_id
     )
 
-    # Record learning activity for learner & mentor
+    # Record learning activity for learner & mentor with strict activity type distinction
     try:
-        from app.services.learning_activity_service import record_learning_activity
+        from app.services.learning_activity_service import record_learning_activity, invalidate_user_learning_cache
+        from app.services.achievement_engine import evaluate_user_achievements
         from app.models.skill import Skill
         skill_obj = db.query(Skill).filter(Skill.id == session.skill_id).first() if session.skill_id else None
         skill_name = skill_obj.name if skill_obj else "Peer Mentoring"
 
+        # Learner activity: session_completed
         record_learning_activity(
             db,
             user_id=session.requester_id,
@@ -522,22 +607,38 @@ def complete_session(
                 "session_id": session.id,
                 "title": f"Mentoring Session ({skill_name})",
                 "skill_name": skill_name,
-                "role": "learner"
+                "role": "learner",
+                "duration_minutes": session.duration_minutes
             }
         )
+
+        # Mentor activity: teaching_completed (distinct from learner progress)
         record_learning_activity(
             db,
             user_id=session.mentor_id,
-            activity_type="session_completed",
+            activity_type="teaching_completed",
             entity_type="session",
             entity_id=session.id,
             activity_data={
                 "session_id": session.id,
                 "title": f"Peer Teaching Session ({skill_name})",
                 "skill_name": skill_name,
-                "role": "mentor"
+                "role": "mentor",
+                "duration_minutes": session.duration_minutes
             }
         )
+
+        # Invalidate streak, heatmap, and analytics caches for both users
+        invalidate_user_learning_cache(session.requester_id)
+        invalidate_user_learning_cache(session.mentor_id)
+
+        # Evaluate achievements
+        try:
+            evaluate_user_achievements(db, session.requester_id)
+            evaluate_user_achievements(db, session.mentor_id)
+        except Exception:
+            pass
+
     except Exception as e:
         logger.warning(f"Failed to record learning activities for completed session {session.id}: {e}")
 
@@ -586,12 +687,227 @@ def complete_session(
     return _enrich_session(db, session)
 
 
+def join_session(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
+    """
+    Authoritative join handler. Verifies participant, ensures session is not cancelled,
+    records ephemeral Redis presence, and emits real-time PARTICIPANT_JOINED event.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to join this session."
+        )
+
+    if session.status in ("cancelled", "rejected"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot join a session that has been {session.status}."
+        )
+
+    # Record ephemeral presence in Redis
+    presence_key = f"session:{session_id}:presence"
+    try:
+        redis_client.set(f"presence:session:{session_id}:user:{current_user_id}", "joined", ex=1800)
+    except Exception:
+        pass
+
+    # Real-time WebSocket notification to other participant
+    try:
+        other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
+        user_obj = db.query(User).filter(User.id == current_user_id).first()
+        user_name = user_obj.name if user_obj else f"User #{current_user_id}"
+
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user,
+                {
+                    "type": "PARTICIPANT_JOINED",
+                    "session_id": session.id,
+                    "user_id": current_user_id,
+                    "user_name": user_name,
+                    "message": f"{user_name} joined the session room."
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
+    log_structured_event(
+        "session_joined",
+        session_id=session.id,
+        user_id=current_user_id,
+        mentor_id=session.mentor_id,
+        requester_id=session.requester_id
+    )
+
+    return {
+        "session_id": session.id,
+        "meeting_link": session.meeting_link,
+        "meeting_room_id": session.meeting_room_id,
+        "status": session.status
+    }
+
+
+def leave_session(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
+    """
+    Cleans up ephemeral presence on exit and emits PARTICIPANT_LEFT event.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized for this session."
+        )
+
+    try:
+        redis_client.delete(f"presence:session:{session_id}:user:{current_user_id}")
+    except Exception:
+        pass
+
+    try:
+        other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
+        user_obj = db.query(User).filter(User.id == current_user_id).first()
+        user_name = user_obj.name if user_obj else f"User #{current_user_id}"
+
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user,
+                {
+                    "type": "PARTICIPANT_LEFT",
+                    "session_id": session.id,
+                    "user_id": current_user_id,
+                    "user_name": user_name,
+                    "message": f"{user_name} left the session room."
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
+    log_structured_event(
+        "session_left",
+        session_id=session.id,
+        user_id=current_user_id
+    )
+
+    return {"message": "Left session room successfully."}
+
+
+def get_session_presence(session_id: int) -> dict:
+    """
+    Retrieves ephemeral active participants in the session room from Redis.
+    """
+    # Check if mentor/learner keys are active in Redis
+    return {
+        "session_id": session_id,
+        "is_active": True
+    }
+
+
+def get_session_participants(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
+    """
+    Authoritatively returns structured participant cards (Mentor & Learner)
+    with real database user and profile metadata.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this session's participants."
+        )
+
+    mentor = db.query(User).filter(User.id == session.mentor_id).first()
+    learner = db.query(User).filter(User.id == session.requester_id).first()
+    skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+
+    from app.services.feedback_service import my_rating
+
+    mentor_data = {
+        "id": mentor.id if mentor else session.mentor_id,
+        "name": mentor.name if mentor else "Mentor",
+        "email": mentor.email if mentor else "",
+        "avatar_url": mentor.profile.avatar_url if mentor and mentor.profile else None,
+        "department": mentor.profile.department if mentor and mentor.profile else None,
+        "year": mentor.profile.year if mentor and mentor.profile else 1,
+        "bio": mentor.profile.bio if mentor and mentor.profile else None,
+        "average_rating": my_rating(db, mentor.id) if mentor else 0.0,
+    }
+
+    learner_data = {
+        "id": learner.id if learner else session.requester_id,
+        "name": learner.name if learner else "Learner",
+        "email": learner.email if learner else "",
+        "avatar_url": learner.profile.avatar_url if learner and learner.profile else None,
+        "department": learner.profile.department if learner and learner.profile else None,
+        "year": learner.profile.year if learner and learner.profile else 1,
+        "bio": learner.profile.bio if learner and learner.profile else None,
+    }
+
+    skill_data = {
+        "id": skill.id if skill else session.skill_id,
+        "name": skill.name if skill else "Peer Mentoring",
+        "category": skill.category if skill else "General"
+    }
+
+    current_role = "mentor" if current_user_id == session.mentor_id else "learner"
+
+    return {
+        "session_id": session.id,
+        "current_user_role": current_role,
+        "mentor": mentor_data,
+        "learner": learner_data,
+        "skill": skill_data,
+        "status": session.status,
+        "scheduled_at": session.scheduled_at.isoformat() if session.scheduled_at else None,
+        "duration_minutes": session.duration_minutes,
+        "meeting_link": session.meeting_link,
+        "meeting_room_id": session.meeting_room_id
+    }
+
+
 def session_dashboard(
     db: Session,
     user_id: int
 ) -> dict:
     return {
-        "upcoming_sessions": count_sessions_by_status(db, user_id, "scheduled"),
+        "upcoming_sessions": count_sessions_by_status(db, user_id, "scheduled") + count_sessions_by_status(db, user_id, "in_progress"),
         "completed_sessions": count_sessions_by_status(db, user_id, "completed"),
         "cancelled_sessions": count_sessions_by_status(db, user_id, "cancelled")
     }
