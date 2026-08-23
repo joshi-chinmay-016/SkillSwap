@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
@@ -11,6 +11,8 @@ import {
   joinPeerSession,
   leavePeerSession,
   getSessionPresence,
+  sendSessionHeartbeat,
+  getSessionTimeline,
   submitSessionFeedback,
   getSessionFeedbackList,
   saveSessionNotes,
@@ -61,6 +63,12 @@ import {
   FileText,
   RefreshCw,
   Cpu,
+  History,
+  Activity,
+  Wifi,
+  WifiOff,
+  Users,
+  Timer,
 } from "lucide-react";
 
 export default function SessionDetail() {
@@ -76,12 +84,18 @@ export default function SessionDetail() {
   const [comment, setComment] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
 
+  // Workspace View Tab: "collaborative", "timeline", "intelligence"
+  const [workspaceTab, setWorkspaceTab] = useState("collaborative");
+
   // Live notes capture state
   const [activeNotesTab, setActiveNotesTab] = useState("questions");
   const [noteInput, setNoteInput] = useState("");
   const [newTopic, setNewTopic] = useState("");
   const [newActionItem, setNewActionItem] = useState("");
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+
+  // Network connection state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // 1. Fetch Session Detail
   const {
@@ -106,7 +120,26 @@ export default function SessionDetail() {
     retry: false,
   });
 
-  // 3. Fetch Session Feedback if Completed
+  // 3. Ephemeral Real-Time Presence from Redis
+  const { data: presenceData } = useQuery({
+    queryKey: ["sessionPresence", sessionId],
+    queryFn: () => getSessionPresence(sessionId),
+    enabled: !isNaN(sessionId) && !!session && session.status !== "cancelled",
+    refetchInterval: 12000, // Ephemeral refresh every 12s
+  });
+
+  // 4. Session Timeline Query
+  const {
+    data: timelineData,
+    isLoading: timelineLoading,
+    refetch: refetchTimeline,
+  } = useQuery({
+    queryKey: ["sessionTimeline", sessionId],
+    queryFn: () => getSessionTimeline(sessionId),
+    enabled: !isNaN(sessionId) && !!session,
+  });
+
+  // 5. Fetch Session Feedback if Completed
   const {
     data: sessionFeedbacks = [],
     refetch: refetchFeedbacks,
@@ -116,7 +149,7 @@ export default function SessionDetail() {
     enabled: session?.status === "completed",
   });
 
-  // 4. Phase 4: Fetch Session Notes
+  // 6. Phase 4: Fetch Session Notes
   const {
     data: sessionNotes = [],
     refetch: refetchNotes,
@@ -126,7 +159,7 @@ export default function SessionDetail() {
     enabled: !isNaN(sessionId) && !!session,
   });
 
-  // 5. Phase 4: Fetch Session Topics
+  // 7. Phase 4: Fetch Session Topics
   const {
     data: sessionTopics = [],
     refetch: refetchTopics,
@@ -136,7 +169,7 @@ export default function SessionDetail() {
     enabled: !isNaN(sessionId) && !!session,
   });
 
-  // 6. Phase 4: Fetch Action Items
+  // 8. Phase 4: Fetch Action Items
   const {
     data: sessionActionItems = [],
     refetch: refetchActionItems,
@@ -146,7 +179,7 @@ export default function SessionDetail() {
     enabled: !isNaN(sessionId) && !!session,
   });
 
-  // 7. Phase 4: Fetch Session Intelligence (AI Summary & Post-Session Insights)
+  // 9. Phase 4: Fetch Session Intelligence (AI Summary & Post-Session Insights)
   const {
     data: sessionIntelligence,
     isLoading: intelLoading,
@@ -157,6 +190,51 @@ export default function SessionDetail() {
     enabled: session?.status === "completed",
     retry: false,
   });
+
+  // --- Real-time Presence Heartbeat & Leave Lifecycle ---
+  useEffect(() => {
+    if (isNaN(sessionId) || !session || session.status === "cancelled") return;
+
+    // Send initial join / heartbeat
+    sendSessionHeartbeat(sessionId).catch(() => {});
+
+    // Periodic heartbeat every 20s to refresh TTL
+    const heartbeatInterval = setInterval(() => {
+      sendSessionHeartbeat(sessionId).catch(() => {});
+    }, 20000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      leavePeerSession(sessionId).catch(() => {});
+    };
+  }, [sessionId, session?.status]);
+
+  // --- Network Reconnection & State Reconciliation ---
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("Network reconnected. Synchronizing session state...", "Online");
+      queryClient.invalidateQueries({ queryKey: ["sessionDetail", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionPresence", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionNotes", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTopics", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionActionItems", sessionId] });
+      sendSessionHeartbeat(sessionId).catch(() => {});
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning("Connection interrupted. Reconnecting when network returns...", "Offline ⚠️");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [sessionId, queryClient, toast]);
 
   // Determine current user's role
   const isMentor = participantsData?.current_user_role === "mentor";
@@ -178,6 +256,7 @@ export default function SessionDetail() {
     onSuccess: () => {
       toast.success("Session is now LIVE! 🚀", "Session Started");
       queryClient.invalidateQueries({ queryKey: ["sessionDetail", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
     },
     onError: (err) => {
@@ -190,7 +269,9 @@ export default function SessionDetail() {
     onSuccess: () => {
       toast.success("Session marked as COMPLETED! 🎉", "Session Completed");
       queryClient.invalidateQueries({ queryKey: ["sessionDetail", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["sessionIntelligence", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionPresence", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
       queryClient.invalidateQueries({ queryKey: ["completedSessions"] });
       queryClient.invalidateQueries({ queryKey: ["activities"] });
@@ -211,6 +292,8 @@ export default function SessionDetail() {
       setIsCancelModalOpen(false);
       toast.warning("Session has been cancelled and coins refunded.", "Session Cancelled");
       queryClient.invalidateQueries({ queryKey: ["sessionDetail", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionPresence", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
       queryClient.invalidateQueries({ queryKey: ["cancelledSessions"] });
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
@@ -227,6 +310,7 @@ export default function SessionDetail() {
       setComment("");
       toast.success("Thank you for submitting feedback! ⭐", "Feedback Recorded");
       refetchFeedbacks();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["mentorProfile"] });
     },
     onError: (err) => {
@@ -240,6 +324,7 @@ export default function SessionDetail() {
     onSuccess: () => {
       setIsAutoSaving(false);
       refetchNotes();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
     },
     onError: (err) => {
       setIsAutoSaving(false);
@@ -253,6 +338,7 @@ export default function SessionDetail() {
     onSuccess: () => {
       setNewTopic("");
       refetchTopics();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       toast.success("Discussion topic tagged!");
     },
     onError: (err) => {
@@ -266,6 +352,7 @@ export default function SessionDetail() {
     onSuccess: () => {
       setNewActionItem("");
       refetchActionItems();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       toast.success("Action item created!");
     },
     onError: (err) => {
@@ -277,6 +364,7 @@ export default function SessionDetail() {
     mutationFn: ({ itemId, status }) => updateSessionActionItem(sessionId, itemId, { status }),
     onSuccess: () => {
       refetchActionItems();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
     },
   });
 
@@ -284,6 +372,7 @@ export default function SessionDetail() {
     mutationFn: (itemId) => deleteSessionActionItem(sessionId, itemId),
     onSuccess: () => {
       refetchActionItems();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
       toast.info("Action item deleted.");
     },
   });
@@ -295,11 +384,24 @@ export default function SessionDetail() {
       toast.success("Session Intelligence updated! ✨", "Analysis Complete");
       refetchIntelligence();
       refetchActionItems();
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
     },
     onError: (err) => {
       toast.error(err.response?.data?.detail || "Intelligence generation failed.");
     },
   });
+
+  // Authoritative Jitsi Launcher
+  const handleLaunchJitsi = async () => {
+    try {
+      await joinPeerSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ["sessionPresence", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["sessionTimeline", sessionId] });
+    } catch (e) {
+      // Continue opening URL even if ephemeral join had an edge-case error
+    }
+    window.open(session.meeting_link, "_blank", "noopener,noreferrer");
+  };
 
   const handleAddNoteItem = (e) => {
     e.preventDefault();
@@ -368,6 +470,75 @@ export default function SessionDetail() {
     }
   };
 
+  // Render Room Presence Pill in Header
+  const renderRoomPresencePill = () => {
+    if (session?.status === "cancelled") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
+          <XCircle className="w-3.5 h-3.5" /> Room Inactive
+        </span>
+      );
+    }
+
+    if (presenceData?.both_present) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          Both in Workspace
+        </span>
+      );
+    }
+
+    if (presenceData?.mentor_present) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+          Mentor in Room
+        </span>
+      );
+    }
+
+    if (presenceData?.learner_present) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          Learner in Room
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-surface-hover text-text-muted border border-border">
+        <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+        Waiting for participants
+      </span>
+    );
+  };
+
+  // Helper for timeline icon
+  const getTimelineIcon = (type) => {
+    switch (type) {
+      case "session_booked":
+        return <Calendar className="w-4 h-4 text-primary" />;
+      case "session_started":
+        return <Play className="w-4 h-4 text-emerald-400" />;
+      case "topic_added":
+        return <Tag className="w-4 h-4 text-blue-400" />;
+      case "note_saved":
+        return <FileText className="w-4 h-4 text-amber-400" />;
+      case "action_item_created":
+        return <CheckSquare className="w-4 h-4 text-purple-400" />;
+      case "action_item_completed":
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      case "feedback_submitted":
+        return <Star className="w-4 h-4 text-amber-400 fill-current" />;
+      case "session_completed":
+        return <Award className="w-4 h-4 text-emerald-400" />;
+      default:
+        return <Activity className="w-4 h-4 text-text-secondary" />;
+    }
+  };
+
   if (sessionLoading || participantsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -402,10 +573,29 @@ export default function SessionDetail() {
   const isLive = session.status === "in_progress";
   const isCompleted = session.status === "completed";
   const isScheduled = session.status === "scheduled";
+  const isCancelled = session.status === "cancelled";
+
+  // Duration label calculation
+  const durationLabel = isLive
+    ? `~${session.actual_duration_minutes || 1} min (Live)`
+    : isCompleted
+    ? `${session.actual_duration_minutes || session.duration_minutes || 60} min actual`
+    : `${session.duration_minutes || 60} min scheduled`;
 
   return (
     <PageTransition>
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
+        {/* Offline Warning Banner */}
+        {!isOnline && (
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-400 animate-pulse">
+            <span className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4" />
+              Connection interrupted. SkillSwap will automatically reconnect and synchronize state.
+            </span>
+            <span className="font-mono">Reconnecting...</span>
+          </div>
+        )}
+
         {/* Top Navigation */}
         <div className="flex items-center justify-between">
           <button
@@ -415,6 +605,7 @@ export default function SessionDetail() {
             <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Sessions
           </button>
           <div className="flex items-center gap-3">
+            {renderRoomPresencePill()}
             {renderStatusBadge(session.status)}
             <span className="text-xs text-text-muted font-mono">ID: #{session.id}</span>
           </div>
@@ -428,8 +619,8 @@ export default function SessionDetail() {
                 <span className="px-3 py-1 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                   {skill?.name || "Peer Mentoring"}
                 </span>
-                <span className="text-xs text-text-muted font-medium">
-                  {session.duration_minutes || 60} min session
+                <span className="flex items-center gap-1 text-xs text-text-muted font-medium bg-surface/60 px-2.5 py-1 rounded-md border border-border/50">
+                  <Timer className="w-3.5 h-3.5 text-primary" /> {durationLabel}
                 </span>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
@@ -468,15 +659,13 @@ export default function SessionDetail() {
               )}
 
               {isLive && (
-                <a
-                  href={session.meeting_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/25 transition-all"
+                <Button
+                  onClick={handleLaunchJitsi}
+                  className="bg-primary text-white hover:bg-primary-hover font-bold shadow-lg shadow-primary/25"
                 >
-                  <Video className="w-4 h-4 mr-2" /> Open Jitsi Room
+                  <Video className="w-4 h-4 mr-2" /> Join Authoritative Jitsi Room
                   <ExternalLink className="w-3.5 h-3.5 ml-1.5 opacity-70" />
-                </a>
+                </Button>
               )}
 
               {(isLive || isScheduled) && (
@@ -512,10 +701,62 @@ export default function SessionDetail() {
           </div>
         </div>
 
+        {/* View Switcher Tabs (Collaborative Workspace / Timeline / Intelligence) */}
+        <div className="flex border-b border-border/60 gap-4">
+          <button
+            onClick={() => setWorkspaceTab("collaborative")}
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
+              workspaceTab === "collaborative"
+                ? "border-primary text-primary"
+                : "border-transparent text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <BookOpen className="w-4 h-4" /> Collaborative Learning
+          </button>
+          <button
+            onClick={() => setWorkspaceTab("timeline")}
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
+              workspaceTab === "timeline"
+                ? "border-primary text-primary"
+                : "border-transparent text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <History className="w-4 h-4" /> Session Timeline
+            {timelineData?.events?.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-surface-hover text-text-secondary border border-border">
+                {timelineData.events.length}
+              </span>
+            )}
+          </button>
+          {isCompleted && (
+            <button
+              onClick={() => setWorkspaceTab("intelligence")}
+              className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
+                workspaceTab === "intelligence"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" /> AI Intelligence Report
+            </button>
+          )}
+        </div>
+
         {/* 2-Column Workspace Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column (2 Cols on lg): Learning Capture / Post-Session Intelligence */}
+          {/* Left Column (2 Cols on lg) */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Cancelled Banner if session is cancelled */}
+            {isCancelled && (
+              <Card className="p-6 border-red-500/20 bg-red-500/5 text-center space-y-2">
+                <XCircle className="w-10 h-10 text-red-500 mx-auto" />
+                <h3 className="text-base font-bold text-text-primary">This session has been cancelled</h3>
+                <p className="text-xs text-text-secondary max-w-md mx-auto">
+                  This meeting is no longer active. Coins have been returned to the learner wallet and mentor calendar slots released.
+                </p>
+              </Card>
+            )}
+
             {/* Live Video Call Frame when Live */}
             {isLive && (
               <Card className="p-6 border-red-500/20 bg-gradient-to-b from-red-500/5 to-transparent">
@@ -525,37 +766,289 @@ export default function SessionDetail() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                     </span>
-                    <h3 className="font-bold text-text-primary">Live Jitsi Classroom</h3>
+                    <h3 className="font-bold text-text-primary">Live Jitsi Meeting Room</h3>
                   </div>
-                  <span className="text-xs text-text-muted">Room: {session.meeting_room_id}</span>
+                  <span className="text-xs text-text-muted font-mono">Room: {session.meeting_room_id}</span>
                 </div>
                 <div className="rounded-xl overflow-hidden bg-black/80 aspect-video flex flex-col items-center justify-center text-center p-6 border border-border/40">
                   <Video className="w-12 h-12 text-primary mb-3 animate-pulse" />
-                  <h4 className="text-lg font-semibold text-white mb-2">Video Classroom Active</h4>
+                  <h4 className="text-lg font-semibold text-white mb-2">Authoritative Video Meeting</h4>
                   <p className="text-sm text-gray-300 max-w-md mb-6">
-                    Connect directly with your peer in the secure Jitsi meeting room. Use the collaborative notes panel below to record questions, takeaways, and topics.
+                    Connect directly with your peer in the secure Jitsi meeting room. Use the collaborative notes and action item panel below to capture learning in real time.
                   </p>
-                  <a
-                    href={session.meeting_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-6 py-3 rounded-xl bg-primary text-white font-bold text-base hover:bg-primary-hover shadow-xl shadow-primary/30 transition-all transform hover:-translate-y-0.5"
+                  <Button
+                    onClick={handleLaunchJitsi}
+                    size="lg"
+                    className="bg-primary text-white hover:bg-primary-hover font-bold shadow-xl shadow-primary/30 transform hover:-translate-y-0.5"
                   >
-                    <Video className="w-5 h-5 mr-2" /> Launch Meeting Room
+                    <Video className="w-5 h-5 mr-2" /> Launch Jitsi Meeting
                     <ExternalLink className="w-4 h-4 ml-2 opacity-75" />
-                  </a>
+                  </Button>
                 </div>
               </Card>
             )}
 
-            {/* PHASE 4 POST-SESSION INTELLIGENCE (When Completed) */}
-            {isCompleted && (
+            {/* --- TAB 1: COLLABORATIVE LEARNING --- */}
+            {workspaceTab === "collaborative" && (
+              <div className="space-y-6">
+                {/* Notes Capture Panel */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold text-text-primary">
+                        {isMentor ? "Mentor Teaching Notes" : "Learner Notes & Questions"}
+                      </h3>
+                    </div>
+                    <span className="text-xs text-text-muted flex items-center gap-1">
+                      {isAutoSaving ? (
+                        <span className="text-amber-400 animate-pulse">Saving...</span>
+                      ) : (
+                        <span className="text-emerald-400">✓ Synchronized in real-time</span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Note Category Tabs */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {(isMentor
+                      ? [
+                          { key: "concepts", label: "Concepts Taught" },
+                          { key: "resources", label: "Resources Shared" },
+                          { key: "struggles", label: "Struggles Observed" },
+                          { key: "next_steps", label: "Recommended Practice" },
+                        ]
+                      : [
+                          { key: "questions", label: "Questions Asked" },
+                          { key: "concepts", label: "Concepts Learned" },
+                          { key: "struggles", label: "Difficult Topics" },
+                          { key: "takeaways", label: "Key Takeaways" },
+                        ]
+                    ).map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setActiveNotesTab(tab.key)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          activeNotesTab === tab.key
+                            ? "bg-primary text-white shadow-sm"
+                            : "bg-surface-hover text-text-secondary hover:text-text-primary"
+                        }`}
+                      >
+                        {tab.label} ({(myNote[tab.key] || []).length})
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Note Items List */}
+                  <div className="space-y-2 mb-4 min-h-[100px] max-h-[220px] overflow-y-auto">
+                    {(myNote[activeNotesTab] || []).length === 0 ? (
+                      <div className="py-6 text-center text-xs text-text-muted">
+                        Capture your first learning note or question under this category.
+                      </div>
+                    ) : (
+                      (myNote[activeNotesTab] || []).map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-surface-hover/70 border border-border/50 text-xs text-text-primary group"
+                        >
+                          <span>{item}</span>
+                          <button
+                            onClick={() => handleRemoveNoteItem(activeNotesTab, index)}
+                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity p-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Add Note Input */}
+                  <form onSubmit={handleAddNoteItem} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      placeholder={`Add a note under ${activeNotesTab}...`}
+                      className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+                    />
+                    <Button type="submit" size="sm" className="text-xs">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Note
+                    </Button>
+                  </form>
+                </Card>
+
+                {/* Action Items & Next Steps Tracker */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <CheckSquare className="w-5 h-5 text-emerald-500" />
+                      <h3 className="font-bold text-text-primary">Action Items & Next Steps</h3>
+                    </div>
+                    <span className="text-xs text-text-muted">
+                      {sessionActionItems.filter((a) => a.status === "completed").length} / {sessionActionItems.length} completed
+                    </span>
+                  </div>
+
+                  {/* Action Items List */}
+                  <div className="space-y-2 mb-4">
+                    {sessionActionItems.length === 0 ? (
+                      <p className="text-xs text-text-muted py-4 text-center">
+                        No action items created yet. Add practical tasks or homework to reinforce learning.
+                      </p>
+                    ) : (
+                      sessionActionItems.map((item) => {
+                        const isDone = item.status === "completed";
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                              isDone
+                                ? "bg-green-500/5 border-green-500/20 text-text-muted"
+                                : "bg-surface-hover/70 border-border text-text-primary"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <button
+                                onClick={() =>
+                                  toggleActionItemMutation.mutate({
+                                    itemId: item.id,
+                                    status: isDone ? "pending" : "completed",
+                                  })
+                                }
+                                className="text-text-muted hover:text-primary transition-colors flex-shrink-0"
+                              >
+                                {isDone ? (
+                                  <CheckCircle2 className="w-4 h-4 text-green-500 fill-green-500/20" />
+                                ) : (
+                                  <Square className="w-4 h-4" />
+                                )}
+                              </button>
+                              <div className="min-w-0">
+                                <p className={`text-xs font-medium ${isDone ? "line-through text-text-muted" : ""}`}>
+                                  {item.title}
+                                </p>
+                                {item.description && (
+                                  <p className="text-[11px] text-text-muted truncate">{item.description}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {item.source === "ai_extracted" && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
+                                  AI
+                                </span>
+                              )}
+                              <button
+                                onClick={() => deleteActionItemMutation.mutate(item.id)}
+                                className="text-text-muted hover:text-red-400 transition-colors p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Add Action Item Form */}
+                  <form onSubmit={handleAddActionItem} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newActionItem}
+                      onChange={(e) => setNewActionItem(e.target.value)}
+                      placeholder="e.g. Complete Redis caching exercises..."
+                      className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+                    />
+                    <Button type="submit" size="sm" className="text-xs">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
+                    </Button>
+                  </form>
+                </Card>
+              </div>
+            )}
+
+            {/* --- TAB 2: SESSION TIMELINE (AUTHORITATIVE FROM DB) --- */}
+            {workspaceTab === "timeline" && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
+                  <div className="flex items-center gap-2.5">
+                    <History className="w-5 h-5 text-primary" />
+                    <div>
+                      <h3 className="text-base font-bold text-text-primary">Authoritative Session Timeline</h3>
+                      <p className="text-xs text-text-muted">
+                        Chronological record of verified session milestones and peer collaboration.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => refetchTimeline()}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                  </Button>
+                </div>
+
+                {timelineLoading ? (
+                  <div className="py-8 text-center text-xs text-text-muted">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    Loading timeline milestones...
+                  </div>
+                ) : !timelineData?.events || timelineData.events.length === 0 ? (
+                  <div className="py-12 text-center text-text-muted space-y-2">
+                    <History className="w-10 h-10 mx-auto text-text-muted/40" />
+                    <p className="text-xs">No discussion topics or notes captured yet.</p>
+                  </div>
+                ) : (
+                  <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border/70">
+                    {timelineData.events.map((ev, idx) => (
+                      <div key={ev.id || idx} className="relative group">
+                        {/* Milestone Node */}
+                        <div className="absolute -left-[27px] top-0.5 w-6 h-6 rounded-full bg-surface border-2 border-primary/60 flex items-center justify-center shadow-sm">
+                          {getTimelineIcon(ev.type)}
+                        </div>
+
+                        {/* Event Content */}
+                        <div className="bg-surface-hover/50 p-3.5 rounded-xl border border-border/60 hover:border-primary/40 transition-all space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-text-primary">{ev.title}</span>
+                            <span className="text-[11px] font-mono text-text-muted">
+                              {new Date(ev.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          {ev.description && (
+                            <p className="text-xs text-text-secondary leading-relaxed">{ev.description}</p>
+                          )}
+                          {ev.actor_role && (
+                            <div className="pt-1">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border text-text-muted uppercase tracking-wider">
+                                {ev.actor_role}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* --- TAB 3: PHASE 4 POST-SESSION INTELLIGENCE --- */}
+            {workspaceTab === "intelligence" && isCompleted && (
               <div className="space-y-6">
                 <Card className="p-6 border-primary/20 bg-gradient-to-br from-primary/5 via-surface to-surface">
                   <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/60">
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                        <Sparkles className="w-5 h-5" />
+                        <Sparkles className="w-5 h-5 text-amber-400" />
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-text-primary">AI Session Intelligence</h3>
@@ -577,7 +1070,6 @@ export default function SessionDetail() {
                     </Button>
                   </div>
 
-                  {/* Insufficient Data State */}
                   {sessionIntelligence?.status === "insufficient_data" ? (
                     <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
@@ -598,7 +1090,7 @@ export default function SessionDetail() {
                         </p>
                       </div>
 
-                      {/* Topics Discussed & Skills Covered */}
+                      {/* Topics Covered */}
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
                           <Tag className="w-3.5 h-3.5" /> Topics & Skills Covered
@@ -618,7 +1110,7 @@ export default function SessionDetail() {
                       {/* 2-Column Takeaways: Learner vs Mentor */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-surface-hover/40 border border-border/40 space-y-2">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5 text-blue-400">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
                             <BookOpen className="w-3.5 h-3.5" /> Learner Insights
                           </h4>
                           <p className="text-xs text-text-secondary leading-relaxed">
@@ -630,7 +1122,7 @@ export default function SessionDetail() {
                         </div>
 
                         <div className="p-4 rounded-xl bg-surface-hover/40 border border-border/40 space-y-2">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5 text-emerald-400">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                             <Award className="w-3.5 h-3.5" /> Mentor Guidance
                           </h4>
                           <p className="text-xs text-text-secondary leading-relaxed">
@@ -661,179 +1153,6 @@ export default function SessionDetail() {
                 </Card>
               </div>
             )}
-
-            {/* PHASE 4: COLLABORATIVE NOTES & LEARNING CAPTURE (Active During Live or Pre-Session) */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <h3 className="font-bold text-text-primary">
-                    {isMentor ? "Mentor Teaching Notes" : "Learner Notes & Questions"}
-                  </h3>
-                </div>
-                <span className="text-xs text-text-muted flex items-center gap-1">
-                  {isAutoSaving ? "Saving..." : "✓ Saved to cloud"}
-                </span>
-              </div>
-
-              {/* Note Category Tabs */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {(isMentor
-                  ? [
-                      { key: "concepts", label: "Concepts Taught" },
-                      { key: "resources", label: "Resources Shared" },
-                      { key: "struggles", label: "Struggles Observed" },
-                      { key: "next_steps", label: "Recommended Practice" },
-                    ]
-                  : [
-                      { key: "questions", label: "Questions Asked" },
-                      { key: "concepts", label: "Concepts Learned" },
-                      { key: "struggles", label: "Difficult Topics" },
-                      { key: "takeaways", label: "Key Takeaways" },
-                    ]
-                ).map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveNotesTab(tab.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      activeNotesTab === tab.key
-                        ? "bg-primary text-white shadow-sm"
-                        : "bg-surface-hover text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    {tab.label} ({(myNote[tab.key] || []).length})
-                  </button>
-                ))}
-              </div>
-
-              {/* Note Items List */}
-              <div className="space-y-2 mb-4 min-h-[100px] max-h-[220px] overflow-y-auto">
-                {(myNote[activeNotesTab] || []).length === 0 ? (
-                  <div className="py-6 text-center text-xs text-text-muted">
-                    No items added under this category yet. Type below to record notes.
-                  </div>
-                ) : (
-                  (myNote[activeNotesTab] || []).map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-surface-hover/70 border border-border/50 text-xs text-text-primary group"
-                    >
-                      <span>{item}</span>
-                      <button
-                        onClick={() => handleRemoveNoteItem(activeNotesTab, index)}
-                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Add Note Input */}
-              <form onSubmit={handleAddNoteItem} className="flex gap-2">
-                <input
-                  type="text"
-                  value={noteInput}
-                  onChange={(e) => setNoteInput(e.target.value)}
-                  placeholder={`Add a note under ${activeNotesTab}...`}
-                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
-                />
-                <Button type="submit" size="sm" className="text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add
-                </Button>
-              </form>
-            </Card>
-
-            {/* PHASE 4: ACTION ITEMS & HOMEWORK TRACKER */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
-                <div className="flex items-center gap-2">
-                  <CheckSquare className="w-5 h-5 text-emerald-500" />
-                  <h3 className="font-bold text-text-primary">Action Items & Next Steps</h3>
-                </div>
-                <span className="text-xs text-text-muted">
-                  {sessionActionItems.filter((a) => a.status === "completed").length} / {sessionActionItems.length} completed
-                </span>
-              </div>
-
-              {/* Action Items List */}
-              <div className="space-y-2 mb-4">
-                {sessionActionItems.length === 0 ? (
-                  <p className="text-xs text-text-muted py-3 text-center">
-                    No action items created yet. Add practical tasks to reinforce your learning.
-                  </p>
-                ) : (
-                  sessionActionItems.map((item) => {
-                    const isDone = item.status === "completed";
-                    return (
-                      <div
-                        key={item.id}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          isDone
-                            ? "bg-green-500/5 border-green-500/20 text-text-muted"
-                            : "bg-surface-hover/70 border-border text-text-primary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <button
-                            onClick={() =>
-                              toggleActionItemMutation.mutate({
-                                itemId: item.id,
-                                status: isDone ? "pending" : "completed",
-                              })
-                            }
-                            className="text-text-muted hover:text-primary transition-colors flex-shrink-0"
-                          >
-                            {isDone ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500 fill-green-500/20" />
-                            ) : (
-                              <Square className="w-4 h-4" />
-                            )}
-                          </button>
-                          <div className="min-w-0">
-                            <p className={`text-xs font-medium ${isDone ? "line-through text-text-muted" : ""}`}>
-                              {item.title}
-                            </p>
-                            {item.description && (
-                              <p className="text-[11px] text-text-muted truncate">{item.description}</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {item.source === "ai_extracted" && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
-                              AI
-                            </span>
-                          )}
-                          <button
-                            onClick={() => deleteActionItemMutation.mutate(item.id)}
-                            className="text-text-muted hover:text-red-400 transition-colors p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Add Action Item Form */}
-              <form onSubmit={handleAddActionItem} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newActionItem}
-                  onChange={(e) => setNewActionItem(e.target.value)}
-                  placeholder="e.g. Build JWT auth example in FastAPI..."
-                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
-                />
-                <Button type="submit" size="sm" className="text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
-                </Button>
-              </form>
-            </Card>
           </div>
 
           {/* Right Column: Participant Profiles & Live Topics */}
@@ -851,7 +1170,7 @@ export default function SessionDetail() {
               {/* Topic Pills */}
               <div className="flex flex-wrap gap-2 mb-4 min-h-[48px]">
                 {sessionTopics.length === 0 ? (
-                  <p className="text-xs text-text-muted py-2">Tag topics covered during your talk.</p>
+                  <p className="text-xs text-text-muted py-2">Tag discussion topics covered during your session.</p>
                 ) : (
                   sessionTopics.map((top) => (
                     <span
@@ -870,7 +1189,7 @@ export default function SessionDetail() {
                   type="text"
                   value={newTopic}
                   onChange={(e) => setNewTopic(e.target.value)}
-                  placeholder="Tag a topic (e.g. Redis)..."
+                  placeholder="Tag topic (e.g. WebSocket)..."
                   className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-surface-hover border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
                 />
                 <Button type="submit" size="sm" className="text-xs">
@@ -883,9 +1202,20 @@ export default function SessionDetail() {
             <Card className="p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-4 flex items-center justify-between">
                 <span>Peer Mentor</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400">
-                  TEACHER
-                </span>
+                <div className="flex items-center gap-2">
+                  {presenceData?.mentor_present ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-text-muted bg-surface-hover px-2 py-0.5 rounded-full border border-border">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400">
+                    TEACHER
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-start gap-3.5 mb-4">
@@ -921,9 +1251,20 @@ export default function SessionDetail() {
             <Card className="p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-4 flex items-center justify-between">
                 <span>Peer Learner</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400">
-                  STUDENT
-                </span>
+                <div className="flex items-center gap-2">
+                  {presenceData?.learner_present ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-text-muted bg-surface-hover px-2 py-0.5 rounded-full border border-border">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400">
+                    STUDENT
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-start gap-3.5">

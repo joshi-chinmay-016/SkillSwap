@@ -13,7 +13,9 @@ from app.core.database import get_db
 from app.dependencies.current_user import get_current_user
 from app.schemas.session import (
     SessionCreate,
-    SessionResponse
+    SessionResponse,
+    SessionPresenceResponse,
+    SessionTimelineResponse
 )
 from app.services.session_service import (
     schedule_session,
@@ -23,7 +25,9 @@ from app.services.session_service import (
     cancel_session as cancel_peer_session,
     join_session as join_peer_session,
     leave_session as leave_peer_session,
+    record_session_heartbeat as record_peer_session_heartbeat,
     get_session_presence as get_peer_session_presence,
+    get_session_timeline as get_peer_session_timeline,
     get_session_participants as get_peer_session_participants,
     upcoming_sessions,
     completed_sessions_list,
@@ -209,16 +213,61 @@ def leave(
 
 
 @router.get(
-    "/{session_id}/presence"
+    "/{session_id}/presence",
+    response_model=SessionPresenceResponse
 )
 def presence(
     session_id: int,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
-    Ephemeral active room presence from Redis.
+    Ephemeral active room presence from Redis for authenticated participant.
     """
-    return get_peer_session_presence(session_id)
+    return get_peer_session_presence(
+        db=db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.post(
+    "/{session_id}/presence/heartbeat",
+    response_model=SessionPresenceResponse
+)
+def presence_heartbeat(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Refreshes ephemeral presence TTL (60s) in Redis for active participant.
+    """
+    enforce_action_rate_limit("presence_heartbeat", current_user.id, limit=60, window_seconds=60)
+    return record_peer_session_heartbeat(
+        db=db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
+
+
+@router.get(
+    "/{session_id}/timeline",
+    response_model=SessionTimelineResponse
+)
+def get_timeline(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns authoritative chronological timeline of real session events.
+    """
+    return get_peer_session_timeline(
+        db=db,
+        session_id=session_id,
+        current_user_id=current_user.id
+    )
 
 
 @router.post(

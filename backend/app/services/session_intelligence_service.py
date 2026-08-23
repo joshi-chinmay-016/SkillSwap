@@ -169,6 +169,30 @@ def create_session_action_item(
         description=description,
         source=source
     )
+
+    # Real-time WebSocket event to the other participant
+    try:
+        loop = asyncio.get_running_loop()
+        other_user_id = session.mentor_id if user_id == session.requester_id else session.requester_id
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user_id,
+                {
+                    "type": "ACTION_ITEM_CREATED",
+                    "session_id": session_id,
+                    "item_id": item.id,
+                    "user_id": owner_id,
+                    "title": item.title,
+                    "status": item.status,
+                    "message": f"New action item created: {item.title}"
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
     log_structured_event("action_item_created", session_id=session_id, user_id=owner_id, title=title)
     return item
 
@@ -187,7 +211,7 @@ def update_action_item_status(
     title: Optional[str] = None,
     description: Optional[str] = None
 ) -> SessionActionItem:
-    _verify_session_participant(db, session_id, user_id)
+    session = _verify_session_participant(db, session_id, user_id)
     item = repo.get_action_item_by_id(db, item_id)
     if not item or item.session_id != session_id:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Action item not found.")
@@ -205,6 +229,30 @@ def update_action_item_status(
         title=title,
         description=description
     )
+
+    # Real-time WebSocket event to the other participant
+    try:
+        loop = asyncio.get_running_loop()
+        other_user_id = session.mentor_id if user_id == session.requester_id else session.requester_id
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user_id,
+                {
+                    "type": "ACTION_ITEM_UPDATED",
+                    "session_id": session_id,
+                    "item_id": updated_item.id,
+                    "user_id": updated_item.user_id,
+                    "title": updated_item.title,
+                    "status": updated_item.status,
+                    "message": f"Action item updated: {updated_item.title}"
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
     log_structured_event("action_item_updated", session_id=session_id, item_id=item_id, status=status)
     return updated_item
 
@@ -215,7 +263,7 @@ def delete_session_action_item(
     item_id: int,
     user_id: int
 ) -> dict:
-    _verify_session_participant(db, session_id, user_id)
+    session = _verify_session_participant(db, session_id, user_id)
     item = repo.get_action_item_by_id(db, item_id)
     if not item or item.session_id != session_id:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Action item not found.")
@@ -226,7 +274,29 @@ def delete_session_action_item(
             detail="You can only delete action items assigned to you."
         )
 
+    item_title = item.title
     repo.delete_action_item(db, item)
+
+    # Real-time WebSocket event to the other participant
+    try:
+        loop = asyncio.get_running_loop()
+        other_user_id = session.mentor_id if user_id == session.requester_id else session.requester_id
+        loop.create_task(
+            manager.send_notification_payload(
+                other_user_id,
+                {
+                    "type": "ACTION_ITEM_DELETED",
+                    "session_id": session_id,
+                    "item_id": item_id,
+                    "message": f"Action item removed: {item_title}"
+                }
+            )
+        )
+    except RuntimeError:
+        pass
+    except Exception:
+        pass
+
     log_structured_event("action_item_deleted", session_id=session_id, item_id=item_id)
     return {"message": "Action item deleted successfully."}
 

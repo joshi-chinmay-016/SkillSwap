@@ -76,6 +76,16 @@ export const getSessionPresence = async (sessionId) => {
   return res.data;
 };
 
+export const sendSessionHeartbeat = async (sessionId) => {
+  const res = await api.post(`/sessions/${sessionId}/presence/heartbeat`);
+  return res.data;
+};
+
+export const getSessionTimeline = async (sessionId) => {
+  const res = await api.get(`/sessions/${sessionId}/timeline`);
+  return res.data;
+};
+
 // Feedback APIs
 export const submitSessionFeedback = async (payload) => {
   const res = await api.post("/feedback", payload);

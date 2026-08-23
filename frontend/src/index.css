@@ -75,8 +75,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -86,7 +86,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted);
 }
 
 /* Glassmorphism Surface Utility */

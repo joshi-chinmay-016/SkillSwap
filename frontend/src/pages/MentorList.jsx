@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import api from "../services/api";
 import MentorCard from "../components/MentorCard";
@@ -26,14 +26,18 @@ import {
   ArrowRight,
   SlidersHorizontal,
   X,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function MentorList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [skillParam, setSkillParam] = useState("");
   const [minRating, setMinRating] = useState("");
+  const observerRef = useRef(null);
 
   const navigate = useNavigate();
+  const PAGE_SIZE = 9;
 
   // 1. Fetch Peer Mentor Recommendations
   const { data: recommendations = [], isLoading: isRecsLoading } = useQuery({
@@ -41,18 +45,78 @@ export default function MentorList() {
     queryFn: () => recommendationApi.getMyRecommendations(6),
   });
 
-  // 2. Fetch Mentors with search and rating filters
-  const { data: mentors = [], isLoading, isError, refetch } = useQuery({
+  // 2. Intelligent Infinite Scroll Mentors Query (Batches of 9)
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteQuery({
     queryKey: ["mentors", skillParam, minRating],
-    queryFn: async () => {
-      const params = {};
+    queryFn: async ({ pageParam = 1 }) => {
+      const params = { page: pageParam, size: PAGE_SIZE };
       if (skillParam) params.skill = skillParam;
       if (minRating) params.min_rating = parseFloat(minRating);
 
       const res = await api.get("/mentors/", { params });
       return res.data;
     },
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < PAGE_SIZE) {
+        return undefined;
+      }
+      return allPages.length + 1;
+    },
+    initialPageParam: 1,
   });
+
+  // Flatten paginated results
+  const mentors = data?.pages ? data.pages.flatMap((page) => page) : [];
+
+  // 3. Automatic Intersection Observer for Seamless Scroll Loading
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1, rootMargin: "300px" }
+    );
+
+    const currentTarget = observerRef.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // 4. Native Window Scroll Listener Fallback for Maximum Responsiveness
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!hasNextPage || isFetchingNextPage) return;
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+
+      if (scrollY + windowHeight >= docHeight - 400) {
+        fetchNextPage();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -269,25 +333,80 @@ export default function MentorList() {
             onAction={handleClearFilters}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-            {mentors.map((mentor, index) => {
-              const pinColors = ["red", "cyan", "yellow", "purple", "green"];
-              return (
-                <MentorCard
-                  key={mentor.mentor_id || mentor.id}
-                  mentor={mentor}
-                  index={index}
-                  pinColor={pinColors[index % pinColors.length]}
-                  sway={index % 2 === 0 ? "left" : "right"}
-                  onClick={() =>
-                    navigate(`/mentors/${mentor.mentor_id || mentor.id}`, {
-                      state: { mentorName: mentor.mentor_name || mentor.name, averageRating: mentor.average_rating },
-                    })
-                  }
-                />
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+              {mentors.map((mentor, index) => {
+                const pinColors = ["red", "cyan", "yellow", "purple", "green"];
+                return (
+                  <MentorCard
+                    key={mentor.mentor_id || mentor.id}
+                    mentor={mentor}
+                    index={index}
+                    pinColor={pinColors[index % pinColors.length]}
+                    sway={index % 2 === 0 ? "left" : "right"}
+                    onClick={() =>
+                      navigate(`/mentors/${mentor.mentor_id || mentor.id}`, {
+                        state: { mentorName: mentor.mentor_name || mentor.name, averageRating: mentor.average_rating },
+                      })
+                    }
+                  />
+                );
+              })}
+
+              {/* Progressive Skeletons when fetching next batch on scroll */}
+              {isFetchingNextPage && (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={`next-skel-${i}`}
+                      className="h-64 bg-card-bg/60 border border-card-border/60 animate-pulse rounded-2xl p-5 flex flex-col justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-border/60 shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <div className="h-4 bg-border/60 rounded w-3/4" />
+                          <div className="h-3 bg-border/40 rounded w-1/2" />
+                        </div>
+                      </div>
+                      <div className="space-y-2 py-4">
+                        <div className="h-3 bg-border/40 rounded w-full" />
+                        <div className="h-3 bg-border/40 rounded w-4/5" />
+                      </div>
+                      <div className="h-8 bg-border/50 rounded-xl" />
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Infinite Scroll Sentinel & Controls */}
+            <div ref={observerRef} className="pt-8 pb-4 flex flex-col items-center justify-center min-h-[60px]">
+              {isFetchingNextPage ? (
+                <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-card-bg border border-card-border shadow-xs text-xs font-bold text-accent">
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                  <span>Loading more mentors...</span>
+                </div>
+              ) : hasNextPage ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  className="text-xs font-semibold shadow-xs hover:border-accent hover:text-accent"
+                >
+                  Load More Mentors ({mentors.length} loaded)
+                </Button>
+              ) : (
+                <div className="text-center py-6 space-y-1.5 border-t border-border/60 w-full max-w-md mx-auto">
+                  <p className="text-xs font-bold text-text-secondary flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-500" /> You've reached the end of the list ({mentors.length} mentors)
+                  </p>
+                  <p className="text-[11px] text-text-muted">
+                    Didn't find what you were looking for? Try searching another skill or use AI Matching.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </PageTransition>
