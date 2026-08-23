@@ -6,9 +6,10 @@ import api from "../services/api";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import { PushPin } from "../components/common/PinnedCard";
-import { MarkerHighlight, HandDrawnNote } from "../components/common/HandwrittenAnnotation";
+import { HandDrawnNote } from "../components/common/HandwrittenAnnotation";
+import OAuthButtons from "../components/auth/OAuthButtons";
 import { AVATAR_OPTIONS } from "../utils/avatars";
-import { Sparkles, ArrowRight, ShieldCheck, UserPlus } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -103,23 +104,10 @@ export default function Register() {
         className="w-full max-w-md relative z-10"
       >
         {/* Brand Header */}
-        <div className="text-center mb-7 space-y-2">
+        <div className="text-center mb-6 space-y-2">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-2 group">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent to-purple-600 flex items-center justify-center text-white shadow-md group-hover:rotate-6 transition-transform duration-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
+              <Sparkles className="w-5 h-5" />
             </div>
             <span className="font-black text-2xl tracking-tight text-text">
               Skill<span className="text-accent">Swap</span>{" "}
@@ -134,20 +122,23 @@ export default function Register() {
           </h2>
           <div className="flex items-center justify-center gap-2 pt-0.5">
             <span className="text-xs text-text-secondary">Join student peer mentorship</span>
-            <HandDrawnNote color="rose" rotate="-2deg" className="text-lg">
+            <HandDrawnNote color="rose" rotate="-2deg" className="text-sm font-bold">
               ✦ 100% Free Desk!
             </HandDrawnNote>
           </div>
         </div>
 
         {/* Pinned Card containing registration form */}
-        <div className="relative rounded-3xl border border-card-border bg-card-bg/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8 text-left">
+        <div className="relative rounded-3xl border border-card-border bg-card-bg/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8 text-left transition-all duration-300">
           <PushPin color="cyan" className="-top-3" />
 
           {/* Hand-drawn badge */}
           <div className="absolute -top-3 right-6 font-handwriting text-sm font-bold text-sky-900 dark:text-sky-300 bg-sky-100 dark:bg-sky-950 px-2.5 py-0.5 rounded-lg border border-sky-300 dark:border-sky-700 rotate-2 shadow-xs">
             Student Enrollment 📌
           </div>
+
+          {/* Social OAuth Buttons */}
+          <OAuthButtons actionText="Sign Up" />
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             {apiError && (

@@ -257,6 +257,23 @@ class Settings(BaseSettings):
 
     AVAILABILITY_CACHE_TTL_SECONDS: int = 120
 
+    # ----------------------------
+    # OAuth 2.0 & Phase 7 Authentication
+    # ----------------------------
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+    GITHUB_REDIRECT_URI: str = "http://localhost:8000/auth/github/callback"
+
+    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_AUTH_CALLBACK_URL: str = "http://localhost:5173/auth/callback"
+
+    OAUTH_STATE_TTL_SECONDS: int = 600
+    OAUTH_TICKET_TTL_SECONDS: int = 60
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

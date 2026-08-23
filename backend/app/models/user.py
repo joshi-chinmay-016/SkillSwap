@@ -35,6 +35,12 @@ class User(Base):
         back_populates="user"
     )
 
+    oauth_identities = relationship(
+        "OAuthIdentity",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
     journeys = relationship(
         "LearningJourney",
         back_populates="user",

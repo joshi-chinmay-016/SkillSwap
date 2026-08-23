@@ -18,6 +18,8 @@ from app.infrastructure.redis.keys import (
     recommendations_pattern,
     session_state_key,
     idempotency_key,
+    oauth_state_key,
+    oauth_ticket_key,
 )
 from app.infrastructure.redis.health import check_redis_health
 from app.infrastructure.redis.rate_limiter import (

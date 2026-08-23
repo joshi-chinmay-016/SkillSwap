@@ -1375,9 +1375,10 @@ export default function SessionDetail() {
               <Button
                 onClick={() =>
                   feedbackMutation.mutate({
-                    session_id: sessionId,
-                    rating: parseFloat(rating),
-                    comment: comment.trim() || undefined,
+                    session_id: parseInt(sessionId, 10),
+                    reviewee_id: isMentor ? session?.requester_id : session?.mentor_id,
+                    rating: parseInt(rating, 10),
+                    comment: comment.trim(),
                   })
                 }
                 loading={feedbackMutation.isPending}
