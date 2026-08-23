@@ -26,7 +26,8 @@ class User(Base):
 
     profile = relationship(
         "Profile",
-        back_populates="user"
+        back_populates="user",
+        uselist=False
     )
 
     user_skills = relationship(

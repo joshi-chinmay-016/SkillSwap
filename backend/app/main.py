@@ -1,11 +1,37 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import (
     CORSMiddleware
 )
 
+from app.infrastructure.redis import (
+    redis_client,
+    check_redis_health,
+    start_pubsub_listener,
+    stop_pubsub_listener,
+)
+from app.core.websocket_manager import manager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        await start_pubsub_listener(manager.send_local_notification_payload)
+    except Exception as e:
+        import logging
+        logging.getLogger("skillswap.startup").debug(f"Pub/Sub startup skipped: {e}")
+    yield
+    # Shutdown
+    try:
+        await stop_pubsub_listener()
+        redis_client.close()
+    except Exception:
+        pass
+
 app = FastAPI(
     title="SkillSwap Arena",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 from app.models.base import Base
@@ -256,6 +282,14 @@ def root():
 
 @app.get("/health")
 def health():
+    redis_health = check_redis_health()
     return {
-        "status": "healthy"
+        "status": "healthy" if redis_health["status"] in ("healthy", "degraded") else "degraded",
+        "redis": redis_health["status"],
     }
+
+
+@app.get("/health/redis")
+def health_redis():
+    """Returns safe, unprivileged Redis infrastructure health and latency."""
+    return check_redis_health()

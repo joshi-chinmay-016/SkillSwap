@@ -1158,16 +1158,27 @@ def get_session_participants(
     learner = db.query(User).filter(User.id == session.requester_id).first()
     skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
 
+    def _extract_profile(user_obj):
+        if not user_obj or not getattr(user_obj, "profile", None):
+            return None
+        prof = user_obj.profile
+        if isinstance(prof, list):
+            return prof[0] if prof else None
+        return prof
+
+    m_prof = _extract_profile(mentor)
+    l_prof = _extract_profile(learner)
+
     from app.services.feedback_service import my_rating
 
     mentor_data = {
         "id": mentor.id if mentor else session.mentor_id,
         "name": mentor.name if mentor else "Mentor",
         "email": mentor.email if mentor else "",
-        "avatar_url": mentor.profile.avatar_url if mentor and mentor.profile else None,
-        "department": mentor.profile.department if mentor and mentor.profile else None,
-        "year": mentor.profile.year if mentor and mentor.profile else 1,
-        "bio": mentor.profile.bio if mentor and mentor.profile else None,
+        "avatar_url": m_prof.avatar_url if m_prof else None,
+        "department": m_prof.department if m_prof else None,
+        "year": m_prof.year if m_prof and m_prof.year else 1,
+        "bio": m_prof.bio if m_prof else None,
         "average_rating": my_rating(db, mentor.id) if mentor else 0.0,
     }
 
@@ -1175,10 +1186,10 @@ def get_session_participants(
         "id": learner.id if learner else session.requester_id,
         "name": learner.name if learner else "Learner",
         "email": learner.email if learner else "",
-        "avatar_url": learner.profile.avatar_url if learner and learner.profile else None,
-        "department": learner.profile.department if learner and learner.profile else None,
-        "year": learner.profile.year if learner and learner.profile else 1,
-        "bio": learner.profile.bio if learner and learner.profile else None,
+        "avatar_url": l_prof.avatar_url if l_prof else None,
+        "department": l_prof.department if l_prof else None,
+        "year": l_prof.year if l_prof and l_prof.year else 1,
+        "bio": l_prof.bio if l_prof else None,
     }
 
     skill_data = {
