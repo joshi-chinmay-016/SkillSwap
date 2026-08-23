@@ -51,11 +51,27 @@ export function useWebSocket() {
               queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] });
               queryClient.invalidateQueries({ queryKey: ["wallet"] });
               queryClient.invalidateQueries({ queryKey: ["mentorBookableSlots"] });
+            } else if (type === "SESSION_STARTED") {
+              toast.info(
+                data.message || "Your session is now LIVE! 🚀",
+                "Session Started"
+              );
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionDetail", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionPresence", data.session_id] });
+              }
+              queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
             } else if (type === "BOOKING_CANCELLED" || type === "SESSION_CANCELLED") {
               toast.warning(
                 data.message || "A scheduled session was cancelled.",
                 "Session Cancelled ⚠️"
               );
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionDetail", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionPresence", data.session_id] });
+              }
               queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
               queryClient.invalidateQueries({ queryKey: ["cancelledSessions"] });
               queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -67,6 +83,12 @@ export function useWebSocket() {
                 data.message || "Your session has been marked completed!",
                 "Session Completed 🎉"
               );
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionDetail", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionPresence", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionIntelligence", data.session_id] });
+              }
               queryClient.invalidateQueries({ queryKey: ["upcomingSessions"] });
               queryClient.invalidateQueries({ queryKey: ["completedSessions"] });
               queryClient.invalidateQueries({ queryKey: ["activities"] });
@@ -77,6 +99,36 @@ export function useWebSocket() {
               queryClient.invalidateQueries({ queryKey: ["notifications"] });
               queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] });
               queryClient.invalidateQueries({ queryKey: ["wallet"] });
+            } else if (type === "PARTICIPANT_JOINED") {
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionPresence", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+              }
+              toast.info(data.message || "A participant joined the session workspace.", "Participant Joined 🟢");
+            } else if (type === "PARTICIPANT_LEFT") {
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionPresence", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+              }
+            } else if (type === "SESSION_NOTE_UPDATED") {
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionNotes", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+              }
+            } else if (type === "SESSION_TOPIC_ADDED") {
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionTopics", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+              }
+              toast.info(data.message || "Discussion topic tagged.", "Topic Added 🏷️");
+            } else if (type === "ACTION_ITEM_CREATED" || type === "ACTION_ITEM_UPDATED" || type === "ACTION_ITEM_DELETED") {
+              if (data.session_id) {
+                queryClient.invalidateQueries({ queryKey: ["sessionActionItems", data.session_id] });
+                queryClient.invalidateQueries({ queryKey: ["sessionTimeline", data.session_id] });
+              }
+              if (type === "ACTION_ITEM_CREATED") {
+                toast.info(data.message || "New action item created.", "Action Item 📌");
+              }
             } else if (type === "REQUEST_RECEIVED") {
               toast.info(
                 data.message || "You received a new session request.",

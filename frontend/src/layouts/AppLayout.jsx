@@ -46,7 +46,9 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isMentorWorkspace = location.pathname.startsWith("/mentor");
+  const isMentorWorkspace =
+    location.pathname === "/mentor" ||
+    (location.pathname.startsWith("/mentor/") && !location.pathname.startsWith("/mentors"));
 
   // Mount real-time WebSocket connection for live session and notification events
   useWebSocket();
@@ -142,7 +144,7 @@ export default function AppLayout() {
   ];
 
   return (
-    <div className="min-h-screen whiteboard-grid text-text flex flex-col transition-colors duration-200 selection:bg-yellow-200 selection:text-slate-900">
+    <div className={`min-h-screen whiteboard-grid text-text flex flex-col transition-colors duration-200 selection:bg-yellow-200 selection:text-slate-900 ${isMentorWorkspace ? "h-screen overflow-hidden" : ""}`}>
       {/* Top Glass Header */}
       <header className="sticky top-0 z-40 glass-panel border-b border-border/80 flex items-center justify-between px-4 sm:px-6 h-16 shrink-0 transition-colors duration-200 shadow-xs">
         <div className="flex items-center gap-3">
@@ -426,11 +428,13 @@ export default function AppLayout() {
       </header>
 
       {/* Main Layout Container */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className={`flex-1 flex ${isMentorWorkspace ? "min-h-0 overflow-hidden" : ""}`}>
         {/* Desktop Sidebar Navigation */}
         <aside
           className={`hidden md:flex flex-col bg-bg/95 backdrop-blur-md border-r border-border/80 gap-1.5 transition-all duration-300 ${
-            isSidebarCollapsed ? "w-18 px-2 py-4" : "w-64 p-4"
+            isMentorWorkspace
+              ? `${isSidebarCollapsed ? "w-18 px-2 py-4" : "w-64 p-4"}`
+              : `sticky top-16 h-[calc(100vh-4rem)] ${isSidebarCollapsed ? "w-18 px-2 py-4" : "w-64 p-4"}`
           }`}
         >
           {/* Collapse Toggle Button */}
@@ -555,8 +559,8 @@ export default function AppLayout() {
         <main
           className={`flex-1 transition-colors duration-200 ${
             isMentorWorkspace
-              ? "p-1.5 sm:p-2.5 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-bg-alt/20"
-              : "overflow-y-auto bg-bg-alt/40 flex flex-col min-h-0"
+              ? "p-1.5 sm:p-2.5 flex flex-col h-full overflow-hidden bg-bg-alt/20 min-h-0"
+              : "bg-bg-alt/40 flex flex-col min-w-0"
           }`}
         >
           {isMentorWorkspace ? (

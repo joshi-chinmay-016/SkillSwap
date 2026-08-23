@@ -27,8 +27,21 @@ from app.services.wallet_service import debit_wallet, credit_wallet
 from app.core.logging import log_structured_event
 from app.core.websocket_manager import manager
 from app.core.distributed_lock import distributed_booking_lock
+from app.core.redis import redis_client
 
 logger = logging.getLogger("skillswap.sessions")
+
+
+def _calculate_actual_duration(session: SessionModel) -> int | None:
+    if session.started_at and session.completed_at:
+        diff = session.completed_at - session.started_at
+        return max(1, int(diff.total_seconds() / 60))
+    elif session.started_at and session.status == "in_progress":
+        now = datetime.now(timezone.utc)
+        started_dt = session.started_at if session.started_at.tzinfo else session.started_at.replace(tzinfo=timezone.utc)
+        diff = now - started_dt
+        return max(1, int(diff.total_seconds() / 60))
+    return None
 
 
 def _enrich_session(db: Session, session: SessionModel) -> SessionModel:
@@ -39,6 +52,7 @@ def _enrich_session(db: Session, session: SessionModel) -> SessionModel:
     session.mentor_name = mentor.name if mentor else "Unknown Mentor"
     session.learner_name = requester.name if requester else "Unknown Learner"
     session.skill_name = skill.name if skill else "Peer Mentoring"
+    session.actual_duration_minutes = _calculate_actual_duration(session)
     return session
 
 
@@ -55,6 +69,7 @@ def _enrich_sessions_list(db: Session, sessions: list[SessionModel]) -> list[Ses
         s.mentor_name = users_map.get(s.mentor_id, "Unknown Mentor")
         s.learner_name = users_map.get(s.requester_id, "Unknown Learner")
         s.skill_name = skills_map.get(s.skill_id, "Peer Mentoring")
+        s.actual_duration_minutes = _calculate_actual_duration(s)
     return sessions
 
 
@@ -431,6 +446,9 @@ def start_session(
         )
 
     session.status = "in_progress"
+    if not session.started_at:
+        session.started_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(session)
 
@@ -439,7 +457,8 @@ def start_session(
         session_id=session.id,
         started_by=current_user_id,
         mentor_id=session.mentor_id,
-        requester_id=session.requester_id
+        requester_id=session.requester_id,
+        started_at=session.started_at.isoformat() if session.started_at else None
     )
 
     # Dispatch real-time WebSocket event to other participant
@@ -453,6 +472,7 @@ def start_session(
                     "type": "SESSION_STARTED",
                     "session_id": session.id,
                     "started_by": current_user_id,
+                    "started_at": session.started_at.isoformat() if session.started_at else None,
                     "meeting_link": session.meeting_link,
                     "message": "Your session is now LIVE. Click to join the Jitsi room."
                 }
@@ -492,6 +512,15 @@ def cancel_session(
         )
 
     session.status = "cancelled"
+
+    # Clean up Redis presence
+    try:
+        redis_client.delete(
+            f"presence:session:{session.id}:user:{session.mentor_id}",
+            f"presence:session:{session.id}:user:{session.requester_id}"
+        )
+    except Exception:
+        pass
 
     # Refund coins to requester if cancelled
     try:
@@ -581,6 +610,10 @@ def complete_session(
         )
 
     session.status = "completed"
+    if not session.completed_at:
+        session.completed_at = datetime.now(timezone.utc)
+    if not session.started_at:
+        session.started_at = session.scheduled_at
 
     # Reward mentor
     reward_session_completion(
@@ -669,7 +702,8 @@ def complete_session(
         session_id=session.id,
         completed_by=current_user_id,
         mentor_id=session.mentor_id,
-        requester_id=session.requester_id
+        requester_id=session.requester_id,
+        completed_at=session.completed_at.isoformat() if session.completed_at else None
     )
 
     # Real-time WebSocket event
@@ -682,6 +716,8 @@ def complete_session(
                 {
                     "type": "SESSION_COMPLETED",
                     "session_id": session.id,
+                    "completed_by": current_user_id,
+                    "completed_at": session.completed_at.isoformat() if session.completed_at else None,
                     "message": "Session has been marked completed."
                 }
             )
@@ -722,19 +758,19 @@ def join_session(
             detail=f"Cannot join a session that has been {session.status}."
         )
 
-    # Record ephemeral presence in Redis
-    presence_key = f"session:{session_id}:presence"
+    user_obj = db.query(User).filter(User.id == current_user_id).first()
+    user_name = user_obj.name if user_obj else f"User #{current_user_id}"
+    role = "mentor" if current_user_id == session.mentor_id else "learner"
+
+    # Record ephemeral presence in Redis with 60s TTL
     try:
-        redis_client.set(f"presence:session:{session_id}:user:{current_user_id}", "joined", ex=1800)
+        redis_client.set(f"presence:session:{session_id}:user:{current_user_id}", "online", ex=60)
     except Exception:
         pass
 
     # Real-time WebSocket notification to other participant
     try:
         other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
-        user_obj = db.query(User).filter(User.id == current_user_id).first()
-        user_name = user_obj.name if user_obj else f"User #{current_user_id}"
-
         loop = asyncio.get_running_loop()
         loop.create_task(
             manager.send_notification_payload(
@@ -744,6 +780,8 @@ def join_session(
                     "session_id": session.id,
                     "user_id": current_user_id,
                     "user_name": user_name,
+                    "role": role,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "message": f"{user_name} joined the session room."
                 }
             )
@@ -799,6 +837,7 @@ def leave_session(
         other_user = session.mentor_id if current_user_id == session.requester_id else session.requester_id
         user_obj = db.query(User).filter(User.id == current_user_id).first()
         user_name = user_obj.name if user_obj else f"User #{current_user_id}"
+        role = "mentor" if current_user_id == session.mentor_id else "learner"
 
         loop = asyncio.get_running_loop()
         loop.create_task(
@@ -809,6 +848,8 @@ def leave_session(
                     "session_id": session.id,
                     "user_id": current_user_id,
                     "user_name": user_name,
+                    "role": role,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "message": f"{user_name} left the session room."
                 }
             )
@@ -827,14 +868,267 @@ def leave_session(
     return {"message": "Left session room successfully."}
 
 
-def get_session_presence(session_id: int) -> dict:
+def record_session_heartbeat(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
+    """
+    Refreshes the ephemeral Redis presence TTL (60s) for an active participant.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized for this session."
+        )
+
+    if session.status in ("cancelled", "rejected"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot maintain presence in a cancelled session."
+        )
+
+    try:
+        redis_client.set(f"presence:session:{session_id}:user:{current_user_id}", "online", ex=60)
+    except Exception:
+        pass
+
+    mentor_present = bool(redis_client.get(f"presence:session:{session_id}:user:{session.mentor_id}"))
+    learner_present = bool(redis_client.get(f"presence:session:{session_id}:user:{session.requester_id}"))
+
+    return {
+        "session_id": session_id,
+        "mentor_id": session.mentor_id,
+        "mentor_present": mentor_present,
+        "learner_id": session.requester_id,
+        "learner_present": learner_present,
+        "both_present": mentor_present and learner_present
+    }
+
+
+def get_session_presence(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
     """
     Retrieves ephemeral active participants in the session room from Redis.
     """
-    # Check if mentor/learner keys are active in Redis
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this session's presence."
+        )
+
+    mentor_present = bool(redis_client.get(f"presence:session:{session_id}:user:{session.mentor_id}"))
+    learner_present = bool(redis_client.get(f"presence:session:{session_id}:user:{session.requester_id}"))
+
     return {
         "session_id": session_id,
-        "is_active": True
+        "mentor_id": session.mentor_id,
+        "mentor_present": mentor_present,
+        "learner_id": session.requester_id,
+        "learner_present": learner_present,
+        "both_present": mentor_present and learner_present
+    }
+
+
+def get_session_timeline(
+    db: Session,
+    session_id: int,
+    current_user_id: int
+) -> dict:
+    """
+    Builds an authoritative, chronological session timeline from genuine database records.
+    Never fabricates events.
+    """
+    session = get_session_by_id(db, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found."
+        )
+
+    if current_user_id not in (session.mentor_id, session.requester_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this session's timeline."
+        )
+
+    mentor = db.query(User).filter(User.id == session.mentor_id).first()
+    learner = db.query(User).filter(User.id == session.requester_id).first()
+    skill = db.query(Skill).filter(Skill.id == session.skill_id).first()
+
+    mentor_name = mentor.name if mentor else "Mentor"
+    learner_name = learner.name if learner else "Learner"
+    skill_name = skill.name if skill else "Peer Mentoring"
+
+    events = []
+
+    # 1. Booking creation event
+    if session.created_at:
+        events.append({
+            "id": f"booking-{session.id}",
+            "timestamp": session.created_at,
+            "type": "session_booked",
+            "title": f"Session Booked: {skill_name}",
+            "description": f"{learner_name} scheduled a mentoring session with {mentor_name}.",
+            "actor_id": session.requester_id,
+            "actor_name": learner_name,
+            "actor_role": "learner",
+            "metadata": {"scheduled_at": session.scheduled_at.isoformat() if session.scheduled_at else None}
+        })
+
+    # 2. Session started event
+    if session.started_at:
+        events.append({
+            "id": f"start-{session.id}",
+            "timestamp": session.started_at,
+            "type": "session_started",
+            "title": "Live Session Commenced",
+            "description": "Participants opened the interactive workspace and Jitsi meeting.",
+            "actor_id": session.mentor_id,
+            "actor_name": mentor_name,
+            "actor_role": "mentor",
+            "metadata": {}
+        })
+
+    # 3. Discussion Topics
+    from app.models.session_topic import SessionTopic
+    topics = db.query(SessionTopic).filter(SessionTopic.session_id == session_id).order_by(SessionTopic.created_at.asc()).all()
+    for top in topics:
+        events.append({
+            "id": f"topic-{top.id}",
+            "timestamp": top.created_at,
+            "type": "topic_added",
+            "title": f"Topic Tagged: #{top.topic_name}",
+            "description": f"Discussion topic '{top.topic_name}' recorded during peer collaboration.",
+            "actor_id": None,
+            "actor_name": None,
+            "actor_role": "system" if top.source == "ai_extracted" else "collaborator",
+            "metadata": {"source": top.source, "confidence": top.confidence}
+        })
+
+    # 4. Session Notes (Mentor & Learner updates)
+    from app.models.session_note import SessionNote
+    notes = db.query(SessionNote).filter(SessionNote.session_id == session_id).all()
+    for note in notes:
+        role_label = "Mentor" if note.role == "mentor" else "Learner"
+        user_label = mentor_name if note.role == "mentor" else learner_name
+        timestamp = note.updated_at or note.created_at
+        notes_count = sum(len(v) for v in note.notes_data.values() if isinstance(v, list))
+        if notes_count > 0:
+            events.append({
+                "id": f"note-{note.id}",
+                "timestamp": timestamp,
+                "type": "note_saved",
+                "title": f"{role_label} Notes Captured",
+                "description": f"{user_label} recorded {notes_count} learning notes/takeaways.",
+                "actor_id": note.user_id,
+                "actor_name": user_label,
+                "actor_role": note.role,
+                "metadata": {"notes_count": notes_count}
+            })
+
+    # 5. Action Items (Created & Completed)
+    from app.models.session_action_item import SessionActionItem
+    action_items = db.query(SessionActionItem).filter(SessionActionItem.session_id == session_id).all()
+    for item in action_items:
+        owner_name = mentor_name if item.user_id == session.mentor_id else learner_name
+        owner_role = "mentor" if item.user_id == session.mentor_id else "learner"
+
+        events.append({
+            "id": f"action-create-{item.id}",
+            "timestamp": item.created_at,
+            "type": "action_item_created",
+            "title": f"Action Item Assigned: {item.title}",
+            "description": item.description or f"Next step assigned to {owner_name}.",
+            "actor_id": item.user_id,
+            "actor_name": owner_name,
+            "actor_role": owner_role,
+            "metadata": {"status": item.status, "source": item.source}
+        })
+
+        if item.status == "completed" and item.completed_at:
+            events.append({
+                "id": f"action-complete-{item.id}",
+                "timestamp": item.completed_at,
+                "type": "action_item_completed",
+                "title": f"Action Item Completed: {item.title}",
+                "description": f"{owner_name} marked this action item complete.",
+                "actor_id": item.user_id,
+                "actor_name": owner_name,
+                "actor_role": owner_role,
+                "metadata": {"status": "completed"}
+            })
+
+    # 6. Session Completion
+    if session.status == "completed":
+        comp_time = session.completed_at or session.updated_at
+        events.append({
+            "id": f"complete-{session.id}",
+            "timestamp": comp_time,
+            "type": "session_completed",
+            "title": "Session Completed & Verified",
+            "description": "Peer learning concluded. Learning activities recorded and AI intelligence generated.",
+            "actor_id": session.mentor_id,
+            "actor_name": mentor_name,
+            "actor_role": "mentor",
+            "metadata": {}
+        })
+
+    # 7. Feedback Submissions
+    from app.models.feedback import Feedback
+    feedbacks = db.query(Feedback).filter(Feedback.session_id == session_id).all()
+    for fb in feedbacks:
+        reviewer_name = mentor_name if fb.reviewer_id == session.mentor_id else learner_name
+        reviewer_role = "mentor" if fb.reviewer_id == session.mentor_id else "learner"
+        events.append({
+            "id": f"feedback-{fb.id}",
+            "timestamp": fb.created_at if hasattr(fb, "created_at") and fb.created_at else session.updated_at,
+            "type": "feedback_submitted",
+            "title": f"Review Submitted by {reviewer_name}",
+            "description": f"Rated {fb.rating:.1f}/5.0 stars with comments.",
+            "actor_id": fb.reviewer_id,
+            "actor_name": reviewer_name,
+            "actor_role": reviewer_role,
+            "metadata": {"rating": fb.rating}
+        })
+
+    # Sort all events chronologically (with timezone handling)
+    def _sort_key(ev):
+        t = ev["timestamp"]
+        if t.tzinfo is None:
+            return t.replace(tzinfo=timezone.utc)
+        return t
+
+    events.sort(key=_sort_key)
+
+    actual_duration = _calculate_actual_duration(session)
+
+    return {
+        "session_id": session.id,
+        "status": session.status,
+        "scheduled_at": session.scheduled_at,
+        "started_at": session.started_at,
+        "completed_at": session.completed_at,
+        "duration_minutes": session.duration_minutes,
+        "actual_duration_minutes": actual_duration,
+        "events": events
     }
 
 
