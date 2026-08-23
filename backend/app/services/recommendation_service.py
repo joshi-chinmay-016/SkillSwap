@@ -265,9 +265,8 @@ def invalidate_user_recommendations_cache(user_id: int):
     Invalidates cached recommendations for a specific user.
     """
     try:
-        keys = redis_client.keys(f"recommendations:*:user:{user_id}:*")
-        for k in keys:
-            redis_client.delete(k)
+        from app.infrastructure.redis import invalidate_recommendations
+        invalidate_recommendations(user_id)
     except Exception:
         pass
 

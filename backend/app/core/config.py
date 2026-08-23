@@ -231,6 +231,12 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str = ""
+    REDIS_MAX_CONNECTIONS: int = 50
+    REDIS_SOCKET_TIMEOUT: float = 5.0
+    REDIS_CONNECT_TIMEOUT: float = 5.0
+    REDIS_CACHE_DEFAULT_TTL: int = 300
+    REDIS_PRESENCE_TTL: int = 60
+    REDIS_PUBSUB_CHANNEL: str = "skillswap:events"
 
     RATE_LIMIT_ENABLED: bool = True
     BOOKING_RATE_LIMIT: int = 10

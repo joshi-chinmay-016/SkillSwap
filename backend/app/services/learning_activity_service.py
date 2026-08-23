@@ -180,11 +180,8 @@ def invalidate_user_learning_cache(user_id: int):
     Scoped strictly by user_id to prevent cross-user interference.
     """
     try:
-        from app.core.redis import redis_client
-        redis_client.delete_pattern(f"*:user:{user_id}*")
-        redis_client.delete_pattern(f"heatmap:user:{user_id}:*")
-        redis_client.delete_pattern(f"streak:user:{user_id}*")
-        redis_client.delete_pattern(f"analytics:user:{user_id}:*")
+        from app.infrastructure.redis import invalidate_user_learning_data
+        invalidate_user_learning_data(user_id)
     except Exception as e:
         logger.debug(f"Redis cache invalidation for user {user_id} skipped: {e}")
 

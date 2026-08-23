@@ -110,6 +110,7 @@ client = TestClient(fastapi_app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    fastapi_app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=test_engine, tables=TABLES)
     yield
     Base.metadata.drop_all(bind=test_engine, tables=TABLES)

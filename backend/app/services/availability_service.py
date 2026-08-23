@@ -18,8 +18,11 @@ from app.repositories.availability_repository import (
     delete_availability
 )
 from app.schemas.availability import BookableSlot, MentorAvailabilitySlotsResponse
-from app.core.redis import redis_client
-from app.core.config import settings
+from app.infrastructure.redis import (
+    redis_client,
+    invalidate_mentor_availability,
+    availability_cache_key,
+)
 
 logger = logging.getLogger("skillswap.availability")
 
@@ -29,6 +32,7 @@ VALID_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 def invalidate_mentor_availability_cache(mentor_id: int) -> None:
     """Invalidates all Redis cache keys for a mentor's availability."""
     try:
+        invalidate_mentor_availability(mentor_id)
         redis_client.delete_pattern(f"mentor_availability:{mentor_id}*")
     except Exception as e:
         logger.warning(f"Failed to invalidate availability cache for mentor {mentor_id}: {e}")
