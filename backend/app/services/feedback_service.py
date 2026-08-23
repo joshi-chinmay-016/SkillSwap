@@ -24,11 +24,31 @@ def submit_feedback(
     db: Session,
     session_id: int,
     reviewer_id: int,
-    reviewee_id: int,
+    reviewee_id: int | None,
     rating: int,
     comment: str
 ) -> Feedback:
-    # 1. Rating validation
+    # 1. Session existence check
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Referenced session does not exist."
+        )
+
+    # Auto-infer counterpart reviewee if omitted
+    if not reviewee_id:
+        if reviewer_id == session.mentor_id:
+            reviewee_id = session.requester_id
+        elif reviewer_id == session.requester_id:
+            reviewee_id = session.mentor_id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to submit feedback for a session you did not participate in."
+            )
+
+    # 2. Rating validation
     if not isinstance(rating, int) or rating < 1 or rating > 5:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -47,19 +67,11 @@ def submit_feedback(
             detail="Feedback comment cannot exceed 500 characters."
         )
 
-    # 2. Prevent self-feedback
+    # 3. Prevent self-feedback
     if reviewer_id == reviewee_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot submit feedback for yourself."
-        )
-
-    # 3. Session existence & completion check
-    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Referenced session does not exist."
         )
 
     if session.status != "completed":

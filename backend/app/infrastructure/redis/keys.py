@@ -95,3 +95,13 @@ def session_state_key(session_id: int) -> str:
 def idempotency_key(scope: str, token: str) -> str:
     """Builds idempotency key for deduplication, e.g. idempotency:booking:uuid"""
     return f"idempotency:{scope}:{token}"
+
+
+def oauth_state_key(state: str) -> str:
+    """Builds key for one-time OAuth state CSRF verification, e.g. oauth:state:xyz123"""
+    return f"oauth:state:{state}"
+
+
+def oauth_ticket_key(ticket: str) -> str:
+    """Builds key for short-lived frontend OAuth handoff ticket exchange, e.g. oauth:ticket:abc789"""
+    return f"oauth:ticket:{ticket}"

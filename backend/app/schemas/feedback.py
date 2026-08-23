@@ -1,29 +1,20 @@
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
 class FeedbackCreate(BaseModel):
-
     session_id: int
-
-    reviewee_id: int
-
+    reviewee_id: Optional[int] = None
     rating: int
-
     comment: str
 
 
 class FeedbackResponse(BaseModel):
-
     id: int
-
     session_id: int
-
     reviewer_id: int
-
     reviewee_id: int
-
     rating: int
-
     comment: str
 
     model_config = ConfigDict(from_attributes=True)

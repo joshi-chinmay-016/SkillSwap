@@ -29,12 +29,14 @@ import ActivityFeed from "../pages/ActivityFeed";
 import AIMentorPage from "../pages/AIMentorPage";
 import MentorMemoryPage from "../pages/MentorMemoryPage";
 import MentorKnowledgePage from "../pages/MentorKnowledgePage";
+import AuthCallback from "../pages/AuthCallback";
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* Public Pages */}
       <Route path="/" element={<Home />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Guest/Auth Pages (Redirect to dashboard if logged in) */}
       <Route element={<PublicRoute />}>
