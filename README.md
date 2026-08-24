@@ -4,7 +4,7 @@
 
 ### **Enterprise Peer-to-Peer Skill Exchange, AI Mentorship & Production Platform**
 
-*Transforming peer education through real-time skill matching, structured peer learning sessions, reputation-backed feedback, an integrated AI Mentor RAG knowledge engine, authoritative RBAC platform management, and GCP production architecture.*
+*An AI-powered peer learning platform where students simultaneously learn and teach through verified capabilities, live video workspaces, collaborative note capture, grounded session intelligence, and authoritative platform governance.*
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -17,97 +17,125 @@
 
 <br />
 
-[Architecture](#-system-architecture) • [RBAC & Capabilities](#-rbac--capability-model) • [Admin Console](#-platform-administration-console) • [Observability](#-observability--metrics) • [Quick Start](#-quick-start) • [GCP Deployment](#-gcp-production-migration) • [CI/CD Pipeline](#-cicd-pipeline)
+[Architecture](docs/architecture/system-architecture.md) • [Database Design](docs/database/database-design.md) • [Authentication & RBAC](docs/admin/rbac.md) • [AI Intelligence](docs/ai/session-intelligence.md) • [Admin Console](docs/admin/admin-platform.md) • [Observability](docs/infrastructure/observability.md) • [GCP Deployment](docs/infrastructure/gcp.md) • [Screenshots](docs/screenshots/README.md)
 
 </div>
 
 ---
 
-## 📌 Executive Summary
+## 📌 Product Overview
 
-**SkillSwap Arena** is an enterprise-grade SaaS platform engineered for collaborative peer-to-peer education and AI-augmented mentorship. Built with a decoupled **Router → Service → Repository** backend pattern and a responsive React 18 SPA frontend, SkillSwap Arena enables students to exchange real-world skills through scheduled peer sessions while leveraging an integrated **AI Mentor** RAG knowledge engine and a comprehensive **Platform Administration & Observability Suite**.
+Traditional learning platforms bind students into static hierarchies (`Learner → Course → Instructor`). **SkillSwap Arena** transforms education into a reciprocal, peer-to-peer capability exchange:
+
+```
+[ Platform User Account ]
+  ├── Learn Skills  ──> Pursue Learning Journeys, book verified mentors, escrow coins
+  └── Teach Skills  ──> Verify skills via assessment rubrics, host live sessions, earn coins
+```
+
+### The Core Architectural Idea
+* **Mentor and Learner are NOT database roles.**
+* The same account acts as a **Mentor** in skills where they have completed assessment verification, and as a **Learner** in skills where they are pursuing a roadmap.
+* In **Session A**, User X mentors User Y; in **Session B**, User X learns from User Z.
 
 ---
 
-## 🏛️ System Architecture
+## 🏛️ High-Level System Architecture
 
-```mermaid
-graph TD
-    Client["React 18 Frontend / SPA"] -->|HTTPS / REST API| Nginx["Nginx Reverse Proxy & Load Balancer"]
-    Client -->|WSS / WebSockets| Nginx
-    
-    subgraph Infrastructure ["Production Platform Layer"]
-        Nginx -->|Proxy HTTP & /metrics| Backend["FastAPI Backend (Non-root, Multi-stage)"]
-        Nginx -->|Proxy /ws/ (Upgrade)| Backend
-        Prometheus["Prometheus Server"] -->|Scrape /metrics| Backend
-        Grafana["Grafana Dashboards"] -->|Query| Prometheus
-    end
+SkillSwap Arena is architected with a decoupled **Router → Service → Repository** pattern on FastAPI, an interactive React 18 SPA, and distributed Redis coordination:
 
-    subgraph Storage ["Persistent & Coordination Services"]
-        Backend --> DB[("PostgreSQL 16 (Alembic Managed)")]
-        Backend --> Redis[("Redis 7 (Pub/Sub & Distributed State)")]
-        Backend --> Secrets[("GCP Secret Manager")]
-    end
+![SkillSwap Arena System Architecture](docs/diagrams/system-architecture.svg)
+
+---
+
+## 🖼️ Visual Product Showcase
+
+A quick visual overview captured directly from the live production build:
+
+| Student Dashboard | Admin Command Center |
+| :---: | :---: |
+| [![Dashboard](docs/screenshots/dashboard.png)](docs/screenshots/README.md) | [![Admin Dashboard](docs/screenshots/admin-dashboard.png)](docs/screenshots/README.md) |
+| *Active sessions, roadmap progress, and learning heatmap* | *Live KPI matrix, active system status, and audit stream* |
+
+| Live Video & Notes Workspace | Admin User Management |
+| :---: | :---: |
+| [![Live Session](docs/screenshots/session.png)](docs/screenshots/README.md) | [![Admin Users](docs/screenshots/admin-users.png)](docs/screenshots/README.md) |
+| *Embedded Jitsi video, presence sync, and 7-category notes* | *Capability inspection and audited user suspensions* |
+
+👉 **[Explore the Complete Screenshot Gallery (10 Views)](docs/screenshots/README.md)**
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Purpose in System |
+| :--- | :--- | :--- |
+| **Frontend SPA** | React 18, Vite, TailwindCSS | Student collaboration portal and operator admin console. |
+| **State & Data Fetching** | Zustand, TanStack React Query | Client token persistence and server-state caching/mutations. |
+| **Backend API** | Python 3.12, FastAPI 0.115+ | High-performance asynchronous REST API and WebSocket gateway. |
+| **Database & ORM** | PostgreSQL 16, SQLAlchemy 2.0 | 37 relational tables, ACID coin transactions, and audit logs. |
+| **Schema Migrations** | Alembic (Revision `m10a1`) | Deterministic, zero-downtime relational schema lineage. |
+| **Cache & Coordination** | Redis 7.0+ (RESP3) | Multi-worker WebSocket Pub/Sub, presence TTLs, and rate limiting. |
+| **Video Infrastructure** | Jitsi Meet (WebRTC) | Authoritative, server-scoped audio and video peer rooms. |
+| **AI Synthesis & RAG** | Google Gemini LLM, FAISS CPU | Grounded session intelligence and 3072d vector document RAG. |
+| **Observability** | Prometheus, Grafana | Low-cardinality metrics (`/metrics`), latency histograms, tracing. |
+| **Containerization** | Docker (Multi-stage, Non-root) | Minimal Python 3.12 slim and Nginx Alpine container images. |
+| **Cloud Target** | GCP Cloud Run, Cloud SQL, VPC | Serverless container execution with private VPC data peering. |
+| **Infrastructure as Code** | Terraform (Google Provider ~> 5.20) | Automated GCP cloud resource and network provisioning. |
+| **CI/CD Pipeline** | GitHub Actions | Automated tests, Postgres/Redis service containers, image builds. |
+
+---
+
+## ⚡ Core Engineering Highlights
+
+### 1. Concurrency-Safe Coin Escrow & Booking Idempotency
+Booking a session locks 1 coin in escrow from the learner's wallet using an `Idempotency-Key` header. If a cancellation occurs, an automated refund is executed idempotently (`reference_id = f"refund_session_{id}"`).
+
+### 2. Grounded AI Session Intelligence & Anti-Fabrication Fencing
+Session summaries are synthesized from live collaborative notes using prompt isolation fences (`<session_data>`). Untrusted user input is treated strictly as data, not instructions. A sufficiency guard prevents LLM hallucinations on sparse data.
+
+### 3. Horizontally Scalable WebSockets via Redis Pub/Sub
+WebSocket connections (`/ws/{user_id}`) coordinate across multiple worker processes and server instances through Redis channels (`channel:session:{id}`), eliminating single-node memory bottlenecks.
+
+### 4. Authoritative Platform RBAC & Append-Only Audit Trail
+Platform operators (`role == "ADMIN"`) manage user access, verifications, reports, and coin balances through `/admin/*`. Every mutation requires a mandatory justification reason and is immutably recorded in `admin_audit_logs`.
+
+---
+
+## 📂 Repository Structure
+
+```
+SkillSwap/
+├── backend/                      # FastAPI Python application
+│   ├── alembic/                  # Database migration versions
+│   ├── app/                      # API routers, services, models, repositories, AI engines
+│   └── tests/                    # Pytest test suite (600+ platform tests)
+├── frontend/                     # React 18 SPA application
+│   ├── src/                      # Components, pages, admin console, Zustand stores
+│   └── nginx.conf                # Production SPA routing fallback
+├── deploy/                       # Cloud infrastructure blueprints
+│   └── gcp/                      # Cloud Run manifests, deploy scripts, and Terraform IaC
+├── docker/                       # Production networking & monitoring
+│   └── production/               # Nginx reverse proxy, Prometheus, and Grafana provisioning
+├── docs/                         # Comprehensive technical documentation & diagrams
+│   ├── architecture/             # System design, data flow, and ADRs
+│   ├── database/                 # Relational schema, ER diagram, and migration guides
+│   ├── authentication/           # Auth flows, OAuth2, and authorization guards
+│   ├── sessions/                 # Session state machine, Jitsi, and WebSockets
+│   ├── ai/                       # Grounded session intelligence and prompt security
+│   ├── admin/                    # Admin platform console and audit logging
+│   ├── infrastructure/           # Docker, Nginx, Redis, Observability, and GCP
+│   ├── diagrams/                 # 10 production SVG diagrams and Mermaid sources
+│   └── screenshots/              # Real application screenshot showcase
+├── .github/workflows/ci-cd.yml   # Automated GitHub Actions pipeline
+└── docker-compose.yml            # Local production multi-container orchestration
 ```
 
 ---
 
-## 🛡️ RBAC & Capability Model
+## 🚀 Quick Start
 
-SkillSwap Arena maintains a strict separation between **Platform Authorization** and **Contextual Teaching/Learning Capabilities**:
-
-### 1. Platform Authorization (RBAC)
-* `USER`: Standard platform member. Can book sessions, participate in peer learning, take skill verification tests, manage their wallet, and interact with the AI Mentor.
-* `ADMIN`: Platform operator. Grants access to the dedicated `/admin/*` console, user suspensions, role updates, test verification reviews, administrative session cancellations with automated refunds, and system health diagnostics.
-
-### 2. Contextual Capabilities (Per-User / Per-Session)
-* **Mentor and Learner are NOT rigid RBAC roles.**
-* Any user account has contextual capabilities:
-  - `Can Learn`: Any skill the user desires to acquire.
-  - `Can Teach`: Skills where the user has successfully taken a verification assessment (`status = "VERIFIED"`).
-* In **Session A**, User X acts as the **Mentor** and User Y is the **Learner**.
-* In **Session B**, User X acts as the **Learner** and User Z is the **Mentor**.
-* The platform dynamically enforces capabilities per session context.
-
----
-
-## 🖥️ Platform Administration Console
-
-The dedicated `/admin` frontend platform provides 10 real-time operational views:
-
-1. **Platform Dashboard (`/admin`)**: Real-time KPI matrix, Three.js ambient background visualizer, live service health pulse, and recent audit logs.
-2. **User Management (`/admin/users`)**: Search, role filtering, suspension/reactivation with mandatory audit justification, and contextual capability inspection.
-3. **Platform Skills (`/admin/skills`)**: Skill catalog oversight, verified mentor statistics, learner demand counts, and skill creation/editing.
-4. **Mentor Verifications (`/admin/verification`)**: Candidate test review queue, score inspector, approval with optional grade override, and rejection reasons.
-5. **Session Oversight (`/admin/sessions`)**: Live session monitoring, filtering by lifecycle status, and administrative cancellation with automated coin refunding.
-6. **Moderation & Reports (`/admin/reports`)**: User report triage, resolution workflows, and dismissals.
-7. **Wallet & Economy (`/admin/wallet`)**: Circulating coin supply, transaction stream, and audited balance adjustments.
-8. **Analytics & Growth (`/admin/analytics`)**: Live Recharts visualizations derived from database aggregations (top skills, session distribution, completion rates).
-9. **System Diagnostics (`/admin/system`)**: Live PostgreSQL query ping latency, Redis ping latency, uptime counter, and release environment details.
-10. **Append-Only Audit Trail (`/admin/audit-logs`)**: Tamper-resistant log stream recording every administrative action, operator identity, target ID, explanation, IP address, and JSON metadata.
-
----
-
-## 📊 Observability & Metrics
-
-SkillSwap Arena is instrumented for Prometheus scraping and structured distributed tracing:
-
-* **Prometheus Endpoint**: `GET /metrics` returns standard Prometheus text format with low-cardinality labels:
-  - `http_requests_total` (method, handler, status_code)
-  - `http_request_duration_seconds` (histogram with p50, p90, p95, p99 latency buckets)
-  - `websocket_connections_active` (gauge of live active WebSocket connections)
-  - `sessions_total` (counter of lifecycle transitions)
-  - `auth_attempts_total` (counter of login attempts)
-  - `booking_operations_total` (counter of booking operations)
-* **Request Tracing**: `X-Request-ID` is assigned (or preserved) for every HTTP request and logged in structured format (`request_id="...", duration_ms=...`).
-* **Health Endpoints**:
-  - `GET /health`: Core application and dependency status summary.
-  - `GET /health/redis`: Real-time Redis latency and coordination check.
-* **Grafana Dashboards**: Pre-provisioned dashboards in `docker/production/grafana/provisioning/` for instant operational visibility.
-
----
-
-## 🚀 Quick Start (Local Production Docker)
+### Option A: Local Production Stack via Docker Compose (Recommended)
 
 Launch the complete local production topology (FastAPI, React SPA, PostgreSQL 16, Redis 7, Prometheus, Grafana) with a single command:
 
@@ -116,14 +144,14 @@ Launch the complete local production topology (FastAPI, React SPA, PostgreSQL 16
 git clone https://github.com/joshi-chinmay-016/SkillSwap.git
 cd SkillSwap
 
-# 2. Configure environment variables (or use defaults)
+# 2. Configure environment variables
 cp .env.example .env
 
 # 3. Launch Docker Compose stack
 docker compose up --build -d
 ```
 
-### Access Platform Services
+#### Access Local Endpoints
 * **Web Application**: `http://localhost:5173`
 * **Admin Console**: `http://localhost:5173/admin`
 * **Backend API Documentation**: `http://localhost:8000/docs`
@@ -133,59 +161,90 @@ docker compose up --build -d
 
 ---
 
-## ☁️ GCP Production Migration
+### Option B: Standalone Local Development
 
-SkillSwap Arena is architected for zero-serverless-friction deployment to **Google Cloud Platform (GCP)**:
-
-### 1. Automated Deployment Script
+#### 1. Backend Setup
 ```bash
-# Make script executable and deploy to your GCP project
-chmod +x deploy/gcp/deploy.sh deploy/gcp/setup-secrets.sh
+cd backend
+python -m venv venv
+source venv/bin/activate  # Or `venv\Scripts\activate` on Windows
+pip install -r requirements.txt
 
-# 1. Initialize Secret Manager
-./deploy/gcp/setup-secrets.sh YOUR_GCP_PROJECT_ID
+# Run database migrations & seed admin account
+alembic upgrade head
+python -m app.scripts.seed_admin --email admin@skillswap.local --password AdminSecurePass123! --name "Platform Admin"
 
-# 2. Build, migrate, and deploy to Cloud Run
-./deploy/gcp/deploy.sh YOUR_GCP_PROJECT_ID us-central1
+# Start FastAPI development server
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Infrastructure as Code (Terraform)
+#### 2. Frontend Setup
 ```bash
-cd deploy/gcp/terraform
-terraform init
-terraform plan -var="project_id=YOUR_GCP_PROJECT_ID"
-terraform apply -var="project_id=YOUR_GCP_PROJECT_ID"
+cd frontend
+npm install
+npm run dev
 ```
-
-### GCP Architecture Components
-* **Cloud Run**: Serverless container execution for FastAPI Backend (1 vCPU, 1Gi, auto-scales 1–10 instances) and React Frontend Nginx (0.5 vCPU, 256Mi).
-* **Cloud SQL (PostgreSQL 16)**: Managed private database with automated backups.
-* **Memorystore (Redis 7)**: Low-latency caching, rate limiting, and multi-instance WebSocket coordination.
-* **Serverless VPC Access Connector**: Secure private network bridge between Cloud Run, Cloud SQL, and Redis.
-* **Secret Manager**: Secure runtime injection for JWT keys, database credentials, and OAuth tokens.
-
----
-
-## 🔄 CI/CD Pipeline
-
-Automated GitHub Actions workflow (`.github/workflows/ci-cd.yml`) executes on every push and pull request:
-
-1. **Backend Validation**: Python 3.12 environment, dependency installation, bytecode validation, Alembic migrations against live PostgreSQL service container, and full Pytest execution.
-2. **Frontend Validation**: Node.js 20 environment, dependency installation, and Vite production bundle compilation.
-3. **Security & Secret Scans**: Automated credential leak detection and package security audits.
-4. **Docker Image Builds**: Multi-stage build reproducibility checks for both backend and frontend images with GitHub Actions caching.
 
 ---
 
 ## 🧪 Testing & Verification
 
-Run the comprehensive test suite locally:
+Run the comprehensive test suite across all platform domains:
 
 ```bash
 cd backend
-# Run all Phase 1–8 platform integration tests
 pytest tests/test_phase8_*.py tests/test_phase7_*.py tests/test_phase6_*.py tests/test_phase5_*.py tests/test_phase4_*.py tests/test_phase3_*.py tests/test_phase2_*.py -v
 ```
+
+Verify frontend production build compilation:
+```bash
+cd frontend
+npm run build
+```
+
+---
+
+## 📚 Documentation Index
+
+Explore the in-depth technical documentation:
+
+* 🏛️ **Architecture & Design**:
+  - [System Architecture](docs/architecture/system-architecture.md)
+  - [Component Architecture](docs/architecture/component-architecture.md)
+  - [Backend Architecture](docs/architecture/backend-architecture.md)
+  - [Frontend Architecture](docs/architecture/frontend-architecture.md)
+  - [Data Flow Pathways](docs/architecture/data-flow.md)
+  - [Architecture Decision Records (ADRs)](docs/architecture/decisions.md)
+* 🗄️ **Database & Schema**:
+  - [Database Design & Integrity Rules](docs/database/database-design.md)
+  - [Entity Relationship (ER) Diagram](docs/database/er-diagram.md)
+  - [Alembic Migrations Guide](docs/database/migrations.md)
+* 🔐 **Authentication & Security**:
+  - [Authentication Flow & JWT Lifecycle](docs/authentication/authentication-flow.md)
+  - [OAuth2 SSO & Account Linking](docs/authentication/oauth-flow.md)
+  - [Authorization & RBAC Capability Model](docs/authentication/authorization.md)
+* 🤝 **Sessions & Real-Time**:
+  - [Session Lifecycle State Machine](docs/sessions/session-lifecycle.md)
+  - [Jitsi Meet Video Integration](docs/sessions/jitsi-integration.md)
+  - [Real-Time Presence & WebSockets](docs/sessions/realtime-presence.md)
+* 🧠 **AI & Session Intelligence**:
+  - [Grounded AI Session Intelligence](docs/ai/session-intelligence.md)
+  - [Learning Journeys & Progress Tracking](docs/ai/learning-journey.md)
+  - [Prompt Isolation & Grounding Security](docs/ai/grounding-and-security.md)
+* 🛡️ **Platform Governance**:
+  - [Admin Platform Console](docs/admin/admin-platform.md)
+  - [Role-Based Access Control](docs/admin/rbac.md)
+  - [Append-Only Audit Logging](docs/admin/audit-logging.md)
+* ☁️ **Infrastructure & CI/CD**:
+  - [Production Docker Architecture](docs/infrastructure/docker.md)
+  - [Nginx Gateway & Reverse Proxy](docs/infrastructure/nginx.md)
+  - [Redis Caching & Coordination](docs/infrastructure/redis.md)
+  - [Prometheus Metrics & Observability](docs/infrastructure/observability.md)
+  - [GCP Cloud Run & Terraform Deployment](docs/infrastructure/gcp.md)
+  - [GitHub Actions CI/CD Pipeline](docs/cicd/github-actions.md)
+  - [API Overview & Route Catalog](docs/api/api-overview.md)
+* 🖼️ **Visual Assets**:
+  - [Product Screenshots Gallery](docs/screenshots/README.md)
 
 ---
 
