@@ -172,7 +172,7 @@ pip install -r requirements.txt
 
 # Run database migrations & seed admin account
 alembic upgrade head
-python -m app.scripts.seed_admin --email admin@skillswap.local --password AdminSecurePass123! --name "Platform Admin"
+python -m app.scripts.seed_admin --email admin@skillswap.io --password "<YOUR_SECURE_PASSWORD>" --name "Platform Admin"
 
 # Start FastAPI development server
 uvicorn app.main:app --reload --port 8000

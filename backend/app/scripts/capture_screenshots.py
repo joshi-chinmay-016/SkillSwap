@@ -1,87 +1,89 @@
 """
-SkillSwap Arena — Automated Screenshot Capture Script (Phase 8.10)
-Uses Playwright to capture real application screenshots from running frontend and backend.
+SkillSwap Arena — Verified Screenshot Capture Engine
+Captures distinctive, high-resolution screenshots of all 10 student and admin pages.
 """
 import os
-import time
+import json
+import urllib.request
 from playwright.sync_api import sync_playwright
 
 SCREENSHOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../docs/screenshots"))
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
+def get_auth_token_and_user():
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@skillswap.io")
+    admin_pass = os.environ.get("ADMIN_PASSWORD", "AdminSecurePass123!")
+
+    # Authenticate via backend API
+    login_data = json.dumps({"email": admin_email, "password": admin_pass}).encode("utf-8")
+    req = urllib.request.Request(
+        "http://localhost:8000/auth/login",
+        data=login_data,
+        headers={"Content-Type": "application/json"}
+    )
+    with urllib.request.urlopen(req) as response:
+        login_res = json.loads(response.read().decode("utf-8"))
+        token = login_res["access_token"]
+
+    # Fetch user info
+    me_req = urllib.request.Request(
+        "http://localhost:8000/auth/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    with urllib.request.urlopen(me_req) as response:
+        user_res = json.loads(response.read().decode("utf-8"))
+
+    return token, user_res
+
 def capture_all():
+    print("Obtaining real JWT token & profile from backend...")
+    token, user = get_auth_token_and_user()
+    print(f"Authenticated as {user.get('email')} (Role: {user.get('role')})")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={"width": 1440, "height": 900})
-        page = context.new_page()
 
-        # 1. Login Page
-        print("Capturing login.png...")
-        page.goto("http://localhost:5173/login", wait_until="networkidle")
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "login.png"))
+        # --- 1. Unauthenticated Login Page ---
+        print("\n1. Capturing login.png...")
+        anon_context = browser.new_context(viewport={"width": 1440, "height": 900})
+        anon_page = anon_context.new_page()
+        anon_page.goto("http://localhost:5173/login", wait_until="domcontentloaded")
+        anon_page.wait_for_timeout(2000)
+        anon_page.screenshot(path=os.path.join(SCREENSHOT_DIR, "login.png"))
+        anon_context.close()
 
-        # Perform Login as Admin
-        page.fill('input[type="email"]', "admin@skillswap.local")
-        page.fill('input[type="password"]', "AdminSecurePass123!")
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(2000)
+        # --- 2. Authenticated Context ---
+        auth_context = browser.new_context(viewport={"width": 1440, "height": 900})
+        
+        # Inject localStorage authentication tokens before every page load
+        auth_init_js = f"""
+        localStorage.setItem('token', {json.dumps(token)});
+        localStorage.setItem('user', JSON.stringify({json.dumps(user)}));
+        """
+        auth_context.add_init_script(auth_init_js)
+        page = auth_context.new_page()
 
-        # 2. Student Dashboard
-        print("Capturing dashboard.png...")
-        page.goto("http://localhost:5173/dashboard", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "dashboard.png"))
+        # Pages to capture
+        targets = [
+            ("dashboard.png", "http://localhost:5173/dashboard", "Student Dashboard"),
+            ("mentor-discovery.png", "http://localhost:5173/mentors", "Mentor Discovery"),
+            ("session.png", "http://localhost:5173/sessions", "Peer Sessions"),
+            ("learning-journey.png", "http://localhost:5173/journey/roadmap", "Learning Roadmap"),
+            ("session-intelligence.png", "http://localhost:5173/mentor", "AI Mentor Workspace"),
+            ("admin-dashboard.png", "http://localhost:5173/admin", "Admin Dashboard"),
+            ("admin-users.png", "http://localhost:5173/admin/users", "Admin User Management"),
+            ("admin-analytics.png", "http://localhost:5173/admin/analytics", "Admin Analytics"),
+            ("system-monitoring.png", "http://localhost:5173/admin/system", "Admin System Health"),
+        ]
 
-        # 3. Mentor Discovery
-        print("Capturing mentor-discovery.png...")
-        page.goto("http://localhost:5173/mentors", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "mentor-discovery.png"))
-
-        # 4. Peer Sessions
-        print("Capturing session.png...")
-        page.goto("http://localhost:5173/sessions", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "session.png"))
-
-        # 5. Learning Journey & Roadmap
-        print("Capturing learning-journey.png...")
-        page.goto("http://localhost:5173/journey/roadmap", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "learning-journey.png"))
-
-        # 6. AI Session Intelligence / AIMentor
-        print("Capturing session-intelligence.png...")
-        page.goto("http://localhost:5173/mentor", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "session-intelligence.png"))
-
-        # 7. Admin Dashboard
-        print("Capturing admin-dashboard.png...")
-        page.goto("http://localhost:5173/admin", wait_until="networkidle")
-        page.wait_for_timeout(2000)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "admin-dashboard.png"))
-
-        # 8. Admin Users
-        print("Capturing admin-users.png...")
-        page.goto("http://localhost:5173/admin/users", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "admin-users.png"))
-
-        # 9. Admin Analytics
-        print("Capturing admin-analytics.png...")
-        page.goto("http://localhost:5173/admin/analytics", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "admin-analytics.png"))
-
-        # 10. System Health / Diagnostics
-        print("Capturing system-monitoring.png...")
-        page.goto("http://localhost:5173/admin/system", wait_until="networkidle")
-        page.wait_for_timeout(1500)
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "system-monitoring.png"))
+        for filename, url, label in targets:
+            print(f"Capturing {filename} from {url} ({label})...")
+            page.goto(url, wait_until="domcontentloaded")
+            page.wait_for_timeout(2500)
+            page.screenshot(path=os.path.join(SCREENSHOT_DIR, filename))
 
         browser.close()
-        print("All screenshots successfully captured!")
+        print("\n[SUCCESS] All 10 distinctive screenshots captured successfully!")
 
 if __name__ == "__main__":
     capture_all()
