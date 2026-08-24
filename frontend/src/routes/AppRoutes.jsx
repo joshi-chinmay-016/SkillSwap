@@ -28,6 +28,8 @@ import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
 import AIMentorPage from "../pages/AIMentorPage";
 import MentorMemoryPage from "../pages/MentorMemoryPage";
+import MentorKnowledgePage from "../pages/MentorKnowledgePage";
+import AuthCallback from "../pages/AuthCallback";
 // Admin Pages and Layout (Phase 8)
 import AdminRoute from "../components/auth/AdminRoute";
 import AdminLayout from "../layouts/AdminLayout";
