@@ -52,34 +52,34 @@ except Exception as e:
 
 
 
-origins = [
+import os
+from fastapi.responses import Response
+from app.middleware.correlation import CorrelationAndMetricsMiddleware
+from app.infrastructure.metrics import get_metrics_response
 
-    "http://localhost:5173",
+# Configurable CORS origins for production and local development
+raw_cors = os.getenv("CORS_ORIGINS", "")
+if raw_cors:
+    origins = [orig.strip() for orig in raw_cors.split(",") if orig.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
-    "http://127.0.0.1:5173",
-
-    "http://localhost:5174",
-
-    "http://127.0.0.1:5174",
-
-    "http://localhost:3000",
-
-    "http://127.0.0.1:3000",
-
-]
+# Request Correlation ID & Prometheus Metrics Middleware
+app.add_middleware(CorrelationAndMetricsMiddleware)
 
 app.add_middleware(
-
     CORSMiddleware,
-
     allow_origins=origins,
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
-    allow_headers=["*"], 
-
+    allow_headers=["*"],
 )
 from app.api.auth import router as auth_router
 
@@ -298,3 +298,10 @@ def health():
 def health_redis():
     """Returns safe, unprivileged Redis infrastructure health and latency."""
     return check_redis_health()
+
+
+@app.get("/metrics")
+def metrics():
+    """Returns Prometheus scrapable metrics payload."""
+    payload, media_type = get_metrics_response()
+    return Response(content=payload, media_type=media_type)
