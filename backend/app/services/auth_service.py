@@ -43,7 +43,9 @@ def register_user(
         user = User(
             name=name,
             email=email,
-            password_hash=hash_password(password)
+            password_hash=hash_password(password),
+            role="USER",
+            is_active=True,
         )
 
         user = create_user(
@@ -94,6 +96,11 @@ def login_user(
             "Invalid credentials"
         )
 
+    if not getattr(user, "is_active", True):
+        raise ValueError(
+            "Account is suspended. Please contact platform support."
+        )
+
     if not verify_password(
         password,
         user.password_hash
@@ -104,7 +111,8 @@ def login_user(
 
     token = create_access_token(
         {
-            "sub": str(user.id)
+            "sub": str(user.id),
+            "role": getattr(user, "role", "USER")
         }
     )
 

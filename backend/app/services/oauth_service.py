@@ -319,7 +319,9 @@ def authenticate_or_link_oauth_user(
             name=name,
             email=clean_email,
             password_hash=random_pwd,
-            oauth_provider=provider
+            oauth_provider=provider,
+            role="USER",
+            is_active=True,
         )
         user = create_user(db, user)
 
