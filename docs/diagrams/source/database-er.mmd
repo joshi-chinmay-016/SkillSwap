@@ -1,0 +1,167 @@
+erDiagram
+    USERS ||--o{ OAUTH_IDENTITIES : "has"
+    USERS ||--|| PROFILES : "has"
+    USERS ||--o{ USER_SKILLS : "claims/verifies"
+    USERS ||--|| WALLETS : "owns"
+    USERS ||--o{ WALLET_TRANSACTIONS : "executes"
+    USERS ||--o{ SESSIONS : "mentors/learns"
+    USERS ||--o{ FEEDBACKS : "reviews/receives"
+    USERS ||--o{ LEARNING_JOURNEYS : "pursues"
+    USERS ||--o{ LEARNING_ACTIVITIES : "records"
+    USERS ||--o{ MENTOR_AVAILABILITIES : "configures"
+    USERS ||--o{ ADMIN_AUDIT_LOGS : "operates"
+    USERS ||--o{ REPORTS : "files/targeted"
+    USERS ||--o{ DOCUMENTS : "uploads"
+    USERS ||--o{ MENTOR_CONVERSATIONS : "engages"
+    USERS ||--o{ USER_ACHIEVEMENTS : "earns"
+
+    SKILLS ||--o{ USER_SKILLS : "categorizes"
+    SKILLS ||--o{ SESSIONS : "topic_for"
+    SKILLS ||--o{ ASSESSMENTS : "evaluated_by"
+
+    SESSIONS ||--o{ FEEDBACKS : "produces"
+    SESSIONS ||--o{ SESSION_NOTES : "contains"
+    SESSIONS ||--o{ SESSION_TOPICS : "covers"
+    SESSIONS ||--o{ SESSION_ACTION_ITEMS : "generates"
+    SESSIONS ||--o| SESSION_INTELLIGENCES : "synthesized_into"
+    SESSIONS ||--o{ LEARNING_ACTIVITIES : "originates"
+
+    DOCUMENTS ||--o{ CHUNKS : "split_into"
+    DOCUMENTS ||--o| PARSED_DOCUMENTS : "parsed_as"
+
+    ACHIEVEMENTS ||--o{ USER_ACHIEVEMENTS : "granted_to"
+    BADGES ||--o{ PROFILES : "displayed_on"
+
+    USERS {
+        int id PK
+        string email UK
+        string password_hash
+        string name
+        string role "USER | ADMIN"
+        boolean is_active
+        string oauth_provider
+        datetime created_at
+        datetime updated_at
+    }
+
+    PROFILES {
+        int id PK
+        int user_id FK,UK
+        string bio
+        string avatar_url
+        string department
+        int year
+        float credibility_score
+        int total_sessions_conducted
+    }
+
+    SKILLS {
+        int id PK
+        string name UK
+        string category
+        string description
+    }
+
+    USER_SKILLS {
+        int id PK
+        int user_id FK
+        int skill_id FK
+        string type "TEACH | LEARN"
+        string verification_status "CLAIMED | VERIFIED | REJECTED"
+        float score
+        datetime claimed_at
+        datetime verified_at
+    }
+
+    SESSIONS {
+        int id PK
+        int mentor_id FK
+        int learner_id FK
+        int skill_id FK
+        string status "scheduled | in_progress | completed | cancelled"
+        datetime scheduled_at
+        int duration_minutes
+        string meeting_link
+        datetime actual_start_at
+        datetime actual_end_at
+        string cancellation_reason
+    }
+
+    FEEDBACKS {
+        int id PK
+        int session_id FK
+        int reviewer_id FK
+        int recipient_id FK
+        int rating
+        string comment
+        datetime created_at
+    }
+
+    WALLETS {
+        int id PK
+        int user_id FK,UK
+        int balance
+        datetime updated_at
+    }
+
+    WALLET_TRANSACTIONS {
+        int id PK
+        int user_id FK
+        int amount
+        string type "WELCOME_BONUS | REWARD | PENALTY | REFUND | SESSION_PAYMENT"
+        string reason
+        string reference_id UK
+        datetime created_at
+    }
+
+    LEARNING_JOURNEYS {
+        int id PK
+        int user_id FK
+        int skill_id FK
+        string status "active | completed | paused"
+        int progress_percentage
+        datetime created_at
+    }
+
+    SESSION_NOTES {
+        int id PK
+        int session_id FK
+        int user_id FK
+        string category "NOTE | QUESTION | CONCEPT | STRUGGLE | TAKEAWAY"
+        text content
+        datetime created_at
+    }
+
+    SESSION_INTELLIGENCES {
+        int id PK
+        int session_id FK,UK
+        text summary
+        json skills_addressed
+        json key_takeaways
+        json guidance_notes
+        json recommended_actions
+        datetime generated_at
+    }
+
+    ADMIN_AUDIT_LOGS {
+        int id PK
+        int admin_user_id FK
+        string action
+        string target_type
+        string target_id
+        text reason
+        string ip_address
+        json metadata_payload
+        datetime created_at
+    }
+
+    REPORTS {
+        int id PK
+        int reporter_id FK
+        int reported_user_id FK
+        string reason
+        string status "OPEN | UNDER_REVIEW | RESOLVED | DISMISSED"
+        text resolution_notes
+        datetime created_at
+        datetime updated_at
+    }

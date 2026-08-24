@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor Admin as Platform Admin
+    participant UI as Admin Console (/admin/*)
+    participant Guard as FastAPI require_admin Guard
+    participant Service as Admin Service
+    participant DB as PostgreSQL 16
+    participant Audit as Append-Only Audit Trail
+
+    Admin->>UI: Trigger Sensitive Action (e.g. Suspend User, Cancel Session, Adjust Wallet)
+    UI->>UI: Prompt Mandatory Reason Dialog
+    Admin->>UI: Enter Justification & Confirm
+    UI->>Guard: POST /admin/... (Authorization: Bearer <AdminJWT>)
+    Guard->>Guard: Verify JWT role == "ADMIN" and is_active == True
+    alt Unauthorized Attempt
+        Guard-->>UI: 403 Forbidden (Halt execution)
+    else Authorized Operator
+        Guard->>Service: Execute administrative business logic
+        Service->>DB: Begin Atomic Database Transaction
+        Service->>DB: Apply mutation (e.g. users.is_active = False)
+        Service->>Audit: INSERT INTO admin_audit_logs (admin_id, action, target, reason, ip, metadata)
+        DB-->>Service: Transaction Committed
+        Service-->>UI: 200 OK (Success message & updated state)
+        UI-->>Admin: Display updated table & toast notification
+    end

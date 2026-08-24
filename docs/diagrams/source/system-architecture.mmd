@@ -1,0 +1,80 @@
+graph TD
+    classDef clientStyle fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#f8fafc;
+    classDef proxyStyle fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef backendStyle fill:#1e1e38,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef storageStyle fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef aiStyle fill:#2d1b4e,stroke:#c084fc,stroke-width:2px,color:#f8fafc;
+    classDef extStyle fill:#334155,stroke:#94a3b8,stroke-width:1px,stroke-dasharray: 4 4,color:#f8fafc;
+
+    subgraph Clients ["Client Applications"]
+        SPA["React 18 SPA (Vite + TailwindCSS)"]:::clientStyle
+        AdminUI["Admin Platform Console (/admin)"]:::clientStyle
+    end
+
+    subgraph Edge ["Edge & Networking Layer"]
+        Nginx["Nginx Reverse Proxy / Load Balancer"]:::proxyStyle
+    end
+
+    subgraph BackendCore ["FastAPI Backend (Router -> Service -> Repository)"]
+        AuthRouter["Auth & OAuth Router"]:::backendStyle
+        ProfileRouter["Profiles & Capabilities Router"]:::backendStyle
+        SkillRouter["Skills & Verification Router"]:::backendStyle
+        SessionRouter["Peer Sessions & Booking Router"]:::backendStyle
+        JourneyRouter["Learning Journeys & Roadmaps Router"]:::backendStyle
+        AIRouter["AI Mentor & RAG Router"]:::backendStyle
+        AdminRouter["Admin & Moderation Router"]:::backendStyle
+        WSRouter["WebSocket Presence Manager (/ws/{id})"]:::backendStyle
+        MetricsMiddleware["Metrics & Correlation Middleware"]:::backendStyle
+    end
+
+    subgraph CoordinationStorage ["Storage, Cache & Coordination Layer"]
+        Postgres[("PostgreSQL 16\n(37 Relational Tables)")]:::storageStyle
+        Redis[("Redis 7.0+\n(Pub/Sub, Presence TTL, Rate Limiting)")]:::storageStyle
+        VectorStore[("FAISS / CPU Vector Store\n(3072-dim Embeddings)")]:::storageStyle
+    end
+
+    subgraph ExternalServices ["External Services & Infrastructure"]
+        GoogleOAuth["Google / GitHub OAuth Provider"]:::extStyle
+        Jitsi["Jitsi Meet Server (Video & Audio)"]:::extStyle
+        GeminiAPI["Google Gemini LLM / Embeddings API"]:::aiStyle
+        Prometheus["Prometheus / Grafana Observability"]:::extStyle
+    end
+
+    SPA -->|HTTPS / REST| Nginx
+    SPA -->|WSS / WebSockets| Nginx
+    AdminUI -->|HTTPS / REST| Nginx
+
+    Nginx -->|HTTP Proxy| MetricsMiddleware
+    Nginx -->|WebSocket Upgrade| WSRouter
+
+    MetricsMiddleware --> AuthRouter
+    MetricsMiddleware --> ProfileRouter
+    MetricsMiddleware --> SkillRouter
+    MetricsMiddleware --> SessionRouter
+    MetricsMiddleware --> JourneyRouter
+    MetricsMiddleware --> AIRouter
+    MetricsMiddleware --> AdminRouter
+
+    AuthRouter --> GoogleOAuth
+    AuthRouter --> Postgres
+    AuthRouter --> Redis
+
+    ProfileRouter --> Postgres
+    SkillRouter --> Postgres
+
+    SessionRouter --> Postgres
+    SessionRouter --> Redis
+    SessionRouter --> Jitsi
+
+    WSRouter --> Redis
+
+    JourneyRouter --> Postgres
+
+    AIRouter --> GeminiAPI
+    AIRouter --> VectorStore
+    AIRouter --> Postgres
+
+    AdminRouter --> Postgres
+    AdminRouter --> Redis
+
+    Prometheus -.->|Scrape /metrics| MetricsMiddleware

@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant Client as React SPA
+    participant Backend as FastAPI Auth Router
+    participant DB as PostgreSQL 16
+    participant OAuth as Google / GitHub OAuth
+
+    Note over User,DB: Scenario 1: Standard Email & Password Registration / Login
+    User->>Client: Enter Email & Password
+    Client->>Backend: POST /auth/register or /auth/login
+    Backend->>Backend: Hash Password with bcrypt (salt rounds: 12)
+    alt Registration Flow
+        Backend->>DB: INSERT INTO users (role="USER", is_active=True)
+        Backend->>DB: INSERT INTO profiles & wallets (balance=5)
+    else Login Flow
+        Backend->>DB: SELECT * FROM users WHERE email = ?
+        Backend->>Backend: Verify bcrypt password & check is_active == True
+    end
+    Backend->>Backend: Issue HS256 JWT Token (sub=user_id, role=role, exp=24h)
+    Backend-->>Client: 200 OK (access_token, user_payload)
+    Client->>Client: Store token in memory/Zustand & set Authorization Header
+
+    Note over User,OAuth: Scenario 2: OAuth2 Login / Registration Flow
+    User->>Client: Click "Sign in with Google / GitHub"
+    Client->>Backend: GET /auth/oauth/authorize?provider=google
+    Backend-->>Client: Redirect to OAuth Provider + state token
+    Client->>OAuth: User authorizes SkillSwap Arena
+    OAuth-->>Client: Redirect to /auth/callback?code=...&state=...
+    Client->>Backend: POST /auth/oauth/callback (code, state)
+    Backend->>OAuth: Exchange code for Access Token & Profile (email, sub, name)
+    Backend->>DB: Find existing user or create linked account
+    Backend->>Backend: Issue SkillSwap JWT Session Token
+    Backend-->>Client: 200 OK (access_token, user_payload)
+    Client-->>User: Navigate to /dashboard

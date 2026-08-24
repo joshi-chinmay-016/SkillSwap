@@ -1,0 +1,52 @@
+flowchart TD
+    classDef gitStyle fill:#1e293b,stroke:#f97316,stroke-width:2px,color:#f8fafc;
+    classDef jobStyle fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef checkStyle fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef deployStyle fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+
+    PushTrigger(["Git Push / PR to main or ft/production"]):::gitStyle
+
+    subgraph CI ["GitHub Actions CI Pipeline (.github/workflows/ci-cd.yml)"]
+        subgraph BackendJob ["Job 1: Backend Validation"]
+            PySetup["Setup Python 3.12 & Cache Pip"]:::jobStyle
+            LiveDB["Spin up PostgreSQL 16 & Redis 7 Service Containers"]:::jobStyle
+            Migrate["Run Alembic upgrade head"]:::jobStyle
+            Pytest["Execute Pytest (All Integration Tests)"]:::jobStyle
+        end
+
+        subgraph FrontendJob ["Job 2: Frontend Validation"]
+            NodeSetup["Setup Node.js 20 & Cache NPM"]:::jobStyle
+            NpmCI["npm ci dependencies"]:::jobStyle
+            ViteBuild["npm run build (Vite Production Bundle)"]:::jobStyle
+        end
+
+        subgraph SecurityJob ["Job 3: Security & Leak Scans"]
+            SecretScan["Credential & Private Key Leak Regex Scan"]:::jobStyle
+        end
+
+        subgraph DockerJob ["Job 4: Multi-Stage Docker Builds"]
+            BackendDocker["Build Backend Container (Non-root, Slim)"]:::jobStyle
+            FrontendDocker["Build Frontend Container (Nginx Alpine)"]:::jobStyle
+        end
+    end
+
+    subgraph CD ["Automated Deployment Pipeline (deploy.sh)"]
+        ArtifactPush["Push to GCP Artifact Registry"]:::deployStyle
+        CloudRunDeploy["Deploy to GCP Cloud Run (Backend & Frontend)"]:::deployStyle
+        HealthVerification["Execute /health and /healthz Smoke Verification"]:::checkStyle
+    end
+
+    PushTrigger --> PySetup
+    PushTrigger --> NodeSetup
+    PushTrigger --> SecretScan
+
+    PySetup --> LiveDB --> Migrate --> Pytest
+    NodeSetup --> NpmCI --> ViteBuild
+
+    Pytest --> DockerJob
+    ViteBuild --> DockerJob
+    SecretScan --> DockerJob
+
+    DockerJob --> ArtifactPush
+    ArtifactPush --> CloudRunDeploy
+    CloudRunDeploy --> HealthVerification

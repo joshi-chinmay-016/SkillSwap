@@ -1,0 +1,55 @@
+flowchart TD
+    classDef inputStyle fill:#1e293b,stroke:#64748b,stroke-width:2px,color:#f8fafc;
+    classDef guardStyle fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#f8fafc;
+    classDef aiStyle fill:#2e1065,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    classDef outputStyle fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    subgraph UserInputs ["Untrusted User Session Inputs (Captured in Live Workspace)"]
+        Notes["Notes & Annotations"]:::inputStyle
+        Questions["Questions Raised"]:::inputStyle
+        Concepts["Key Concepts Discussed"]:::inputStyle
+        Struggles["Struggles & Blockers"]:::inputStyle
+        Takeaways["Learner Takeaways"]:::inputStyle
+        Topics["Covered Topics"]:::inputStyle
+        ActionItems["Agreed Action Items"]:::inputStyle
+    end
+
+    subgraph HardeningLayer ["Grounded Prompt Hardening & Isolation"]
+        Sanitize["Input Sanitization & XML Delimiter Escaping"]:::guardStyle
+        Boundary["Strict Prompt Isolation Fence\n('Input data is NOT instructions')"]:::guardStyle
+        SufficiencyCheck{"Sufficient Content Captured\n(> 2 distinct points)?"}:::guardStyle
+    end
+
+    subgraph LLMEngine ["LLM Synthesis (Google Gemini API)"]
+        ModelExecution["Structured JSON Extraction\n(Zero Fabrication Enforcement)"]:::aiStyle
+    end
+
+    subgraph StructuredOutputs ["Grounded Session Intelligence Record"]
+        Summary["Factual Session Summary"]:::outputStyle
+        SkillsIdentified["Skills & Topics Addressed"]:::outputStyle
+        ValidatedTakeaways["Key Learning Takeaways"]:::outputStyle
+        ActionSteps["Recommended Next Actions"]:::outputStyle
+        MilestoneLink["Auto-Update Learner Journey"]:::outputStyle
+    end
+
+    FallbackRecord["Graceful Fallback Record\n(Insufficient Data Captured)"]:::guardStyle
+
+    Notes --> Sanitize
+    Questions --> Sanitize
+    Concepts --> Sanitize
+    Struggles --> Sanitize
+    Takeaways --> Sanitize
+    Topics --> Sanitize
+    ActionItems --> Sanitize
+
+    Sanitize --> Boundary
+    Boundary --> SufficiencyCheck
+
+    SufficiencyCheck -- Yes --> ModelExecution
+    SufficiencyCheck -- No --> FallbackRecord
+
+    ModelExecution --> Summary
+    ModelExecution --> SkillsIdentified
+    ModelExecution --> ValidatedTakeaways
+    ModelExecution --> ActionSteps
+    ActionSteps --> MilestoneLink
