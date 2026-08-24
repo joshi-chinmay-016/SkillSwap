@@ -17,46 +17,55 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_tables = inspector.get_table_names()
+    user_columns = [col['name'] for col in inspector.get_columns('users')]
+
     # 1. Add role and is_active to users
-    op.add_column('users', sa.Column('role', sa.String(length=20), server_default='USER', nullable=False))
-    op.add_column('users', sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False))
-    op.create_index('ix_users_role', 'users', ['role'], unique=False)
-    op.create_index('ix_users_is_active', 'users', ['is_active'], unique=False)
+    if 'role' not in user_columns:
+        op.add_column('users', sa.Column('role', sa.String(length=20), server_default='USER', nullable=False))
+        op.create_index('ix_users_role', 'users', ['role'], unique=False)
+    if 'is_active' not in user_columns:
+        op.add_column('users', sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False))
+        op.create_index('ix_users_is_active', 'users', ['is_active'], unique=False)
 
-    # 2. Create admin_audit_logs table
-    op.create_table(
-        'admin_audit_logs',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('admin_user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('action', sa.String(length=100), nullable=False),
-        sa.Column('target_type', sa.String(length=50), nullable=False),
-        sa.Column('target_id', sa.String(length=100), nullable=True),
-        sa.Column('reason', sa.Text(), nullable=True),
-        sa.Column('metadata_json', sa.Text(), nullable=True),
-        sa.Column('ip_address', sa.String(length=45), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    )
-    op.create_index('ix_admin_audit_logs_action', 'admin_audit_logs', ['action'], unique=False)
-    op.create_index('ix_admin_audit_logs_admin_user_id', 'admin_audit_logs', ['admin_user_id'], unique=False)
-    op.create_index('ix_admin_audit_logs_created_at', 'admin_audit_logs', ['created_at'], unique=False)
-    op.create_index('ix_admin_audit_logs_target', 'admin_audit_logs', ['target_type', 'target_id'], unique=False)
+    # 2. Create admin_audit_logs table if not exists
+    if 'admin_audit_logs' not in existing_tables:
+        op.create_table(
+            'admin_audit_logs',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('admin_user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('action', sa.String(length=100), nullable=False),
+            sa.Column('target_type', sa.String(length=50), nullable=False),
+            sa.Column('target_id', sa.String(length=100), nullable=True),
+            sa.Column('reason', sa.Text(), nullable=True),
+            sa.Column('metadata_json', sa.Text(), nullable=True),
+            sa.Column('ip_address', sa.String(length=45), nullable=True),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        )
+        op.create_index('ix_admin_audit_logs_action', 'admin_audit_logs', ['action'], unique=False)
+        op.create_index('ix_admin_audit_logs_admin_user_id', 'admin_audit_logs', ['admin_user_id'], unique=False)
+        op.create_index('ix_admin_audit_logs_created_at', 'admin_audit_logs', ['created_at'], unique=False)
+        op.create_index('ix_admin_audit_logs_target', 'admin_audit_logs', ['target_type', 'target_id'], unique=False)
 
-    # 3. Create reports table
-    op.create_table(
-        'reports',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('reporter_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('reported_user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('session_id', sa.Integer(), sa.ForeignKey('sessions.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('reason', sa.Text(), nullable=False),
-        sa.Column('status', sa.String(length=20), server_default='OPEN', nullable=False),
-        sa.Column('resolution_notes', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True),
-    )
-    op.create_index('ix_reports_status', 'reports', ['status'], unique=False)
-    op.create_index('ix_reports_reporter_id', 'reports', ['reporter_id'], unique=False)
-    op.create_index('ix_reports_reported_user_id', 'reports', ['reported_user_id'], unique=False)
+    # 3. Create reports table if not exists
+    if 'reports' not in existing_tables:
+        op.create_table(
+            'reports',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('reporter_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+            sa.Column('reported_user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('session_id', sa.Integer(), sa.ForeignKey('sessions.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('reason', sa.Text(), nullable=False),
+            sa.Column('status', sa.String(length=20), server_default='OPEN', nullable=False),
+            sa.Column('resolution_notes', sa.Text(), nullable=True),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+            sa.Column('resolved_at', sa.DateTime(timezone=True), nullable=True),
+        )
+        op.create_index('ix_reports_status', 'reports', ['status'], unique=False)
+        op.create_index('ix_reports_reporter_id', 'reports', ['reporter_id'], unique=False)
+        op.create_index('ix_reports_reported_user_id', 'reports', ['reported_user_id'], unique=False)
 
 
 def downgrade() -> None:
