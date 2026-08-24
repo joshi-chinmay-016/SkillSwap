@@ -28,8 +28,19 @@ import SessionPage from "../pages/SessionPage";
 import ActivityFeed from "../pages/ActivityFeed";
 import AIMentorPage from "../pages/AIMentorPage";
 import MentorMemoryPage from "../pages/MentorMemoryPage";
-import MentorKnowledgePage from "../pages/MentorKnowledgePage";
-import AuthCallback from "../pages/AuthCallback";
+// Admin Pages and Layout (Phase 8)
+import AdminRoute from "../components/auth/AdminRoute";
+import AdminLayout from "../layouts/AdminLayout";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminUsers from "../pages/admin/AdminUsers";
+import AdminSkills from "../pages/admin/AdminSkills";
+import AdminVerification from "../pages/admin/AdminVerification";
+import AdminSessions from "../pages/admin/AdminSessions";
+import AdminReports from "../pages/admin/AdminReports";
+import AdminWallet from "../pages/admin/AdminWallet";
+import AdminAnalytics from "../pages/admin/AdminAnalytics";
+import AdminSystem from "../pages/admin/AdminSystem";
+import AdminAuditLogs from "../pages/admin/AdminAuditLogs";
 
 export default function AppRoutes() {
   return (
@@ -44,7 +55,7 @@ export default function AppRoutes() {
         <Route path="/register" element={<Register />} />
       </Route>
 
-      {/* Authenticated Pages */}
+      {/* Authenticated User Pages */}
       <Route element={<ProtectedRoute />}>
         {/* Onboarding is full-screen */}
         <Route path="/onboarding" element={<Onboarding />} />
@@ -80,6 +91,21 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      {/* Dedicated Platform Administration Console (Phase 8) */}
+      <Route element={<AdminRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/skills" element={<AdminSkills />} />
+          <Route path="/admin/verification" element={<AdminVerification />} />
+          <Route path="/admin/sessions" element={<AdminSessions />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/wallet" element={<AdminWallet />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/system" element={<AdminSystem />} />
+          <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+        </Route>
+      </Route>
 
       {/* Fallback redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />
