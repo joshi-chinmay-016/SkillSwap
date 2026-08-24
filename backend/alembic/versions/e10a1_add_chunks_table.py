@@ -21,7 +21,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision: str = "e10a1_add_chunks_table"
-down_revision: Union[str, None] = "d90a1_add_documents_and_parsed_documents"
+down_revision: Union[str, None] = "d90a1_docs_and_parsed_docs"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

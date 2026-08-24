@@ -2,7 +2,7 @@
 
 # ⚡ SkillSwap Arena
 
-### **Enterprise Peer-to-Peer Skill Exchange, AI Mentorship & Production Platform**
+### **Peer-to-Peer Skill Exchange, AI Mentorship & Production Platform**
 
 *An AI-powered peer learning platform where students simultaneously learn and teach through verified capabilities, live video workspaces, collaborative note capture, grounded session intelligence, and authoritative platform governance.*
 
