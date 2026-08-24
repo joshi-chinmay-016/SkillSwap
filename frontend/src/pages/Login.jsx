@@ -65,7 +65,11 @@ export default function Login() {
 
       // 3. Set store state and redirect
       loginStore(token, user);
-      navigate("/dashboard");
+      if (user?.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error("Login failure:", err);
       const msg = err.response?.data?.detail || "Invalid email or password. Please try again.";

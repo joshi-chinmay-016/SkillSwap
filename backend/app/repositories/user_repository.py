@@ -3,13 +3,18 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 
 
+import sqlalchemy as sa
+
 def get_user_by_email(
     db: Session,
     email: str
 ):
+    if not email:
+        return None
+    clean_email = email.strip().lower()
     return (
         db.query(User)
-        .filter(User.email == email)
+        .filter(sa.func.lower(User.email) == clean_email)
         .first()
     )
 

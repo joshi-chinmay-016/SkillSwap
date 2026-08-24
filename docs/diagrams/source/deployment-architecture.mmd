@@ -1,0 +1,46 @@
+graph TD
+    classDef cloudStyle fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef runStyle fill:#1e293b,stroke:#60a5fa,stroke-width:2px,color:#f8fafc;
+    classDef dataStyle fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef secStyle fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef userStyle fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+
+    InternetUsers(("Internet Clients / Browsers")):::userStyle
+
+    subgraph GCP ["Google Cloud Platform (GCP Project: us-central1)"]
+        subgraph Ingress ["Edge Ingress & Domain Routing"]
+            CloudDNS["Cloud DNS & SSL Termination"]:::cloudStyle
+        end
+
+        subgraph ServerlessCompute ["Cloud Run Serverless Compute Tier"]
+            FrontendRun["Cloud Run: Frontend SPA\n(Nginx Alpine, 0.5 vCPU, 256Mi)\nMin: 1, Max: 5 Instances"]:::runStyle
+            BackendRun["Cloud Run: Backend API\n(FastAPI Python 3.12, 1 vCPU, 1Gi)\nMin: 1, Max: 10 Instances"]:::runStyle
+        end
+
+        subgraph PrivateVPC ["Serverless VPC Access Network (10.8.0.0/28)"]
+            VPCConnector["Serverless VPC Access Connector"]:::cloudStyle
+            CloudSQL[("Cloud SQL PostgreSQL 16\n(Private IP, Auto-Backups)\nDatabase: skillswap_prod")]:::dataStyle
+            Memorystore[("Memorystore Redis 7.0\n(Private IP, Basic Tier)\nPub/Sub & Distributed State")]:::dataStyle
+        end
+
+        subgraph SecurityRegistry ["Security & Artifact Management"]
+            SecretManager["GCP Secret Manager\n(JWT, DB URLs, API Keys)"]:::secStyle
+            ArtifactRegistry["Artifact Registry\n(Docker Images Repo)"]:::secStyle
+            CloudIAM["IAM Service Accounts\n(Least Privilege Access)"]:::secStyle
+        end
+    end
+
+    InternetUsers -->|HTTPS| CloudDNS
+    CloudDNS -->|Route Static UI| FrontendRun
+    CloudDNS -->|Route /api/*, /ws/*| BackendRun
+
+    FrontendRun -.->|Client API Calls| BackendRun
+
+    BackendRun -->|Private VPC Egress| VPCConnector
+    VPCConnector --> CloudSQL
+    VPCConnector --> Memorystore
+
+    SecretManager -.->|Runtime Secret Injection| BackendRun
+    ArtifactRegistry -.->|Container Image Deployment| FrontendRun
+    ArtifactRegistry -.->|Container Image Deployment| BackendRun
+    CloudIAM -.->|Role Authorization| BackendRun

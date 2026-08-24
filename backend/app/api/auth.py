@@ -129,6 +129,8 @@ def get_me(
         "id": current_user.id,
         "name": current_user.name,
         "email": current_user.email,
+        "role": getattr(current_user, "role", "USER"),
+        "is_active": getattr(current_user, "is_active", True),
         "avatar_url": profile.avatar_url if profile else None
     }
 
@@ -197,8 +199,15 @@ async def google_oauth_callback(
             avatar_url=user_info.get("avatar_url"),
         )
 
+        if not getattr(user, "is_active", True):
+            err_url = f"{frontend_callback}?error={urllib.parse.quote('Account is suspended. Please contact platform support.')}"
+            return RedirectResponse(url=err_url)
+
         # 4. Generate access token
-        access_token = create_access_token({"sub": str(user.id)})
+        access_token = create_access_token({
+            "sub": str(user.id),
+            "role": getattr(user, "role", "USER")
+        })
 
         from app.services.profile_service import get_or_create_profile
         profile = get_or_create_profile(db, user.id)
@@ -207,6 +216,8 @@ async def google_oauth_callback(
             "id": user.id,
             "name": user.name,
             "email": user.email,
+            "role": getattr(user, "role", "USER"),
+            "is_active": getattr(user, "is_active", True),
             "avatar_url": profile.avatar_url if profile else None,
         }
 
@@ -284,8 +295,15 @@ async def github_oauth_callback(
             avatar_url=user_info.get("avatar_url"),
         )
 
+        if not getattr(user, "is_active", True):
+            err_url = f"{frontend_callback}?error={urllib.parse.quote('Account is suspended. Please contact platform support.')}"
+            return RedirectResponse(url=err_url)
+
         # 4. Generate access token
-        access_token = create_access_token({"sub": str(user.id)})
+        access_token = create_access_token({
+            "sub": str(user.id),
+            "role": getattr(user, "role", "USER")
+        })
 
         from app.services.profile_service import get_or_create_profile
         profile = get_or_create_profile(db, user.id)
@@ -294,6 +312,8 @@ async def github_oauth_callback(
             "id": user.id,
             "name": user.name,
             "email": user.email,
+            "role": getattr(user, "role", "USER"),
+            "is_active": getattr(user, "is_active", True),
             "avatar_url": profile.avatar_url if profile else None,
         }
 

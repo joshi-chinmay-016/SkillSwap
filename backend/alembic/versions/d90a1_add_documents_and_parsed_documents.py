@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd90a1_add_documents_and_parsed_documents'
+revision: str = 'd90a1_docs_and_parsed_docs'
 down_revision: Union[str, None] = 'd80a1_add_mentor_memories'
 
 branch_labels: Union[str, Sequence[str], None] = None

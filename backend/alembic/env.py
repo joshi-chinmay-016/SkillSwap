@@ -43,6 +43,21 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+import os
+
+# Override sqlalchemy.url with environment variable or application settings
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    try:
+        from app.core.config import settings
+        database_url = settings.DATABASE_URL
+    except Exception:
+        database_url = None
+
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -74,8 +89,12 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    configuration = config.get_section(config.config_ini_section, {})
+    if database_url:
+        configuration["sqlalchemy.url"] = database_url
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

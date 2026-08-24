@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Scheduled: Learner Books Session\n(Deducts 1 Coin with Idempotency Key)
+
+    Scheduled --> InProgress: Mentor / Learner Joins Workspace\n(Generates Jitsi Room & Starts Clock)
+    Scheduled --> Cancelled: Cancelled by Mentor / Learner\n(Full Coin Refund Issued)
+    Scheduled --> Cancelled: Admin Intervention\n(Administrative Cancellation + Refund)
+
+    InProgress --> Completed: Both Parties Complete & Confirm\n(Transfers 1 Coin to Mentor Wallet)
+    InProgress --> Cancelled: Emergency Termination\n(Investigated via Moderation Queue)
+
+    Completed --> FeedbackSubmitted: Either Party Submits Review\n(1-5 Stars + Feedback Text)
+    FeedbackSubmitted --> [*]: Updates Mentor Credibility Score\n& Records Learning Activity
+
+    Cancelled --> [*]: Slot Restored & Notifications Dispatched

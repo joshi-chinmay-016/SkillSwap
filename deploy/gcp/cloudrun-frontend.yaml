@@ -1,0 +1,40 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: skillswap-frontend
+  labels:
+    cloud.googleapis.com/location: us-central1
+    app.kubernetes.io/name: skillswap-frontend
+    app.kubernetes.io/part-of: skillswap-arena
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "5"
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 60
+      serviceAccountName: skillswap-frontend-sa@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+        - image: us-central1-docker.pkg.dev/PROJECT_ID/skillswap-repo/skillswap-frontend:latest
+          ports:
+            - name: http1
+              containerPort: 80
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            periodSeconds: 15
+            failureThreshold: 3

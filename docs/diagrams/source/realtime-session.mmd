@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor Learner as Learner Client
+    participant WS as WebSocket Manager (/ws/{id})
+    participant Redis as Redis 7 Pub/Sub
+    actor Mentor as Mentor Client
+    participant Jitsi as Jitsi Meet Server
+
+    Learner->>WS: Connect WebSocket (Bearer JWT auth)
+    WS->>Redis: SET session:presence:{session_id}:{user_id} (TTL: 60s)
+    WS->>Redis: PUBLISH channel:session:{session_id} (event="USER_JOINED")
+    Redis-->>Mentor: Receive "USER_JOINED" notification via WebSocket
+    
+    Mentor->>WS: Connect WebSocket (Bearer JWT auth)
+    WS->>Redis: SET session:presence:{session_id}:{user_id} (TTL: 60s)
+    WS->>Redis: PUBLISH channel:session:{session_id} (event="USER_JOINED")
+    Redis-->>Learner: Receive "USER_JOINED" notification
+
+    Note over Learner,Mentor: Both clients load embedded Jitsi Meet IFrame with secure room token
+    Learner->>Jitsi: Join Video/Audio Room
+    Mentor->>Jitsi: Join Video/Audio Room
+
+    loop Collaborative Notes & Action Items
+        Learner->>WS: Send note/topic creation event
+        WS->>Redis: PUBLISH channel:session:{session_id} (event="NOTE_CREATED")
+        Redis-->>Mentor: Instant sync note to Mentor workspace
+    end
+
+    Learner->>WS: Disconnect / Leave
+    WS->>Redis: DEL session:presence:{session_id}:{user_id}
+    WS->>Redis: PUBLISH channel:session:{session_id} (event="USER_LEFT")
+    Redis-->>Mentor: Display participant offline status

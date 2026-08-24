@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 500" width="100%" height="100%" style="background:#0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="475" y="35" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">SkillSwap Arena — Administrative Execution &amp; Audit Pipeline</text>
+  <text x="475" y="55" text-anchor="middle" fill="#94a3b8" font-size="12">RBAC Enforcement, Mandatory Audit Reason Prompts, and Immutable Audit Log Append</text>
+
+  <!-- Participants -->
+  <g transform="translate(60, 80)">
+    <rect x="0" y="0" width="130" height="36" rx="6" fill="#1e293b" stroke="#a855f7"/>
+    <text x="65" y="23" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600">Platform Admin</text>
+    <line x1="65" y1="36" x2="65" y2="390" stroke="#334155" stroke-dasharray="4 4"/>
+  </g>
+
+  <g transform="translate(250, 80)">
+    <rect x="0" y="0" width="140" height="36" rx="6" fill="#1e293b" stroke="#38bdf8"/>
+    <text x="70" y="23" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600">Admin Console</text>
+    <line x1="70" y1="36" x2="70" y2="390" stroke="#334155" stroke-dasharray="4 4"/>
+  </g>
+
+  <g transform="translate(450, 80)">
+    <rect x="0" y="0" width="160" height="36" rx="6" fill="#1e293b" stroke="#ef4444"/>
+    <text x="80" y="23" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600">FastAPI require_admin</text>
+    <line x1="80" y1="36" x2="80" y2="390" stroke="#334155" stroke-dasharray="4 4"/>
+  </g>
+
+  <g transform="translate(670, 80)">
+    <rect x="0" y="0" width="150" height="36" rx="6" fill="#1e293b" stroke="#10b981"/>
+    <text x="75" y="23" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600">PostgreSQL DB</text>
+    <line x1="75" y1="36" x2="75" y2="390" stroke="#334155" stroke-dasharray="4 4"/>
+  </g>
+
+  <!-- Step 1: Action Trigger -->
+  <line x1="125" y1="140" x2="320" y2="140" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="222" y="132" text-anchor="middle" fill="#cbd5e1" font-size="11">1. Trigger Action (e.g. Suspend User)</text>
+
+  <!-- Step 2: Reason Prompt -->
+  <rect x="250" y="160" width="140" height="30" rx="4" fill="#0f172a" stroke="#f59e0b"/>
+  <text x="320" y="180" text-anchor="middle" fill="#fbbf24" font-size="10">Mandatory Reason Dialog</text>
+
+  <!-- Step 3: Admin Request -->
+  <line x1="320" y1="210" x2="530" y2="210" stroke="#38bdf8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="425" y="202" text-anchor="middle" fill="#cbd5e1" font-size="11">2. POST /admin/... (Bearer Token)</text>
+
+  <!-- Step 4: Role Guard Verification -->
+  <rect x="470" y="230" width="120" height="28" rx="4" fill="#0f172a" stroke="#ef4444"/>
+  <text x="530" y="248" text-anchor="middle" fill="#f87171" font-size="10">Verify role == "ADMIN"</text>
+
+  <!-- Step 5: Database Mutation & Audit Log -->
+  <line x1="530" y1="280" x2="745" y2="280" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+  <text x="637" y="272" text-anchor="middle" fill="#cbd5e1" font-size="11">3. Atomic Mutation + Audit Log Insert</text>
+
+  <!-- Step 6: Confirmation -->
+  <line x1="745" y1="320" x2="530" y2="320" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+  <text x="637" y="312" text-anchor="middle" fill="#cbd5e1" font-size="11">4. Transaction Committed</text>
+
+  <line x1="530" y1="350" x2="320" y2="350" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+  <text x="425" y="342" text-anchor="middle" fill="#cbd5e1" font-size="11">5. 200 OK Response</text>
+
+  <line x1="320" y1="380" x2="125" y2="380" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+  <text x="222" y="372" text-anchor="middle" fill="#cbd5e1" font-size="11">6. Refresh UI &amp; Audit Feed</text>
+
+  <rect x="60" y="420" width="830" height="40" rx="8" fill="#0f172a" stroke="#334155"/>
+  <text x="475" y="445" text-anchor="middle" fill="#f87171" font-size="11">Audit Logging Principle: Immutable append-only records capture operator ID, action, target entity, reason, IP, and raw JSON metadata</text>
+</svg>

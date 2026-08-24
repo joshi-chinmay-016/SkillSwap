@@ -79,3 +79,26 @@ def update_my_profile(
         request.year,
         request.avatar_url
     )
+
+
+@router.get("/me/capabilities")
+def get_my_capabilities(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.services.capability_service import get_user_capabilities
+    caps = get_user_capabilities(db, current_user.id)
+    return caps
+
+
+@router.get("/{user_id}/capabilities")
+def get_user_capabilities_by_id(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    from app.services.capability_service import get_user_capabilities
+    from fastapi import HTTPException
+    caps = get_user_capabilities(db, user_id)
+    if not caps:
+        raise HTTPException(status_code=404, detail="User not found")
+    return caps

@@ -1,0 +1,37 @@
+flowchart TD
+    classDef startStyle fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#f8fafc;
+    classDef actionStyle fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef checkStyle fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef goalStyle fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    UserStart(["Student Enters SkillSwap Arena"]):::startStyle
+    
+    ChooseGoal["Select Skill to Learn\n(e.g. Distributed Systems)"]:::actionStyle
+    CreateJourney["Initialize Learning Journey\n& Generate Custom Roadmap"]:::actionStyle
+    
+    MatchMentor["Browse Verified Mentors\nor Request AI Matching"]:::actionStyle
+    BookSession["Book Session with Mentor\n(Escrow 1 Coin)"]:::actionStyle
+    
+    ConductSession["Attend Live Video Session\n& Take Collaborative Notes"]:::actionStyle
+    AISynthesis["AI Synthesizes Session Intelligence\n(Summary, Guidance, Action Items)"]:::actionStyle
+    
+    UpdateMilestone["Advance Journey Milestone\n& Progress Percentage"]:::goalStyle
+    RecordActivity["Record Learning Activity\n& Heatmap Contribution"]:::goalStyle
+    
+    VerifySkill{"Desire to Teach This Skill\nto Other Peers?"}:::checkStyle
+    TakeAssessment["Take Skill Verification Assessment\n(MCQs + Evidence Evaluation)"]:::actionStyle
+    GrantCapability["Gain 'Can Teach' Capability\n& Unlock Mentor Booking Availability"]:::goalStyle
+
+    UserStart --> ChooseGoal
+    ChooseGoal --> CreateJourney
+    CreateJourney --> MatchMentor
+    MatchMentor --> BookSession
+    BookSession --> ConductSession
+    ConductSession --> AISynthesis
+    AISynthesis --> UpdateMilestone
+    UpdateMilestone --> RecordActivity
+    RecordActivity --> VerifySkill
+
+    VerifySkill -- Yes --> TakeAssessment
+    TakeAssessment --> GrantCapability
+    VerifySkill -- No --> MatchMentor
