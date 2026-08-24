@@ -31,6 +31,7 @@ import {
   Sparkles,
   Search,
   ExternalLink,
+  Shield,
 } from "lucide-react";
 
 export default function AppLayout() {
@@ -129,7 +130,10 @@ export default function AppLayout() {
     navigate("/login");
   };
 
+  const isAdmin = (user?.role || "").toUpperCase() === "ADMIN";
+
   const navItems = [
+    ...(isAdmin ? [{ name: "Admin Console", to: "/admin", icon: Shield, badge: "ADMIN" }] : []),
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard, badge: null },
     { name: "AI Mentor", to: "/mentor", icon: Bot, badge: "AI" },
     { name: "Mentor Knowledge", to: "/mentor/knowledge", icon: BookOpen, badge: null },
@@ -389,6 +393,16 @@ export default function AppLayout() {
                     </div>
 
                     <div className="p-1 space-y-0.5">
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 font-bold transition-colors mb-1"
+                        >
+                          <Shield size={14} className="text-red-500" />
+                          <span>Admin Console</span>
+                        </Link>
+                      )}
                       <Link
                         to="/profile"
                         onClick={() => setIsUserDropdownOpen(false)}
