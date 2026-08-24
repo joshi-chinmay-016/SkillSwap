@@ -11,8 +11,11 @@ SCREENSHOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 def get_auth_token_and_user():
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@skillswap.io")
-    admin_pass = os.environ.get("ADMIN_PASSWORD", "AdminSecurePass123!")
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    admin_pass = os.environ.get("ADMIN_PASSWORD")
+
+    if not admin_email or not admin_pass:
+        raise ValueError("ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required to capture authenticated screenshots.")
 
     # Authenticate via backend API
     login_data = json.dumps({"email": admin_email, "password": admin_pass}).encode("utf-8")

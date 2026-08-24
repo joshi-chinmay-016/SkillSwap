@@ -2,7 +2,7 @@
 SkillSwap Arena — CLI Admin Bootstrapping Tool
 
 Usage:
-    python -m app.scripts.seed_admin --email admin@skillswap.com --name "Platform Admin" --password "AdminPassword123!"
+    python -m app.scripts.seed_admin --email <admin_email> --name "Platform Admin" --password <secure_password>
 """
 import sys
 import argparse
