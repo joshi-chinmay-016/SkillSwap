@@ -36,5 +36,7 @@ from app.models.session_topic import SessionTopic
 from app.models.session_action_item import SessionActionItem
 from app.models.session_intelligence import SessionIntelligence
 from app.models.oauth_identity import OAuthIdentity
+from app.models.admin_audit_log import AdminAuditLog
+from app.models.report import Report
 
 

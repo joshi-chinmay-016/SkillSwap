@@ -181,6 +181,10 @@ from app.api.session_intelligence import (
     router as session_intelligence_router
 )
 
+from app.api.admin import (
+    router as admin_router
+)
+
 
 # Optional RAG router — guarded to avoid import errors when RAG deps are missing
 try:
@@ -251,6 +255,7 @@ app.include_router(document_router)
 app.include_router(retrieval_router)
 app.include_router(verification_router)
 app.include_router(session_intelligence_router)
+app.include_router(admin_router)
 
 if rag_router:
     app.include_router(rag_router)
