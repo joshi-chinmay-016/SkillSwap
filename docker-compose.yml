@@ -1,0 +1,155 @@
+services:
+  # ==========================================
+  # 1. PostgreSQL Database
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: skillswap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-skillswap}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-skillswap}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - skillswap-network
+
+  # ==========================================
+  # 2. Redis Cache & Coordination
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: skillswap-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - skillswap-network
+
+  # ==========================================
+  # 3. FastAPI Backend API Server
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skillswap-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-skillswap}
+      SECRET_KEY: ${SECRET_KEY:-skillswap_production_jwt_signing_secret_key_change_me}
+      REDIS_URL: redis://redis:6379/0
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FRONTEND_AUTH_CALLBACK_URL: ${FRONTEND_AUTH_CALLBACK_URL:-http://localhost:5173/auth/callback}
+      ENVIRONMENT: production
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_vector_store:/app/vector_store
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - skillswap-network
+
+  # ==========================================
+  # 4. React Frontend (SPA Nginx)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: skillswap-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - skillswap-network
+
+  # ==========================================
+  # 5. Prometheus Observability Server
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: skillswap-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/production/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+    networks:
+      - skillswap-network
+
+  # ==========================================
+  # 6. Grafana Operational Dashboards
+  # ==========================================
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: skillswap-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./docker/production/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - skillswap-network
+
+volumes:
+  postgres_data:
+    name: skillswap_postgres_data
+  redis_data:
+    name: skillswap_redis_data
+  backend_uploads:
+    name: skillswap_backend_uploads
+  backend_vector_store:
+    name: skillswap_backend_vector_store
+  prometheus_data:
+    name: skillswap_prometheus_data
+  grafana_data:
+    name: skillswap_grafana_data
+
+networks:
+  skillswap-network:
+    name: skillswap_network
+    driver: bridge
