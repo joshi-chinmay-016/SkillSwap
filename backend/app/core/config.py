@@ -3,9 +3,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
 
-    DATABASE_URL: str
+    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/skillswap"
 
-    SECRET_KEY: str
+    SECRET_KEY: str = "default_development_secret_key_change_in_production_32chars"
 
     ALGORITHM: str = "HS256"
 
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # AI
     # ----------------------------
 
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
 
     GEMINI_MODEL: str = "gemini-1.5-flash"
 

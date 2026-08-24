@@ -75,6 +75,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/skillswap_test
           SECRET_KEY: test_secret_key_for_ci_cd_validation_environment_32chars
           REDIS_URL: redis://localhost:6379/0
+          GEMINI_API_KEY: ci_test_gemini_api_key_placeholder
         run: |
           alembic upgrade head
 
@@ -84,6 +85,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/skillswap_test
           SECRET_KEY: test_secret_key_for_ci_cd_validation_environment_32chars
           REDIS_URL: redis://localhost:6379/0
+          GEMINI_API_KEY: ci_test_gemini_api_key_placeholder
           ENVIRONMENT: test
         run: |
           pytest -v --tb=short

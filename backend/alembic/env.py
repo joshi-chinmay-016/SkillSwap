@@ -44,10 +44,16 @@ target_metadata = Base.metadata
 
 
 import os
-from app.core.config import settings
 
 # Override sqlalchemy.url with environment variable or application settings
-database_url = os.getenv("DATABASE_URL") or settings.DATABASE_URL
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    try:
+        from app.core.config import settings
+        database_url = settings.DATABASE_URL
+    except Exception:
+        database_url = None
+
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
