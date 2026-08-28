@@ -12,5 +12,5 @@ venv/
 .pytest_cache/
 
 # FAISS vector index files (Day 70) — generated at runtime, never commit
-vector_store/
-vector_store/*
+/vector_store/
+/vector_store/*
