@@ -40,12 +40,14 @@ export default function OAuthButtons({ actionText = "Continue" }) {
 
   const handleGoogleLogin = () => {
     setLoadingProvider("google");
-    window.location.href = "http://localhost:8000/auth/google";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   const handleGitHubLogin = () => {
     setLoadingProvider("github");
-    window.location.href = "http://localhost:8000/auth/github";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    window.location.href = `${apiUrl}/auth/github`;
   };
 
   return (
